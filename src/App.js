@@ -1,448 +1,437 @@
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell } from "recharts";
 
-// ─── FIREBASE ────────────────────────────────────────────────────────────────
-const FB_KEY = "AIzaSyA6SLYL7Ep451nu6edynUeBbPROtgRucv8";
-const FB_PROJECT = "trackmytrade-389b0";
-const AU = "https://identitytoolkit.googleapis.com/v1/accounts";
-const TU = "https://securetoken.googleapis.com/v1/token";
-const FS = `https://firestore.googleapis.com/v1/projects/${FB_PROJECT}/databases/(default)/documents`;
-const jh = { "Content-Type": "application/json" };
-const ah = t => ({ ...jh, Authorization: `Bearer ${t}` });
-const sbSignUp  = (e,p) => fetch(`${AU}:signUp?key=${FB_KEY}`,{method:"POST",headers:jh,body:JSON.stringify({email:e,password:p,returnSecureToken:true})}).then(r=>r.json());
-const sbSignIn  = (e,p) => fetch(`${AU}:signInWithPassword?key=${FB_KEY}`,{method:"POST",headers:jh,body:JSON.stringify({email:e,password:p,returnSecureToken:true})}).then(r=>r.json());
-const fbRefresh = rt => fetch(`${TU}?key=${FB_KEY}`,{method:"POST",headers:jh,body:JSON.stringify({grant_type:"refresh_token",refresh_token:rt})}).then(r=>r.json());
-const fsRead = async (uid,tok) => {
-  try {
-    const r = await fetch(`${FS}/users/${uid}`,{headers:ah(tok)});
-    if(!r.ok) return null;
-    const d = await r.json();
-    if(!d.fields) return null;
-    const o = {};
-    Object.entries(d.fields).forEach(([k,v])=>{try{o[k]=JSON.parse(v.stringValue);}catch{}});
-    return o;
-  } catch { return null; }
-};
-const fsWrite = async (uid,tok,data) => {
-  try {
-    const f = {};
-    Object.entries(data).forEach(([k,v])=>{f[k]={stringValue:JSON.stringify(v)};});
-    await fetch(`${FS}/users/${uid}`,{method:"PATCH",headers:ah(tok),body:JSON.stringify({fields:f})});
-  } catch {}
-};
-const lsGet = k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
-const lsSet = (k,v) => { try { localStorage.setItem(k,JSON.stringify(v)); } catch {} };
-const lsDel = k => { try { localStorage.removeItem(k); } catch {} };
-
-// ─── CONSTANTS ───────────────────────────────────────────────────────────────
-const ALL_ASSETS = ["XAU/USD","EUR/USD","GBP/USD","NAS100","BTC/USD","ETH/USD","US30","SPX500","GBP/JPY","USD/JPY"];
-const DEFAULT_CRITERIA = ["HA M5 claire (pas de doji)","MM20 bien orientée","BB approche sur M1","Bougie de rejet propre","Fenêtre horaire respectée","Pas de distraction","1 seul trade aujourd'hui","Contexte macro neutre"];
+const PRESET_ASSETS = ["XAU/USD","EUR/USD","GBP/USD","NAS100","BTC/USD","ETH/USD","US30","SPX500","GBP/JPY","USD/JPY"];
+const DEFAULT_CRITERIA = ["HA M5 claire (pas de doji)","MM20 bien orientée","BB approche sur M1","Bougie de rejet propre","Fenêtre horaire respectée","Pas de distraction","Contexte macro neutre"];
 const MONO = "'IBM Plex Mono','Courier New',monospace";
 const PNL_PRESETS = ["-1","-0.5","0","+1","+2","+3","+4","+5"];
-const NTR = ["Pas de setup valide","Hors fenêtre","Marché difficile","Journée chargée","Jour de repos"];
+const NEON_COLORS = [{name:"Vert",value:"#00ff9d"},{name:"Bleu",value:"#00d4ff"},{name:"Violet",value:"#bf00ff"},{name:"Rose",value:"#ff00aa"},{name:"Or",value:"#f0b429"}];
+const HUMEUR_PILLS = {fr:["🎯 Focus","😐 Neutre","😤 Tendu","😴 Fatigué"],en:["🎯 Focus","😐 Neutral","😤 Tense","😴 Tired"]};
+const BIAIS_PILLS = {fr:["↑ Haussier","→ Range","↓ Baissier"],en:["↑ Bullish","→ Range","↓ Bearish"]};
+const NTR = {fr:["Pas de setup valide","Hors fenêtre","Marché difficile","Journée chargée","Jour de repos"],en:["No valid setup","Out of window","Difficult market","Busy day","Rest day"]};
 const today = () => new Date().toISOString().split("T")[0];
-const rc = r => r==="WIN"?"#00ff9d":r==="LOSS"?"#ff4d4d":"#f0b429";
-const fmtPct = v => v===""||v===null||v===undefined?"—":`${Number(v)>=0?"+":""}${Number(v).toFixed(2)}%`;
-const emptyForm = (asset="XAU/USD") => ({ date:today(), asset, direction:"BUY", checklist:[], result:"WIN", pnlPreset:"", pnlManual:"", notes:"", rejetScore:0, time:"", screenshot:"" });
-const inputSt = { width:"100%", background:"#0d1a0d", border:"1px solid rgba(0,255,157,0.2)", borderRadius:8, color:"#c8e6c8", padding:"12px 14px", fontSize:13, fontFamily:MONO, marginBottom:10, outline:"none" };
+const rc = (r, neon="#00ff9d") => r==="WIN"?neon:r==="LOSS"?"#ff4d4d":"#f0b429";
+const fmtPct = v => { if(v===""||v===null||v===undefined) return "—"; const n=Number(v),abs=Math.abs(n); const s=abs%1===0?abs.toFixed(0):abs*10%1===0?abs.toFixed(1):abs.toFixed(2); return `${n>=0?"+":""}${n<0?"-":""}${s}%`; };
+const calcDisc = list => { if(!list||!list.length) return null; return Math.round((list.filter(x=>x.conforming).length/list.length*0.6+list.filter(x=>!x.isRevenge).length/list.length*0.4)*10); };
+const emptyForm = (asset="XAU/USD") => ({date:today(),asset,direction:"BUY",checklist:[],result:"WIN",pnlPreset:"",pnlManual:"",notes:"",rejetScore:0,time:"",screenshot:"",isRevenge:false,slDirection:"",checkin:{humeur:"",biais:""}});
+const mkInput = neon => ({width:"100%",background:"#0d1a0d",border:`1px solid ${neon}33`,borderRadius:8,color:"#c8e6c8",padding:"12px 14px",fontSize:13,fontFamily:MONO,marginBottom:10,outline:"none"});
+const _users = {};
+const authCheck = (e,p) => _users[e]&&_users[e].password===p;
+const authRegister = (e,p,l) => { if(_users[e])return false; _users[e]={password:p,lang:l}; return true; };
 
-const CSS = () => (
+const T = {
+  fr:{
+    welcome:"Bienvenue sur\nTrackMyTrade",welcomeDesc:"Le journal de trading qui transforme ta discipline en données concrètes. Chaque trade enregistré est un pas vers la rentabilité.",
+    checklist:"Ta checklist,\nton filtre",checklistDesc:"Configure tes critères d'entrée. Chaque setup reçoit une note automatique — conforme ou non-conforme. Les chiffres ne mentent pas.",
+    measure:"Mesure ce qui\nfonctionne",measureDesc:"Courbe de capital, conformité des setups, résumé hebdomadaire. Les données te font progresser.",
+    discover:"Découvrir →",next:"Suivant →",start:"Configurer ma stratégie →",back:"← Retour",step:"ÉTAPE",
+    strategy:"Ta stratégie",strategyDesc:"Donne un nom à ta stratégie.",assets:"Tes actifs",assetsDesc:"Sur quoi tu trades ?",
+    criteria:"Tes critères",criteriaDesc:"Modifie la checklist.",threshold:"Seuil de conformité",thresholdDesc:"Un setup est conforme s'il valide au moins X critères.",
+    launch:"✓ Lancer TrackMyTrade",continue:"Continuer →",prevStep:"← Étape précédente",
+    stats:"STATS",addTrade:"+ TRADE",history:"HISTORIQUE",settings:"⚙",editLabel:"✏ ÉDITION",
+    newTrade:"Nouveau trade",entryTime:"⏱ Heure d'entrée (optionnel)",
+    checklistSetup:"CHECKLIST SETUP",conform:"✓ Conforme",missing:"critère(s) manquant(s)",
+    rejectQuality:"QUALITÉ DU REJET",optional:"(optionnel)",pnl:"P&L %",manualPnl:"Autre…",
+    notesPlaceholder:"Notes comportementales, erreurs, observations...",
+    addScreenshot:"Ajouter une capture (optionnel)",screenshotAdded:"Capture ajoutée ✓",
+    saveConform:"✓ ENREGISTRER — Conforme",saveNonConform:"⚠ ENREGISTRER — Non-conforme",
+    updateBtn:"✓ METTRE À JOUR",tradeSaved:"✓ Trade enregistré",tradeUpdated:"✓ Trade modifié",
+    noTradeToday:"Pas de trade aujourd'hui",noTradeReason:"RAISON (OPTIONNEL)",confirmBtn:"⊘ Confirmer",
+    histTitle:"Historique",allLabel:"Tous",detailTitle:"RÉCAP TRADE",modifyBtn:"✏ Modifier",closeBtn:"✕",
+    setupScore:"SETUP SCORE",rejectLabel:"REJET /10",excellent:"Excellent",correct:"Correct",weak:"Faible",
+    checklistDetail:"CHECKLIST",screenshotLabel:"CAPTURE",notesLabel:"NOTES",
+    strategyName:"NOM DE LA STRATÉGIE",thresholdLabel:"SEUIL DE CONFORMITÉ",
+    criteriaLabel:"CRITÈRES",addCriteria:"+ Ajouter un critère",saveBtn:"✓ ENREGISTRER",savedOk:"✓ Enregistré !",logout:"Se déconnecter",
+    winRate:"Win Rate",totalPnl:"P&L",trades:"trades",noTrades:"Aucun trade enregistré.",
+    journalEmpty:"Journal vide",journalEmptyDesc:"Saisis ton premier trade pour commencer.",firstTrade:"+ Saisir un trade",
+    deleteConfirm:"Supprimer ?",deleteBtn:"Confirmer",cancelBtn:"Annuler",deleteLink:"supprimer",
+    conformLabel:"✓ conforme",nonConformLabel:"✗ non-conforme",conformShort:"✓ CONFORMES",nonConformShort:"✗ NON-CONF.",
+    winRateLabel:"win rate",perfPnl:"Performance P&L",cumulLabel:"CUMULÉ",weeksLabel:"SEMAINES",
+    streakWin:"WIN de suite",streakLoss:"LOSS de suite",checkRules:"Vérifier les règles",
+    exportTitle:"EXPORTER",exportCsv:"Excel / Sheets",exportJson:"Backup complet",
+    modifyTrade:"✏ Modification",cancelEdit:"ANNULER",hideBtn:"⊘ Masquer",showBtn:"⊘ Afficher",
+    conformityTitle:"Conformité · seuil",langLabel:"LANGUE",colorLabel:"COULEUR NÉON",
+    lastTrade:"Dernier trade",rejectStat:"rejet",highStd:"Standard élevé",balanced:"Équilibré",lowStd:"Standard faible",
+    inconsistent:"incohérent avec",maxTradesLabel:"TRADES MAX PAR JOUR",
+    revengeLabel:"Revenge trade",revengeWarning:"⚠️ Limite atteinte — tagué Revenge trade",
+    statsTitle:"STATISTIQUES",expectancy:"Espérance",bestAsset:"Meilleur actif",avgWin:"Gain moyen",avgLoss:"Perte moyenne",
+    calendarTitle:"CALENDRIER",calendarToggle:"Afficher le calendrier",enableNotif:"Activer les conseils",
+    addAsset:"+ Ajouter un actif",customAsset:"Nom de l'actif…",
+    slDirectionLabel:"DIRECTION POST-SL",slWith:"Dans le bon sens ✓",slAgainst:"Contre moi ✗",ratio:"Ratio G/P",
+    loginTitle:"Connexion",loginEmail:"Adresse email",loginPassword:"Mot de passe",
+    loginBtn:"Se connecter",signupBtn:"Créer un compte",loginSwitch:"Pas encore de compte ?",signupSwitch:"Déjà un compte ?",
+    loginError:"Email ou mot de passe incorrect",signupError:"Email déjà utilisé",
+    loginEmailPlaceholder:"ton@email.com",loginPasswordPlaceholder:"········",
+    disciplineLabel:"DISCIPLINE",disciplineExcellent:"Excellent",disciplineGood:"Bon",disciplineWork:"À améliorer",disciplinePoor:"Insuffisant",
+    conformiteLabel:"Conformité",sansRevengeLabel:"Sans revenge",
+    phaseEnCours:"Phase en cours",toutHistorique:"Tout",
+    newPhaseBtn:"▶ Nouvelle phase",newPhaseConfirmQ:"Démarrer une nouvelle phase ?",
+    newPhaseDesc:"Les stats repartent à zéro à partir d'aujourd'hui. L'historique est conservé.",
+    newPhaseConfirmBtn:"✓ Confirmer",phaseSince:"depuis",
+    checkinToggle:"Check-in",humeurLabel:"HUMEUR",humeurPlaceholder:"Champ libre…",biaisLabel:"BIAIS",
+    weeklyTitle:"Récap de la semaine",weeklySubtitle:"7 derniers jours",weeklyClose:"C'est parti →",
+    insightNoRevenge:"Aucun revenge trade cette semaine ✓",
+    insightConformVsNot:"Conformes : {c}% WR vs {n}% non-conformes",insightRevenge:"{n} revenge trade(s) — à corriger",
+    resetTitle:"Réinitialiser les données",resetWarning:"trades seront effacés définitivement.",
+    resetExportBtn:"↓ Exporter (CSV) puis réinitialiser",resetSkipBtn:"Réinitialiser sans exporter",
+    resetCancel:"Annuler",resetExportedTitle:"Export effectué ✓",
+    resetExportedDesc:"Ton historique a été sauvegardé. Tu peux maintenant réinitialiser.",
+    resetConfirmBtn:"Confirmer la réinitialisation",resetBtn:"⊘ Réinitialiser les données",
+  },
+  en:{
+    welcome:"Welcome to\nTrackMyTrade",welcomeDesc:"The trading journal that turns your discipline into concrete data. Every logged trade is a step toward profitability.",
+    checklist:"Your checklist,\nyour filter",checklistDesc:"Set your entry criteria. Each setup gets an automatic score — compliant or non-compliant. Numbers don't lie.",
+    measure:"Measure what\nworks",measureDesc:"Equity curve, setup compliance, weekly summary. Data makes you progress.",
+    discover:"Discover →",next:"Next →",start:"Set up my strategy →",back:"← Back",step:"STEP",
+    strategy:"Your strategy",strategyDesc:"Give your strategy a name.",assets:"Your assets",assetsDesc:"What do you trade?",
+    criteria:"Your criteria",criteriaDesc:"Edit the checklist.",threshold:"Compliance threshold",thresholdDesc:"A setup is compliant if it meets at least X criteria.",
+    launch:"✓ Launch TrackMyTrade",continue:"Continue →",prevStep:"← Previous step",
+    stats:"STATS",addTrade:"+ TRADE",history:"HISTORY",settings:"⚙",editLabel:"✏ EDIT",
+    newTrade:"New trade",entryTime:"⏱ Entry time (optional)",
+    checklistSetup:"SETUP CHECKLIST",conform:"✓ Compliant",missing:"criterion missing",
+    rejectQuality:"REJECTION QUALITY",optional:"(optional)",pnl:"P&L %",manualPnl:"Other…",
+    notesPlaceholder:"Behavioral notes, mistakes, observations...",
+    addScreenshot:"Add screenshot (optional)",screenshotAdded:"Screenshot added ✓",
+    saveConform:"✓ SAVE — Compliant",saveNonConform:"⚠ SAVE — Non-compliant",
+    updateBtn:"✓ UPDATE",tradeSaved:"✓ Trade saved",tradeUpdated:"✓ Trade updated",
+    noTradeToday:"No trade today",noTradeReason:"REASON (OPTIONAL)",confirmBtn:"⊘ Confirm",
+    histTitle:"History",allLabel:"All",detailTitle:"TRADE RECAP",modifyBtn:"✏ Edit",closeBtn:"✕",
+    setupScore:"SETUP SCORE",rejectLabel:"REJECTION /10",excellent:"Excellent",correct:"Good",weak:"Poor",
+    checklistDetail:"CHECKLIST",screenshotLabel:"SCREENSHOT",notesLabel:"NOTES",
+    strategyName:"STRATEGY NAME",thresholdLabel:"COMPLIANCE THRESHOLD",
+    criteriaLabel:"CRITERIA",addCriteria:"+ Add criterion",saveBtn:"✓ SAVE",savedOk:"✓ Saved!",logout:"Sign out",
+    winRate:"Win Rate",totalPnl:"P&L",trades:"trades",noTrades:"No trades recorded.",
+    journalEmpty:"Empty journal",journalEmptyDesc:"Log your first trade to start.",firstTrade:"+ Log a trade",
+    deleteConfirm:"Delete?",deleteBtn:"Confirm",cancelBtn:"Cancel",deleteLink:"delete",
+    conformLabel:"✓ compliant",nonConformLabel:"✗ non-compliant",conformShort:"✓ COMPLIANT",nonConformShort:"✗ NON-COMP.",
+    winRateLabel:"win rate",perfPnl:"P&L Performance",cumulLabel:"CUMUL.",weeksLabel:"WEEKS",
+    streakWin:"WIN streak",streakLoss:"LOSS streak",checkRules:"Check your rules",
+    exportTitle:"EXPORT",exportCsv:"Excel / Sheets",exportJson:"Full backup",
+    modifyTrade:"✏ Editing",cancelEdit:"CANCEL",hideBtn:"⊘ Hide",showBtn:"⊘ Show",
+    conformityTitle:"Compliance · threshold",langLabel:"LANGUAGE",colorLabel:"NEON COLOR",
+    lastTrade:"Last trade",rejectStat:"reject",highStd:"High standard",balanced:"Balanced",lowStd:"Low standard",
+    inconsistent:"inconsistent with",maxTradesLabel:"MAX TRADES PER DAY",
+    revengeLabel:"Revenge trade",revengeWarning:"⚠️ Limit reached — tagged as Revenge trade",
+    statsTitle:"STATISTICS",expectancy:"Expectancy",bestAsset:"Best asset",avgWin:"Avg win",avgLoss:"Avg loss",
+    calendarTitle:"CALENDAR",calendarToggle:"Show calendar",enableNotif:"Enable tips",
+    addAsset:"+ Add asset",customAsset:"Asset name…",
+    slDirectionLabel:"POST-SL DIRECTION",slWith:"Went my way ✓",slAgainst:"Against me ✗",ratio:"Win/Loss ratio",
+    loginTitle:"Sign in",loginEmail:"Email address",loginPassword:"Password",
+    loginBtn:"Sign in",signupBtn:"Create account",loginSwitch:"No account yet?",signupSwitch:"Already have an account?",
+    loginError:"Invalid email or password",signupError:"Email already in use",
+    loginEmailPlaceholder:"your@email.com",loginPasswordPlaceholder:"········",
+    disciplineLabel:"DISCIPLINE",disciplineExcellent:"Excellent",disciplineGood:"Good",disciplineWork:"Needs work",disciplinePoor:"Poor",
+    conformiteLabel:"Compliance",sansRevengeLabel:"Revenge-free",
+    phaseEnCours:"Current phase",toutHistorique:"All",
+    newPhaseBtn:"▶ New phase",newPhaseConfirmQ:"Start a new phase?",
+    newPhaseDesc:"Dashboard stats reset from today. Full history is kept.",
+    newPhaseConfirmBtn:"✓ Confirm",phaseSince:"since",
+    checkinToggle:"Check-in",humeurLabel:"MOOD",humeurPlaceholder:"Free field…",biaisLabel:"BIAS",
+    weeklyTitle:"Weekly recap",weeklySubtitle:"Last 7 days",weeklyClose:"Let's go →",
+    insightNoRevenge:"No revenge trades this week ✓",
+    insightConformVsNot:"Compliant: {c}% WR vs {n}% non-compliant",insightRevenge:"{n} revenge trade(s) — needs fixing",
+    resetTitle:"Reset all data",resetWarning:"trades will be permanently deleted.",
+    resetExportBtn:"↓ Export (CSV) then reset",resetSkipBtn:"Reset without exporting",
+    resetCancel:"Cancel",resetExportedTitle:"Export done ✓",
+    resetExportedDesc:"Your history has been saved. You can now reset.",
+    resetConfirmBtn:"Confirm reset",resetBtn:"⊘ Reset all data",
+  }
+};
+
+const CSS = ({neon="#00ff9d"}) => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&display=swap');
     *{box-sizing:border-box;margin:0;padding:0}
     body{background:#080f08}
-    input,select,textarea{outline:none;font-family:${MONO}}
-    input[type=checkbox]{accent-color:#00ff9d;width:16px;height:16px;cursor:pointer}
+    input,select,textarea{outline:none;font-family:${MONO};font-size:16px}
+    input[type=checkbox]{accent-color:${neon};width:16px;height:16px;cursor:pointer}
     input[type=file]{display:none}
     .btn{transition:all 0.15s;cursor:pointer}
     .btn:hover{opacity:0.85;transform:translateY(-1px)}
-    .row{transition:all 0.2s;cursor:pointer}
-    .row:hover{background:rgba(0,255,157,0.06)!important;border-color:rgba(0,255,157,0.2)!important}
+    .row{transition:background 0.2s;cursor:pointer}
+    .row:hover{background:${neon}0a!important}
     ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:#1e2a1e}
     @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
     @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-    @keyframes pulse{0%,100%{opacity:1;text-shadow:0 0 8px rgba(0,255,157,0.4)}50%{opacity:0.85;text-shadow:0 0 14px rgba(0,255,157,0.7)}}
+    @keyframes pulse{0%,100%{opacity:1;text-shadow:0 0 8px ${neon}66}50%{opacity:0.85;text-shadow:0 0 14px ${neon}aa}}
     @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
     .fu{animation:fadeUp 0.45s ease both}
     .fi{animation:fadeIn 0.4s ease both}
     .glow{animation:pulse 3s ease-in-out infinite}
-    .grid-bg{background-image:linear-gradient(rgba(0,255,157,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,157,0.025) 1px,transparent 1px);background-size:32px 32px}
+    .grid-bg{background-image:linear-gradient(${neon}06 1px,transparent 1px),linear-gradient(90deg,${neon}06 1px,transparent 1px);background-size:32px 32px}
     .slide-up{animation:slideUp 0.3s ease both}
+    @keyframes ring{0%,100%{transform:scale(1);opacity:0.12}50%{transform:scale(1.08);opacity:0.22}}
   `}</style>
 );
 
-// ─── LOGO ◈ dans carré arrondi ────────────────────────────────────────────────
-function Logo({ size="sm" }) {
-  const cfg = { sm:[28,18], md:[34,22], lg:[48,30] }[size] || [28,18];
-  const [box, fs] = cfg;
+function Logo({size="sm",neon="#00ff9d"}) {
+  const [box,fs]={sm:[28,18],md:[34,22],lg:[48,30]}[size]||[28,18];
   return (
-    <div style={{ display:"flex", alignItems:"center", gap:9 }}>
-      <div style={{ width:box, height:box, borderRadius:7, background:"rgba(0,255,157,0.1)", border:"1px solid rgba(0,255,157,0.3)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:"0 0 12px rgba(0,255,157,0.15)" }}>
-        <span className="glow" style={{ fontSize:Math.round(box*0.52), color:"#00ff9d", lineHeight:1 }}>◈</span>
+    <div style={{display:"flex",alignItems:"center",gap:9}}>
+      <div style={{width:box,height:box,borderRadius:7,background:`${neon}1a`,border:`1px solid ${neon}55`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:`0 0 12px ${neon}26`}}>
+        <svg width={Math.round(box*0.68)} height={Math.round(box*0.68)} viewBox="0 0 24 24" fill="none" className="glow">
+          <polygon points="12,2 22,12 12,22 2,12" fill={`${neon}22`} stroke={neon} strokeWidth="1.6" strokeLinejoin="round"/>
+          <polygon points="12,7 17,12 12,17 7,12" fill={neon} stroke={neon} strokeWidth="0.5"/>
+        </svg>
       </div>
-      <span style={{ fontSize:fs, fontFamily:MONO, letterSpacing:-0.5, lineHeight:1 }}>
-        <b style={{ color:"#00ff9d" }}>Track</b>
-        <span style={{ color:"#3a7a5a", fontWeight:300 }}>My</span>
-        <b style={{ color:"#00ff9d" }}>Trade</b>
+      <span style={{fontSize:fs,fontFamily:MONO,letterSpacing:-0.5,lineHeight:1}}>
+        <b style={{color:neon}}>Track</b><span style={{color:neon+"44",fontWeight:300}}>My</span><b style={{color:neon}}>Trade</b>
       </span>
     </div>
   );
 }
 
-function ScoreRing({ score, max=8, size=52, threshold=6 }) {
-  const r=(size-8)/2, circ=2*Math.PI*r;
-  const color=score>=threshold?"#00ff9d":score>=threshold-1?"#f0b429":"#ff4d4d";
+function ScoreRing({score,max=8,size=52,threshold=6,neon="#00ff9d"}) {
+  const r=(size-8)/2,circ=2*Math.PI*r;
+  const color=score>=threshold?neon:score>=threshold-1?"#f0b429":"#ff4d4d";
   return (
     <svg width={size} height={size}>
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#1e2a1e" strokeWidth={5}/>
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={5}
         strokeDasharray={`${circ*(score/max)} ${circ}`} strokeLinecap="round"
-        style={{ transform:"rotate(-90deg)", transformOrigin:"50% 50%", transition:"stroke-dasharray 0.4s" }}/>
+        style={{transform:"rotate(-90deg)",transformOrigin:"50% 50%",transition:"stroke-dasharray 0.4s"}}/>
       <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central"
-        style={{ fontSize:11, fontWeight:700, fill:color, fontFamily:"monospace" }}>{score}/{max}</text>
+        style={{fontSize:11,fontWeight:700,fill:color,fontFamily:"monospace"}}>{score}/{max}</text>
     </svg>
   );
 }
 
-function Stat({ label, value, sub, color="#00ff9d" }) {
+function Dots({total,current,neon="#00ff9d"}) {
   return (
-    <div style={{ background:"rgba(0,255,157,0.04)", border:"1px solid rgba(0,255,157,0.12)", borderRadius:10, padding:"14px 16px", flex:1 }}>
-      <div style={{ fontSize:9, color:"#5a7a5a", textTransform:"uppercase", letterSpacing:1, marginBottom:6, fontFamily:MONO }}>{label}</div>
-      <div style={{ fontSize:23, fontWeight:800, color, fontFamily:MONO, lineHeight:1 }}>{value}</div>
-      {sub && <div style={{ fontSize:10, color:"#5a7a5a", marginTop:5 }}>{sub}</div>}
-    </div>
-  );
-}
-
-function Dots({ total, current }) {
-  return (
-    <div style={{ display:"flex", gap:6, justifyContent:"center" }}>
-      {Array.from({length:total}).map((_,i) => (
-        <div key={i} style={{ width:i===current?22:7, height:7, borderRadius:4, background:i===current?"#00ff9d":i<current?"#1e4a1e":"#1e2a1e", transition:"all 0.3s" }}/>
+    <div style={{display:"flex",gap:6,justifyContent:"center"}}>
+      {Array.from({length:total}).map((_,i)=>(
+        <div key={i} style={{width:i===current?22:7,height:7,borderRadius:4,background:i===current?neon:i<current?`${neon}55`:"#1e2a1e",transition:"all 0.3s"}}/>
       ))}
     </div>
   );
 }
 
-// ─── ONBOARDING ───────────────────────────────────────────────────────────────
-function Onboarding({ onDone }) {
-  const [step, setStep] = useState(0);
-  const slides = [
-    {
-      visual:(
-        <div style={{ position:"relative", width:200, height:180, margin:"0 auto" }}>
-          <div style={{ position:"absolute", inset:0, borderRadius:"50%", background:"radial-gradient(circle,rgba(0,255,157,0.1) 0%,transparent 70%)" }}/>
-          <div style={{ position:"absolute", inset:20, borderRadius:"50%", border:"1px solid rgba(0,255,157,0.12)" }}/>
-          <div style={{ position:"absolute", inset:40, borderRadius:"50%", border:"1px solid rgba(0,255,157,0.06)" }}/>
-          <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}><Logo size="lg"/></div>
+function Stat({label,value,color="#00ff9d"}) {
+  return (
+    <div style={{background:`${color}0a`,border:`1px solid ${color}28`,borderRadius:12,padding:"14px 16px",flex:1,boxShadow:`0 4px 20px ${color}12, inset 0 1px 0 ${color}18`}}>
+      <div style={{fontSize:9,color:"#5a7a5a",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>{label}</div>
+      <div style={{fontSize:22,fontWeight:800,color,fontFamily:MONO,lineHeight:1,textShadow:`0 0 20px ${color}cc, 0 2px 6px rgba(0,0,0,0.6)`}}>{value}</div>
+    </div>
+  );
+}
+
+function NotifCard({notif,onClose}) {
+  const {txt,color,trade,lang:nl,icon}=notif;
+  const neon=color||"#00ff9d";
+  const fr=(nl||"fr")==="fr";
+  const iC=icon==="block"||icon==="stop"?"#ff4d4d":icon==="warn"||icon==="dice"?"#f0b429":neon;
+  const parts=(txt||"").split("\n");
+  const Icon=()=>{
+    if(icon==="fire")return <svg width="52" height="52" viewBox="0 0 24 24" fill="none"><path d="M12 2c0 5.5-6 7-5 13a7 7 0 0 0 13.5-1.5c-1.5 0-3-1.5-3-4 0 3-3.5 4.5-3.5 7a3.5 3.5 0 0 1-3.5-3.5c0-3 3.5-5.5 3.5-11Z" fill={`${iC}22`} stroke={iC} strokeWidth="1.5"/></svg>;
+    if(icon==="ok")return <svg width="52" height="52" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" fill={`${iC}12`} stroke={iC} strokeWidth="1.5"/><polyline points="7.5,12.5 10.5,15.5 17,8.5" stroke={iC} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+    if(icon==="block")return <svg width="52" height="52" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" fill={`${iC}12`} stroke={iC} strokeWidth="1.5"/><line x1="5" y1="12" x2="19" y2="12" stroke={iC} strokeWidth="2.2" strokeLinecap="round"/></svg>;
+    if(icon==="stop")return <svg width="52" height="52" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" fill={`${iC}12`} stroke={iC} strokeWidth="1.5"/><line x1="12" y1="7" x2="12" y2="14" stroke={iC} strokeWidth="2.4" strokeLinecap="round"/><circle cx="12" cy="17.5" r="1.5" fill={iC}/></svg>;
+    if(icon==="warn")return <svg width="52" height="52" viewBox="0 0 24 24" fill="none"><path d="M12 3L22.5 21H1.5L12 3Z" fill={`${iC}12`} stroke={iC} strokeWidth="1.5" strokeLinejoin="round"/><line x1="12" y1="9.5" x2="12" y2="15" stroke={iC} strokeWidth="2.2" strokeLinecap="round"/><circle cx="12" cy="18" r="1.5" fill={iC}/></svg>;
+    if(icon==="dice")return <svg width="52" height="52" viewBox="0 0 24 24" fill="none"><rect x="2.5" y="2.5" width="19" height="19" rx="4" fill={`${iC}12`} stroke={iC} strokeWidth="1.5"/><circle cx="7.5" cy="7.5" r="1.8" fill={iC}/><circle cx="16.5" cy="16.5" r="1.8" fill={iC}/><circle cx="16.5" cy="7.5" r="1.8" fill={iC}/><circle cx="7.5" cy="16.5" r="1.8" fill={iC}/><circle cx="12" cy="12" r="1.8" fill={iC}/></svg>;
+    return <svg width="52" height="52" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" fill={`${iC}12`} stroke={iC} strokeWidth="1.5"/><line x1="12" y1="8" x2="12" y2="13" stroke={iC} strokeWidth="2.2" strokeLinecap="round"/><circle cx="12" cy="16.5" r="1.5" fill={iC}/></svg>;
+  };
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",padding:24}} onClick={onClose}>
+      <div className="slide-up" style={{background:"#0d1a0d",border:`1px solid ${iC}30`,borderRadius:20,width:"100%",maxWidth:320,overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
+        <div style={{height:3,background:iC,opacity:0.85}}/>
+        <div style={{padding:"26px 22px 22px"}}>
+          <div style={{display:"flex",justifyContent:"center",marginBottom:18}}><Icon/></div>
+          <div style={{fontSize:17,fontWeight:700,color:"#e8f5e8",fontFamily:MONO,lineHeight:1.35,textAlign:"center",marginBottom:parts[1]?8:0}}>{parts[0]}</div>
+          {parts[1]&&<div style={{fontSize:12,color:"#5a7a5a",fontFamily:MONO,lineHeight:1.65,textAlign:"center"}}>{parts[1]}</div>}
+          {trade&&<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,margin:"16px 0 4px",padding:"9px 14px",background:`${iC}0d`,borderRadius:10,border:`1px solid ${iC}20`}}>
+            <span style={{fontSize:11,color:"#5a7a5a",fontFamily:MONO}}>{trade.asset}</span>
+            <span style={{fontSize:10,color:"#2a4a2a"}}>·</span>
+            <span style={{fontSize:13,fontWeight:800,color:rc(trade.result,neon),fontFamily:MONO}}>{trade.result}</span>
+            {trade.pnlPct!==""&&parseFloat(trade.pnlPct)!==0&&<><span style={{fontSize:10,color:"#2a4a2a"}}>·</span><span style={{fontSize:12,fontWeight:700,color:parseFloat(trade.pnlPct)>=0?neon:"#ff4d4d",fontFamily:MONO}}>{fmtPct(parseFloat(trade.pnlPct))}</span></>}
+          </div>}
+          <button onClick={onClose} className="btn" style={{width:"100%",marginTop:trade?12:18,background:`${iC}15`,border:`1px solid ${iC}45`,color:iC,borderRadius:10,padding:"11px 0",fontSize:11,fontWeight:700,fontFamily:MONO,letterSpacing:1.5}}>{fr?"COMPRIS":"GOT IT"}</button>
         </div>
-      ),
-      title:"Bienvenue sur\nTrackMyTrade",
-      desc:"Le journal de trading qui transforme ta discipline en données concrètes. Chaque trade enregistré est un pas vers la rentabilité.",
-      cta:"Découvrir →"
-    },
-    {
-      visual:(
-        <div style={{ display:"flex", flexDirection:"column", gap:8, maxWidth:260, margin:"0 auto" }}>
-          {["HA M5 claire ✓","MM20 orientée ✓","BB approche ✓","Rejet propre —"].map((item,i)=>(
-            <div key={i} className="fu" style={{ background:i<3?"rgba(0,255,157,0.08)":"rgba(255,77,77,0.06)", border:`1px solid ${i<3?"rgba(0,255,157,0.2)":"rgba(255,77,77,0.15)"}`, borderRadius:8, padding:"10px 14px", fontSize:12, color:i<3?"#00ff9d":"#ff4d4d", fontFamily:MONO, animationDelay:`${i*0.08}s` }}>{item}</div>
-          ))}
-        </div>
-      ),
-      title:"Ta checklist,\nton filtre",
-      desc:"Configure tes critères d'entrée. Chaque setup reçoit une note automatique — conforme ou non-conforme. Les chiffres ne mentent pas.",
-      cta:"Suivant →"
-    },
-    {
-      visual:(
-        <div style={{ maxWidth:260, margin:"0 auto" }}>
-          <div style={{ display:"flex", gap:10, marginBottom:10 }}>
-            {[["WIN RATE","73%"],["P&L TOTAL","+4.2%"]].map(([l,v])=>(
-              <div key={l} style={{ flex:1, background:"rgba(0,255,157,0.08)", border:"1px solid rgba(0,255,157,0.2)", borderRadius:8, padding:12, textAlign:"center" }}>
-                <div style={{ fontSize:22, fontWeight:800, color:"#00ff9d", fontFamily:MONO }}>{v}</div>
-                <div style={{ fontSize:9, color:"#5a7a5a", marginTop:4 }}>{l}</div>
+      </div>
+    </div>
+  );
+}
+
+function WeeklyRecapModal({trades,lang,neon,onClose}) {
+  const t=T[lang];
+  const cutoff=new Date(Date.now()-7*86400000).toISOString().split("T")[0];
+  const week=trades.filter(x=>x.date>=cutoff);
+  if(week.length<2) return null;
+  const wins=week.filter(x=>x.result==="WIN").length;
+  const pnl=week.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
+  const wr=Math.round(wins/week.length*100);
+  const score=calcDisc(week);
+  const sC=score>=8?neon:score>=5?"#f0b429":"#ff4d4d";
+  const cC=week.filter(x=>x.conforming).length;
+  const rC=week.filter(x=>x.isRevenge).length;
+  const cWR=cC?Math.round(week.filter(x=>x.conforming&&x.result==="WIN").length/cC*100):null;
+  const nWR=week.length-cC?Math.round(week.filter(x=>!x.conforming&&x.result==="WIN").length/(week.length-cC)*100):null;
+  const insights=[];
+  if(cWR!==null&&nWR!==null&&Math.abs(cWR-nWR)>=10) insights.push(t.insightConformVsNot.replace("{c}",cWR).replace("{n}",nWR));
+  if(rC>0) insights.push(t.insightRevenge.replace("{n}",rC));
+  else if(week.length>=3) insights.push(t.insightNoRevenge);
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",padding:24}} onClick={onClose}>
+      <div className="slide-up" style={{background:"#0d1a0d",border:`1px solid ${neon}35`,borderRadius:20,width:"100%",maxWidth:340,overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
+        <div style={{height:3,background:neon,opacity:0.85}}/>
+        <div style={{padding:"24px 22px 22px"}}>
+          <div style={{textAlign:"center",marginBottom:20}}>
+            <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:3,marginBottom:6,fontFamily:MONO}}>{t.weeklySubtitle}</div>
+            <div style={{fontSize:18,fontWeight:700,color:"#e8f5e8",fontFamily:MONO}}>{t.weeklyTitle}</div>
+          </div>
+          <div style={{display:"flex",gap:8,marginBottom:14}}>
+            {[{l:"WIN RATE",v:`${wr}%`,c:wr>=50?neon:"#ff4d4d"},{l:"P&L",v:fmtPct(pnl),c:pnl>=0?neon:"#ff4d4d"},{l:t.trades.toUpperCase(),v:week.length,c:neon}].map(({l,v,c})=>(
+              <div key={l} style={{flex:1,background:`${neon}08`,border:`1px solid ${neon}1a`,borderRadius:8,padding:"10px 6px",textAlign:"center"}}>
+                <div style={{fontSize:18,fontWeight:800,color:c,fontFamily:MONO,lineHeight:1,textShadow:`0 0 18px ${c}cc, 0 2px 5px rgba(0,0,0,0.6)`}}>{v}</div>
+                <div style={{fontSize:8,color:"#5a7a5a",marginTop:4,letterSpacing:1}}>{l}</div>
               </div>
             ))}
           </div>
-          <div style={{ background:"rgba(0,255,157,0.04)", border:"1px solid rgba(0,255,157,0.1)", borderRadius:8, padding:12, display:"flex", gap:6, alignItems:"flex-end", height:60 }}>
-            {[0.5,0.9,0.3,1,0.7,0.85,0.4,1].map((h,i)=>(
-              <div key={i} style={{ flex:1, height:`${h*100}%`, background:h>0.5?"#00ff9d":"#ff4d4d", borderRadius:"3px 3px 0 0", opacity:0.7 }}/>
-            ))}
+          <div style={{background:`${sC}0d`,border:`1px solid ${sC}30`,borderRadius:12,padding:"12px 16px",marginBottom:14,boxShadow:`0 4px 24px ${sC}14, inset 0 1px 0 ${sC}22`}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <div style={{fontSize:9,color:"#5a7a5a",letterSpacing:2,fontFamily:MONO,marginBottom:4}}>{t.disciplineLabel}</div>
+                <div style={{fontSize:28,fontWeight:800,color:sC,fontFamily:MONO,lineHeight:1,textShadow:`0 0 24px ${sC}cc, 0 2px 8px rgba(0,0,0,0.6)`}}>{score}<span style={{fontSize:14,color:"#3a5a3a",textShadow:"none"}}>/10</span></div>
+                <div style={{fontSize:9,color:sC,marginTop:3}}>{score>=8?t.disciplineExcellent:score>=6?t.disciplineGood:score>=4?t.disciplineWork:t.disciplinePoor}</div>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:8,minWidth:120}}>
+                {[{l:t.conformiteLabel,v:Math.round(cC/week.length*100),c:neon},{l:t.sansRevengeLabel,v:Math.round((week.length-rC)/week.length*100),c:rC===0?neon:"#f0b429"}].map(({l,v,c})=>(
+                  <div key={l}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                      <span style={{fontSize:8,color:"#5a7a5a",fontFamily:MONO}}>{l}</span>
+                      <span style={{fontSize:9,fontWeight:700,color:c,fontFamily:MONO}}>{v}%</span>
+                    </div>
+                    <div style={{height:3,background:"#1e2a1e",borderRadius:2}}><div style={{width:`${v}%`,height:"100%",background:c,borderRadius:2}}/></div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
+          {insights.length>0&&<div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:16}}>
+            {insights.map((ins,i)=><div key={i} style={{background:`${neon}06`,border:`1px solid ${neon}15`,borderRadius:8,padding:"8px 12px",fontSize:11,color:"#8ab88a",fontFamily:MONO,lineHeight:1.5}}>{ins}</div>)}
+          </div>}
+          <button onClick={onClose} className="btn" style={{width:"100%",background:`${neon}1a`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:"12px 0",fontSize:12,fontWeight:700,fontFamily:MONO}}>{t.weeklyClose}</button>
         </div>
-      ),
-      title:"Mesure ce qui\nfonctionne",
-      desc:"Courbe de capital, conformité des setups, résumé hebdomadaire. Les données te font progresser.",
-      cta:"Commencer →"
-    },
-  ];
-  const s = slides[step];
-  return (
-    <div style={{ background:"#080f08", minHeight:"100vh", display:"flex", flexDirection:"column", fontFamily:MONO, maxWidth:480, margin:"0 auto" }}>
-      <CSS/>
-      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"32px 28px" }}>
-        <div className="fi" key={`v${step}`} style={{ marginBottom:32, width:"100%" }}>{s.visual}</div>
-        <div className="fi" key={`t${step}`} style={{ textAlign:"center", marginBottom:32 }}>
-          <div style={{ fontSize:26, fontWeight:700, color:"#00ff9d", whiteSpace:"pre-line", lineHeight:1.25, marginBottom:14, fontFamily:MONO }}>{s.title}</div>
-          <div style={{ fontSize:13, color:"#5a7a5a", lineHeight:1.8, maxWidth:300, margin:"0 auto" }}>{s.desc}</div>
-        </div>
-        <button onClick={()=>step<slides.length-1?setStep(step+1):onDone()} className="btn"
-          style={{ width:"100%", maxWidth:300, background:"rgba(0,255,157,0.12)", border:"1px solid #00ff9d", color:"#00ff9d", borderRadius:12, padding:16, fontSize:14, fontWeight:700, fontFamily:MONO, marginBottom:14 }}>{s.cta}</button>
-        {step>0&&<button onClick={()=>setStep(step-1)} className="btn" style={{ background:"transparent", border:"none", color:"#3a5a3a", fontSize:12, fontFamily:MONO }}>← Retour</button>}
-      </div>
-      <div style={{ padding:"20px 28px 36px" }}><Dots total={slides.length} current={step}/></div>
-    </div>
-  );
-}
-
-// ─── GUIDED SETUP ─────────────────────────────────────────────────────────────
-function GuidedSetup({ onDone }) {
-  const [step,setStep]=useState(0);
-  const [stratName,setStratName]=useState("");
-  const [selectedAssets,setSelectedAssets]=useState(["XAU/USD"]);
-  const [criteria,setCriteria]=useState([...DEFAULT_CRITERIA]);
-  const [threshold,setThreshold]=useState(6);
-  const [newItem,setNewItem]=useState("");
-  const steps = [
-    { label:"01", title:"Ta stratégie", desc:"Donne un nom à ta stratégie. Il apparaîtra dans ton journal.", ok:stratName.trim().length>0,
-      content:<input value={stratName} onChange={e=>setStratName(e.target.value)} placeholder="Ex: XAU/USD Scalping BB" style={{...inputSt,fontSize:14,padding:14}} autoFocus/> },
-    { label:"02", title:"Tes actifs", desc:"Sur quoi tu trades ? Sélectionne un ou plusieurs actifs.", ok:selectedAssets.length>0,
-      content:<div style={{display:"flex",flexWrap:"wrap",gap:8}}>{ALL_ASSETS.map(a=>(
-        <button key={a} onClick={()=>setSelectedAssets(p=>p.includes(a)?p.filter(x=>x!==a):[...p,a])} className="btn"
-          style={{background:selectedAssets.includes(a)?"rgba(0,255,157,0.15)":"#0d1a0d",border:`1px solid ${selectedAssets.includes(a)?"#00ff9d":"rgba(0,255,157,0.15)"}`,color:selectedAssets.includes(a)?"#00ff9d":"#3a5a3a",borderRadius:8,padding:"9px 14px",fontSize:12,fontWeight:700,fontFamily:MONO}}>{a}</button>
-      ))}</div> },
-    { label:"03", title:"Tes critères", desc:"Modifie la checklist pour qu'elle corresponde à ta stratégie.", ok:criteria.length>=2,
-      content:<div>
-        {criteria.map((c,i)=>(
-          <div key={i} style={{display:"flex",gap:8,marginBottom:8}}>
-            <input value={c} onChange={e=>{const n=[...criteria];n[i]=e.target.value;setCriteria(n);}} style={{...inputSt,marginBottom:0,flex:1}}/>
-            <button onClick={()=>setCriteria(criteria.filter((_,idx)=>idx!==i))} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d",borderRadius:6,padding:"8px 10px",fontSize:11,cursor:"pointer"}}>✕</button>
-          </div>
-        ))}
-        <div style={{display:"flex",gap:8}}>
-          <input value={newItem} onChange={e=>setNewItem(e.target.value)} placeholder="Ajouter un critère…"
-            onKeyDown={e=>{if(e.key==="Enter"&&newItem.trim()){setCriteria([...criteria,newItem.trim()]);setNewItem("");}}} style={{...inputSt,marginBottom:0,flex:1}}/>
-          <button onClick={()=>{if(newItem.trim()){setCriteria([...criteria,newItem.trim()]);setNewItem("");}}} className="btn"
-            style={{background:"rgba(0,255,157,0.1)",border:"1px solid rgba(0,255,157,0.3)",color:"#00ff9d",borderRadius:8,padding:"0 16px",fontSize:18}}>+</button>
-        </div>
-      </div> },
-    { label:"04", title:"Seuil de conformité", desc:`Un setup est conforme s'il valide au moins X critères sur ${criteria.length}.`, ok:true,
-      content:<div>
-        <div style={{display:"flex",gap:8,marginBottom:20}}>
-          {Array.from({length:Math.min(7,criteria.length-1)},(_,i)=>i+2).map(n=>(
-            <button key={n} onClick={()=>setThreshold(n)} className="btn"
-              style={{flex:1,padding:"12px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:threshold===n?"rgba(0,255,157,0.2)":"#0d1a0d",border:`1px solid ${threshold===n?"#00ff9d":"rgba(0,255,157,0.15)"}`,color:threshold===n?"#00ff9d":"#3a5a3a"}}>{n}</button>
-          ))}
-        </div>
-        <div style={{background:"rgba(0,255,157,0.04)",border:"1px solid rgba(0,255,157,0.1)",borderRadius:10,padding:16}}>
-          <div style={{fontSize:12,color:"#00ff9d",marginBottom:6}}>✓ Conforme = {threshold}/{criteria.length}</div>
-          <div style={{fontSize:10,color:"#3a5a3a"}}>{threshold/criteria.length>=0.875?"🎯 Standard élevé":threshold/criteria.length>=0.6?"⚖ Équilibré":"⚠ Standard faible"}</div>
-        </div>
-      </div> },
-  ];
-  const s = steps[step];
-  return (
-    <div style={{background:"#080f08",minHeight:"100vh",fontFamily:MONO,maxWidth:480,margin:"0 auto",display:"flex",flexDirection:"column"}}>
-      <CSS/>
-      <div style={{padding:"24px 24px 16px",borderBottom:"1px solid rgba(0,255,157,0.08)"}}>
-        <Logo size="sm"/><div style={{marginTop:20}}><Dots total={steps.length} current={step}/></div>
-      </div>
-      <div style={{flex:1,padding:"28px 24px",overflow:"auto"}} key={step}>
-        <div className="fu">
-          <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:3,marginBottom:6}}>ÉTAPE {s.label} / 04</div>
-          <div style={{fontSize:22,fontWeight:700,color:"#00ff9d",marginBottom:8,lineHeight:1.2}}>{s.title}</div>
-          <div style={{fontSize:13,color:"#5a7a5a",marginBottom:24,lineHeight:1.7}}>{s.desc}</div>
-          {s.content}
-        </div>
-      </div>
-      <div style={{padding:"16px 24px 36px",borderTop:"1px solid rgba(0,255,157,0.08)"}}>
-        <button onClick={()=>step<steps.length-1?setStep(step+1):onDone({strategyName:stratName,defaultAsset:selectedAssets[0],items:criteria,threshold})}
-          disabled={!s.ok} className="btn"
-          style={{width:"100%",background:s.ok?"rgba(0,255,157,0.15)":"rgba(0,255,157,0.04)",border:`1px solid ${s.ok?"#00ff9d":"rgba(0,255,157,0.1)"}`,color:s.ok?"#00ff9d":"#2a3a2a",borderRadius:12,padding:16,fontSize:14,fontWeight:700,fontFamily:MONO,marginBottom:12}}>
-          {step===steps.length-1?"✓ Lancer TrackMyTrade":"Continuer →"}
-        </button>
-        {step>0&&<button onClick={()=>setStep(step-1)} className="btn" style={{width:"100%",background:"transparent",border:"none",color:"#3a5a3a",fontSize:12,fontFamily:MONO}}>← Étape précédente</button>}
       </div>
     </div>
   );
 }
 
-// ─── AUTH ─────────────────────────────────────────────────────────────────────
-function AuthScreen({ onAuth }) {
-  const [mode,setMode]=useState("login");
-  const [email,setEmail]=useState(""); const [password,setPassword]=useState(""); const [username,setUsername]=useState("");
-  const [loading,setLoading]=useState(false); const [error,setError]=useState(""); const [success,setSuccess]=useState("");
-  const reset=()=>{setError("");setSuccess("");}; const go=m=>{setMode(m);reset();};
-  const submit=async()=>{
-    reset();
-    if(!email||(!password&&mode!=="forgot")){setError("Champs requis.");return;}
-    if(password.length<6&&mode!=="forgot"){setError("6 caractères minimum.");return;}
-    setLoading(true);
-    if(mode==="forgot"){
-      try{await fetch(`${AU}:sendOobCode?key=${FB_KEY}`,{method:"POST",headers:jh,body:JSON.stringify({requestType:"PASSWORD_RESET",email})});setSuccess("Email envoyé !");}catch{setError("Erreur réseau.");}
-      setLoading(false);return;
-    }
-    try{
-      const data=mode==="register"?await sbSignUp(email,password):await sbSignIn(email,password);
-      if(data.error)setError(data.error.message||"Erreur.");
-      else if(mode==="register"){setSuccess("Compte créé ! Connecte-toi.");go("login");}
-      else onAuth({email:data.email,id:data.localId,token:data.idToken,refreshToken:data.refreshToken,expiresAt:Date.now()+3600000,username:username||data.email.split("@")[0]});
-    }catch{setError("Erreur réseau.");}
-    setLoading(false);
-  };
-  return (
-    <div style={{background:"#080f08",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:32,fontFamily:MONO,maxWidth:480,margin:"0 auto"}}>
-      <CSS/>
-      <div style={{marginBottom:40}}><Logo size="lg"/></div>
-      <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:3,marginBottom:24}}>{mode==="login"?"CONNEXION":mode==="register"?"CRÉER UN COMPTE":"MOT DE PASSE OUBLIÉ"}</div>
-      <div style={{width:"100%",maxWidth:340}}>
-        {mode==="register"&&<input placeholder="Pseudo" value={username} onChange={e=>{setUsername(e.target.value);reset();}} style={inputSt}/>}
-        <input type="email" placeholder="Email" value={email} onChange={e=>{setEmail(e.target.value);reset();}} style={inputSt}/>
-        {mode!=="forgot"&&<input type="password" placeholder="Mot de passe (6 car. min.)" value={password} onChange={e=>{setPassword(e.target.value);reset();}} style={inputSt} onKeyDown={e=>e.key==="Enter"&&submit()}/>}
-        {error&&<div style={{fontSize:11,color:"#ff4d4d",marginBottom:10,padding:"8px 12px",background:"rgba(255,77,77,0.08)",borderRadius:8}}>{error}</div>}
-        {success&&<div style={{fontSize:11,color:"#00ff9d",marginBottom:10,padding:"8px 12px",background:"rgba(0,255,157,0.08)",borderRadius:8}}>{success}</div>}
-        <button onClick={submit} disabled={loading} className="btn" style={{width:"100%",background:"rgba(0,255,157,0.12)",border:"1px solid #00ff9d",color:"#00ff9d",borderRadius:10,padding:14,fontSize:13,fontWeight:700,fontFamily:MONO,letterSpacing:1,marginBottom:10}}>{loading?"…":mode==="login"?"SE CONNECTER":mode==="register"?"CRÉER MON COMPTE":"ENVOYER LE LIEN"}</button>
-        {mode==="login"&&<button onClick={()=>go("forgot")} className="btn" style={{width:"100%",background:"transparent",border:"none",color:"#3a5a3a",fontSize:11,fontFamily:MONO,marginBottom:6}}>Mot de passe oublié ?</button>}
-        <button onClick={()=>go(mode==="register"?"login":mode==="forgot"?"login":"register")} className="btn" style={{width:"100%",background:"transparent",border:"none",color:"#3a5a3a",fontSize:12,fontFamily:MONO,marginBottom:20}}>
-          {mode==="login"?"Pas encore de compte → S'inscrire":mode==="forgot"?"← Retour":"Déjà inscrit → Se connecter"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── TRADE DETAIL MODAL ───────────────────────────────────────────────────────
-function TradeDetailModal({ trade, config, onClose, onEdit }) {
+function TradeDetailModal({trade,config,onClose,onEdit,lang,neon}) {
+  const t=T[lang];
   if(!trade) return null;
+  const ci=trade.checkin;
+  const hasCI=ci&&(ci.humeur||ci.biais);
   return (
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",zIndex:300,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
-      <div className="slide-up" style={{background:"#0d1a0d",border:"1px solid rgba(0,255,157,0.2)",borderRadius:"16px 16px 0 0",width:"100%",maxWidth:480,maxHeight:"90vh",overflow:"auto",padding:20}} onClick={e=>e.stopPropagation()}>
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={onClose}>
+      <div className="slide-up" style={{background:"#0d1a0d",border:`1px solid ${neon}35`,borderRadius:16,width:"100%",maxWidth:480,maxHeight:"88vh",overflow:"auto",padding:20}} onClick={e=>e.stopPropagation()}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-          <div style={{fontSize:13,fontWeight:700,color:"#00ff9d",fontFamily:MONO}}>RÉCAP TRADE</div>
+          <div style={{fontSize:13,fontWeight:700,color:neon,fontFamily:MONO}}>{t.detailTitle}</div>
           <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>{onEdit(trade);onClose();}} className="btn" style={{background:"rgba(0,255,157,0.08)",border:"1px solid rgba(0,255,157,0.2)",color:"#5aaa7a",borderRadius:6,padding:"5px 10px",fontSize:11,fontFamily:MONO}}>✏ Modifier</button>
-            <button onClick={onClose} style={{background:"transparent",border:"none",color:"#5a7a5a",fontSize:18,cursor:"pointer"}}>✕</button>
+            <button onClick={()=>{onEdit(trade);onClose();}} className="btn" style={{background:`${neon}0f`,border:`1px solid ${neon}26`,color:`${neon}cc`,borderRadius:6,padding:"5px 10px",fontSize:11,fontFamily:MONO}}>{t.modifyBtn}</button>
+            <button onClick={onClose} style={{background:"transparent",border:"none",color:"#5a7a5a",fontSize:18,cursor:"pointer"}}>{t.closeBtn}</button>
           </div>
         </div>
-        <div style={{background:`${rc(trade.result)}10`,border:`1px solid ${rc(trade.result)}35`,borderRadius:10,padding:16,marginBottom:14,borderLeft:`3px solid ${rc(trade.result)}`}}>
+        {trade.isRevenge&&<div style={{background:"rgba(255,77,77,0.1)",border:"1px solid rgba(255,77,77,0.3)",borderRadius:8,padding:"8px 12px",marginBottom:14,fontSize:11,color:"#ff4d4d",fontFamily:MONO}}>REVENGE TRADE</div>}
+        {hasCI&&<div style={{background:`${neon}05`,border:`1px solid ${neon}18`,borderRadius:8,padding:"10px 12px",marginBottom:14}}>
+          <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>CHECK-IN</div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            {ci.humeur&&<span style={{fontSize:11,padding:"4px 10px",background:`${neon}12`,border:`1px solid ${neon}26`,borderRadius:6,color:"#c8e6c8",fontFamily:MONO}}>{ci.humeur}</span>}
+            {ci.biais&&<span style={{fontSize:11,padding:"4px 10px",background:`${neon}12`,border:`1px solid ${neon}26`,borderRadius:6,color:"#c8e6c8",fontFamily:MONO}}>{ci.biais}</span>}
+          </div>
+        </div>}
+        <div style={{background:`${rc(trade.result,neon)}10`,border:`1px solid ${rc(trade.result,neon)}35`,borderRadius:10,padding:16,marginBottom:14,borderLeft:`3px solid ${rc(trade.result,neon)}`}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div>
               <div style={{fontSize:18,fontWeight:700,color:"#c8e6c8",fontFamily:MONO}}>{trade.asset} · {trade.direction}</div>
               <div style={{fontSize:11,color:"#5a7a5a",marginTop:4}}>{trade.date}{trade.time?" · "+trade.time:""}</div>
+              {trade.slDirection&&<div style={{fontSize:10,marginTop:4,color:trade.slDirection==="with"?neon:"#ff4d4d"}}>{trade.slDirection==="with"?`✓ ${lang==="fr"?"Dans mon sens":"My way"}`:`✗ ${lang==="fr"?"Contre moi":"Against me"}`}</div>}
             </div>
             <div style={{textAlign:"right"}}>
-              <div style={{fontSize:22,fontWeight:800,color:rc(trade.result),fontFamily:MONO}}>{trade.result}</div>
-              {trade.pnlPct!==""&&<div style={{fontSize:14,color:parseFloat(trade.pnlPct)>=0?"#00ff9d":"#ff4d4d",fontWeight:700}}>{fmtPct(parseFloat(trade.pnlPct))}</div>}
+              <div style={{fontSize:22,fontWeight:800,color:rc(trade.result,neon),fontFamily:MONO,textShadow:`0 0 20px ${rc(trade.result,neon)}cc, 0 2px 6px rgba(0,0,0,0.6)`}}>{trade.result}</div>
+              {trade.pnlPct!==""&&<div style={{fontSize:14,color:parseFloat(trade.pnlPct)>=0?neon:"#ff4d4d",fontWeight:700}}>{fmtPct(parseFloat(trade.pnlPct))}</div>}
             </div>
           </div>
         </div>
         <div style={{display:"flex",gap:10,marginBottom:14}}>
-          <div style={{flex:1,background:"rgba(0,255,157,0.04)",border:"1px solid rgba(0,255,157,0.1)",borderRadius:8,padding:12,display:"flex",alignItems:"center",gap:10}}>
-            <ScoreRing score={trade.setupScore} max={trade.checklistMax||config.items.length} size={44} threshold={config.threshold}/>
+          <div style={{flex:1,background:`${neon}0a`,border:`1px solid ${neon}1a`,borderRadius:8,padding:12,display:"flex",alignItems:"center",gap:10}}>
+            <ScoreRing score={trade.setupScore} max={trade.checklistMax||config.items.length} size={44} threshold={config.threshold} neon={neon}/>
             <div>
-              <div style={{fontSize:10,color:"#3a5a3a",letterSpacing:1}}>SETUP SCORE</div>
-              <div style={{fontSize:12,color:trade.conforming?"#00ff9d":"#ff4d4d",fontWeight:700,marginTop:3}}>{trade.conforming?"✓ Conforme":"✗ Non-conforme"}</div>
+              <div style={{fontSize:10,color:"#3a5a3a",letterSpacing:1}}>{t.setupScore}</div>
+              <div style={{fontSize:12,color:trade.conforming?neon:"#ff4d4d",fontWeight:700,marginTop:3}}>{trade.conforming?t.conformLabel:t.nonConformLabel}</div>
             </div>
           </div>
-          {trade.rejetScore>0&&(
-            <div style={{flex:1,background:"rgba(0,255,157,0.04)",border:"1px solid rgba(0,255,157,0.1)",borderRadius:8,padding:12,display:"flex",alignItems:"center",gap:10}}>
-              <div style={{fontSize:28,fontWeight:800,color:trade.rejetScore>=8?"#00ff9d":trade.rejetScore>=5?"#f0b429":"#ff4d4d",fontFamily:MONO}}>{trade.rejetScore}</div>
-              <div>
-                <div style={{fontSize:10,color:"#3a5a3a",letterSpacing:1}}>REJET /10</div>
-                <div style={{fontSize:11,color:"#5a7a5a",marginTop:3}}>{trade.rejetScore>=8?"Excellent":trade.rejetScore>=5?"Correct":"Faible"}</div>
-              </div>
+          {trade.rejetScore>0&&<div style={{flex:1,background:`${neon}0a`,border:`1px solid ${neon}1a`,borderRadius:8,padding:12,display:"flex",alignItems:"center",gap:10}}>
+            <div style={{fontSize:28,fontWeight:800,color:trade.rejetScore>=8?neon:trade.rejetScore>=5?"#f0b429":"#ff4d4d",fontFamily:MONO}}>{trade.rejetScore}</div>
+            <div>
+              <div style={{fontSize:10,color:"#3a5a3a",letterSpacing:1}}>{t.rejectLabel}</div>
+              <div style={{fontSize:11,color:"#5a7a5a",marginTop:3}}>{trade.rejetScore>=8?t.excellent:trade.rejetScore>=5?t.correct:t.weak}</div>
             </div>
-          )}
+          </div>}
         </div>
-        <div style={{background:"#0d1a0d",border:"1px solid rgba(0,255,157,0.1)",borderRadius:8,padding:12,marginBottom:14}}>
-          <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:10}}>CHECKLIST</div>
+        <div style={{background:"#0d1a0d",border:`1px solid ${neon}14`,borderRadius:8,padding:12,marginBottom:14}}>
+          <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:10}}>{t.checklistDetail}</div>
           {config.items.map((item,i)=>(
-            <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:"1px solid rgba(0,255,157,0.04)"}}>
-              <span style={{fontSize:13,color:trade.checklist.includes(i)?"#00ff9d":"#2a3a2a"}}>{trade.checklist.includes(i)?"✓":"✗"}</span>
+            <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:`1px solid ${neon}06`}}>
+              <span style={{fontSize:13,color:trade.checklist.includes(i)?neon:"#2a3a2a"}}>{trade.checklist.includes(i)?"✓":"✗"}</span>
               <span style={{fontSize:11,color:trade.checklist.includes(i)?"#c8e6c8":"#3a5a3a"}}>{item}</span>
             </div>
           ))}
         </div>
-        {trade.screenshot&&(
-          <div style={{marginBottom:14}}>
-            <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:8}}>CAPTURE D'ÉCRAN</div>
-            <img src={trade.screenshot} alt="" style={{width:"100%",borderRadius:8,border:"1px solid rgba(0,255,157,0.15)"}}/>
-          </div>
-        )}
-        {trade.notes&&(
-          <div style={{background:"rgba(0,255,157,0.03)",border:"1px solid rgba(0,255,157,0.08)",borderRadius:8,padding:12}}>
-            <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:6}}>NOTES</div>
-            <div style={{fontSize:12,color:"#5a7a5a",lineHeight:1.6,fontStyle:"italic"}}>"{trade.notes}"</div>
-          </div>
-        )}
+        {trade.screenshot&&<div style={{marginBottom:14}}><div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:8}}>{t.screenshotLabel}</div><img src={trade.screenshot} alt="" style={{width:"100%",borderRadius:8,border:`1px solid ${neon}26`}}/></div>}
+        {trade.notes&&<div style={{background:`${neon}04`,border:`1px solid ${neon}10`,borderRadius:8,padding:12}}><div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:6}}>{t.notesLabel}</div><div style={{fontSize:12,color:"#5a7a5a",lineHeight:1.6,fontStyle:"italic"}}>"{trade.notes}"</div></div>}
       </div>
     </div>
   );
 }
 
-function ConformityBar({ trades, threshold, maxItems }) {
-  const conf=trades.filter(t=>t.setupScore>=threshold), nonConf=trades.filter(t=>t.setupScore<threshold);
-  const cWR=conf.length?Math.round(conf.filter(t=>t.result==="WIN").length/conf.length*100):null;
-  const nWR=nonConf.length?Math.round(nonConf.filter(t=>t.result==="WIN").length/nonConf.length*100):null;
+function ConformityBar({trades,threshold,maxItems,neon,lang}) {
+  const t=T[lang];
+  const conf=trades.filter(x=>x.setupScore>=threshold);
+  const nonConf=trades.filter(x=>x.setupScore<threshold);
+  const cWR=conf.length?Math.round(conf.filter(x=>x.result==="WIN").length/conf.length*100):null;
+  const nWR=nonConf.length?Math.round(nonConf.filter(x=>x.result==="WIN").length/nonConf.length*100):null;
   const cPct=trades.length?(conf.length/trades.length)*100:50;
   return (
-    <div style={{background:"rgba(0,255,157,0.03)",border:"1px solid rgba(0,255,157,0.1)",borderRadius:10,padding:16,marginBottom:12}}>
-      <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>Conformité · seuil {threshold}/{maxItems}</div>
+    <div style={{background:`${neon}04`,border:`1px solid ${neon}18`,borderRadius:10,padding:16,marginBottom:12}}>
+      <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>{t.conformityTitle} {threshold}/{maxItems}</div>
       <div style={{display:"flex",height:8,borderRadius:6,overflow:"hidden",marginBottom:14,background:"#1e2a1e"}}>
-        <div style={{width:`${cPct}%`,background:"#00ff9d",transition:"width 0.5s"}}/>
-        <div style={{flex:1,background:"#ff4d4d44"}}/>
+        <div style={{width:`${cPct}%`,background:neon,transition:"width 0.5s"}}/><div style={{flex:1,background:"#ff4d4d44"}}/>
       </div>
       <div style={{display:"flex",gap:10}}>
-        {[{label:"✓ CONFORMES",count:conf.length,wr:cWR,color:"#00ff9d",bg:"rgba(0,255,157,0.06)",bd:"rgba(0,255,157,0.15)",arr:conf},
-          {label:"✗ NON-CONF.",count:nonConf.length,wr:nWR,color:"#ff4d4d",bg:"rgba(255,77,77,0.04)",bd:"rgba(255,77,77,0.15)",arr:nonConf}
-        ].map(({label,count,wr,color,bg,bd,arr})=>(
-          <div key={label} style={{flex:1,background:bg,border:`1px solid ${bd}`,borderRadius:8,padding:12}}>
-            <div style={{fontSize:9,color,letterSpacing:1,marginBottom:8}}>{label}</div>
-            <div style={{fontSize:22,fontWeight:800,color,fontFamily:MONO}}>{count}</div>
-            {wr!==null&&<div style={{marginTop:8,padding:"4px 8px",background:`${color}18`,borderRadius:6}}>
-              <span style={{fontSize:14,fontWeight:700,color}}>{wr}%</span>
-              <span style={{fontSize:10,color:"#5a7a5a",marginLeft:6}}>win rate</span>
-            </div>}
-            {arr.length>0&&<div style={{marginTop:8,display:"flex",gap:2}}>
-              {arr.slice(0,12).map((t,i)=><div key={i} style={{flex:1,height:4,borderRadius:2,background:rc(t.result)}}/>)}
-            </div>}
-          </div>
-        ))}
+        <div style={{flex:1,background:`${neon}0e`,border:`1px solid ${neon}28`,borderRadius:8,padding:12}}>
+          <div style={{fontSize:9,color:neon,letterSpacing:1,marginBottom:8}}>{t.conformShort}</div>
+          <div style={{fontSize:22,fontWeight:800,color:neon,fontFamily:MONO,textShadow:`0 0 20px ${neon}cc, 0 2px 6px rgba(0,0,0,0.6)`}}>{conf.length}</div>
+          {cWR!==null&&<div style={{marginTop:8,padding:"4px 8px",background:`${neon}18`,borderRadius:6}}><span style={{fontSize:14,fontWeight:700,color:neon,textShadow:`0 0 12px ${neon}99`}}>{cWR}%</span><span style={{fontSize:10,color:"#5a7a5a",marginLeft:6}}>{t.winRateLabel}</span></div>}
+        </div>
+        {nonConf.length>0&&<div style={{flex:1,background:"rgba(255,77,77,0.04)",border:"1px solid rgba(255,77,77,0.15)",borderRadius:8,padding:12}}>
+          <div style={{fontSize:9,color:"#ff4d4d",letterSpacing:1,marginBottom:8}}>{t.nonConformShort}</div>
+          <div style={{fontSize:22,fontWeight:800,color:"#ff4d4d",fontFamily:MONO,textShadow:"0 0 20px #ff4d4dcc, 0 2px 6px rgba(0,0,0,0.6)"}}>{nonConf.length}</div>
+          {nWR!==null&&<div style={{marginTop:8,padding:"4px 8px",background:"rgba(255,77,77,0.15)",borderRadius:6}}><span style={{fontSize:14,fontWeight:700,color:"#ff4d4d",textShadow:"0 0 12px #ff4d4d99"}}>{nWR}%</span><span style={{fontSize:10,color:"#5a7a5a",marginLeft:6}}>{t.winRateLabel}</span></div>}
+        </div>}
       </div>
     </div>
   );
 }
 
-function PerformanceChart({ trades }) {
+function PerformanceChart({trades,neon,lang}) {
+  const t=T[lang];
   const [mode,setMode]=useState("cumul");
   if(!trades.length) return null;
   const sorted=[...trades].reverse();
   let cum=0;
-  const cumData=sorted.map((t,i)=>{cum+=parseFloat(t.pnlPct)||0;return{n:i+1,val:parseFloat(cum.toFixed(3)),result:t.result,date:t.date};});
+  const cumData=sorted.map((x,i)=>{cum+=parseFloat(x.pnlPct)||0;return{n:i+1,val:parseFloat(cum.toFixed(3)),result:x.result,date:x.date};});
   const wk={};
-  sorted.forEach(t=>{
-    const d=new Date(t.date),m=new Date(d);m.setDate(d.getDate()-d.getDay()+1);
-    const k=m.toISOString().split("T")[0];
-    if(!wk[k])wk[k]={k,pnl:0};
-    wk[k].pnl+=parseFloat(t.pnlPct)||0;
-  });
+  sorted.forEach(x=>{const d=new Date(x.date),m=new Date(d);m.setDate(d.getDate()-d.getDay()+1);const k=m.toISOString().split("T")[0];if(!wk[k])wk[k]={k,pnl:0};wk[k].pnl+=parseFloat(x.pnlPct)||0;});
   const wkData=Object.values(wk).map(w=>({...w,pnl:parseFloat(w.pnl.toFixed(3))}));
-  const TT=({active,payload})=>{
-    if(!active||!payload?.length) return null;
-    const d=payload[0].payload,v=d.val??d.pnl;
-    return <div style={{background:"#0d1a0d",border:"1px solid rgba(0,255,157,0.2)",borderRadius:8,padding:"8px 12px",fontSize:11,fontFamily:MONO}}>
-      <div style={{color:"#5a7a5a"}}>{d.date||d.k}</div>
-      <div style={{color:v>=0?"#00ff9d":"#ff4d4d",fontWeight:700,fontSize:14}}>{fmtPct(v)}</div>
-    </div>;
-  };
+  const TT=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0].payload,v=d.val??d.pnl;return <div style={{background:"#0d1a0d",border:`1px solid ${neon}35`,borderRadius:8,padding:"8px 12px",fontSize:11,fontFamily:MONO}}><div style={{color:"#5a7a5a"}}>{d.date||d.k}</div><div style={{color:v>=0?neon:"#ff4d4d",fontWeight:700}}>{fmtPct(v)}</div></div>;};
   return (
-    <div style={{background:"rgba(0,255,157,0.03)",border:"1px solid rgba(0,255,157,0.1)",borderRadius:10,padding:16,marginBottom:12}}>
+    <div style={{background:`${neon}04`,border:`1px solid ${neon}18`,borderRadius:10,padding:16,marginBottom:12}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-        <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,textTransform:"uppercase"}}>Performance P&L</div>
+        <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,textTransform:"uppercase"}}>{t.perfPnl}</div>
         <div style={{display:"flex",gap:4}}>
-          {[["cumul","CUMULÉ"],["week","SEMAINES"]].map(([m,l])=>(
-            <button key={m} onClick={()=>setMode(m)} style={{background:mode===m?"rgba(0,255,157,0.15)":"transparent",border:`1px solid ${mode===m?"#00ff9d":"rgba(0,255,157,0.15)"}`,color:mode===m?"#00ff9d":"#3a5a3a",borderRadius:5,padding:"4px 8px",fontSize:9,fontFamily:MONO,cursor:"pointer"}}>{l}</button>
+          {[["cumul",t.cumulLabel],["week",t.weeksLabel]].map(([m,l])=>(
+            <button key={m} onClick={()=>setMode(m)} style={{background:mode===m?`${neon}26`:"transparent",border:`1px solid ${mode===m?neon:`${neon}26`}`,color:mode===m?neon:"#3a5a3a",borderRadius:5,padding:"4px 8px",fontSize:9,fontFamily:MONO,cursor:"pointer"}}>{l}</button>
           ))}
         </div>
       </div>
@@ -452,19 +441,15 @@ function PerformanceChart({ trades }) {
             <XAxis dataKey="n" tick={{fontSize:9,fill:"#3a5a3a",fontFamily:MONO}} tickLine={false} axisLine={false}/>
             <YAxis tick={{fontSize:9,fill:"#3a5a3a",fontFamily:MONO}} tickLine={false} axisLine={false} tickFormatter={v=>`${v}%`}/>
             <Tooltip content={<TT/>}/>
-            <ReferenceLine y={0} stroke="rgba(0,255,157,0.15)" strokeDasharray="4 4"/>
-            <Line type="monotone" dataKey="val" stroke="#00ff9d" strokeWidth={2}
-              dot={({cx,cy,payload})=><circle cx={cx} cy={cy} r={4} fill={rc(payload.result)}/>}
-              activeDot={{r:6,fill:"#00ff9d"}}/>
+            <ReferenceLine y={0} stroke={`${neon}26`} strokeDasharray="4 4"/>
+            <Line type="monotone" dataKey="val" stroke={neon} strokeWidth={2} dot={({cx,cy,payload})=><circle cx={cx} cy={cy} r={4} fill={rc(payload.result,neon)}/>} activeDot={{r:6,fill:neon}}/>
           </LineChart>
           :<BarChart data={wkData} margin={{top:5,right:5,left:-20,bottom:0}}>
             <XAxis dataKey="k" tick={{fontSize:8,fill:"#3a5a3a",fontFamily:MONO}} tickLine={false} axisLine={false} tickFormatter={v=>v.slice(5)}/>
             <YAxis tick={{fontSize:9,fill:"#3a5a3a",fontFamily:MONO}} tickLine={false} axisLine={false} tickFormatter={v=>`${v}%`}/>
             <Tooltip content={<TT/>}/>
-            <ReferenceLine y={0} stroke="rgba(0,255,157,0.15)" strokeDasharray="4 4"/>
-            <Bar dataKey="pnl" radius={[3,3,0,0]}>
-              {wkData.map((e,i)=><Cell key={i} fill={e.pnl>=0?"#00ff9d":"#ff4d4d"}/>)}
-            </Bar>
+            <ReferenceLine y={0} stroke={`${neon}26`} strokeDasharray="4 4"/>
+            <Bar dataKey="pnl" radius={[3,3,0,0]}>{wkData.map((e,i)=><Cell key={i} fill={e.pnl>=0?neon:"#ff4d4d"}/>)}</Bar>
           </BarChart>
         }
       </ResponsiveContainer>
@@ -472,535 +457,767 @@ function PerformanceChart({ trades }) {
   );
 }
 
-function StreakBadge({ trades }) {
+function StreakBadge({trades,neon,lang}) {
+  const t=T[lang];
   if(trades.length<2) return null;
   let streak=1,type=trades[0].result;
   for(let i=1;i<trades.length;i++){if(trades[i].result===type)streak++;else break;}
   if(streak<2||type==="BE") return null;
-  const color=type==="WIN"?"#00ff9d":"#ff4d4d";
+  const color=type==="WIN"?neon:"#ff4d4d";
+  return <div style={{background:`${color}12`,border:`1px solid ${color}35`,borderRadius:8,padding:"8px 14px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{fontSize:12,color,fontWeight:700,fontFamily:MONO}}>{streak} {type==="WIN"?t.streakWin:t.streakLoss}</span>{type==="LOSS"&&<span style={{fontSize:10,color:"#5a7a5a"}}>{t.checkRules}</span>}</div>;
+}
+
+function AdvancedStats({trades,neon,lang}) {
+  const t=T[lang];
+  if(trades.length<3) return null;
+  const wins=trades.filter(x=>x.result==="WIN");
+  const losses=trades.filter(x=>x.result==="LOSS");
+  const avgWin=wins.length?wins.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0)/wins.length:0;
+  const avgLoss=losses.length?Math.abs(losses.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0)/losses.length):0;
+  const wr=trades.length?wins.length/trades.length:0;
+  const exp=(wr*avgWin)-((1-wr)*avgLoss);
+  const aMap={};
+  trades.forEach(x=>{if(!aMap[x.asset])aMap[x.asset]={w:0,t:0};aMap[x.asset].t++;if(x.result==="WIN")aMap[x.asset].w++;});
+  const best=Object.entries(aMap).filter(([,v])=>v.t>=2).sort((a,b)=>(b[1].w/b[1].t)-(a[1].w/a[1].t))[0];
+  const revs=trades.filter(x=>x.isRevenge);
   return (
-    <div style={{background:`${color}12`,border:`1px solid ${color}35`,borderRadius:8,padding:"8px 14px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-      <span style={{fontSize:12,color,fontWeight:700}}>{type==="WIN"?"🔥":"⚠"} {streak} {type} de suite</span>
-      {type==="LOSS"&&<span style={{fontSize:10,color:"#5a7a5a"}}>Vérifier les règles</span>}
+    <div style={{background:`${neon}04`,border:`1px solid ${neon}18`,borderRadius:10,padding:16,marginBottom:12}}>
+      <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>{t.statsTitle}</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+        <div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#5a7a5a",marginBottom:4}}>{t.expectancy}</div><div style={{fontSize:16,fontWeight:700,color:exp>=0?neon:"#ff4d4d",fontFamily:MONO,textShadow:`0 0 14px ${exp>=0?neon:"#ff4d4d"}99`}}>{fmtPct(exp)}</div></div>
+        {best&&<div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#5a7a5a",marginBottom:4}}>{t.bestAsset}</div><div style={{fontSize:14,fontWeight:700,color:neon,fontFamily:MONO}}>{best[0]}</div><div style={{fontSize:10,color:"#5a7a5a"}}>{Math.round(best[1].w/best[1].t*100)}% WR</div></div>}
+        <div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#5a7a5a",marginBottom:4}}>{t.avgWin}</div><div style={{fontSize:16,fontWeight:700,color:neon,fontFamily:MONO,textShadow:`0 0 14px ${neon}99`}}>{fmtPct(avgWin)}</div></div>
+        <div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#5a7a5a",marginBottom:4}}>{t.avgLoss}</div><div style={{fontSize:16,fontWeight:700,color:"#ff4d4d",fontFamily:MONO,textShadow:"0 0 14px #ff4d4d99"}}>-{fmtPct(avgLoss)}</div></div>
+        {wins.length>0&&losses.length>0&&(()=>{const r=avgWin/avgLoss;return<div style={{background:`${neon}08`,borderRadius:8,padding:10,gridColumn:"1/-1"}}><div style={{fontSize:9,color:"#5a7a5a",marginBottom:4}}>{t.ratio}</div><div style={{fontSize:16,fontWeight:700,color:r>=1?neon:"#f0b429",fontFamily:MONO}}>{r.toFixed(2)}</div></div>;})()}
+        {revs.length>0&&<div style={{background:"rgba(255,77,77,0.06)",border:"1px solid rgba(255,77,77,0.15)",borderRadius:8,padding:10,gridColumn:"1/-1"}}><div style={{fontSize:9,color:"#ff4d4d",marginBottom:4}}>REVENGE TRADES</div><div style={{fontSize:14,fontWeight:700,color:"#ff4d4d",fontFamily:MONO}}>{revs.length} · {Math.round(revs.filter(x=>x.result==="LOSS").length/revs.length*100)}% LOSS</div></div>}
+      </div>
     </div>
   );
 }
 
-function getAdvice(t, all) {
-  if(all.length<3) return null;
-  const cf=all.filter(x=>x.conforming),nc=all.filter(x=>!x.conforming);
-  const cwr=cf.length?Math.round(cf.filter(x=>x.result==="WIN").length/cf.length*100):null;
-  const nclr=nc.length?Math.round(nc.filter(x=>x.result==="LOSS").length/nc.length*100):null;
-  const ncwr=nc.length?Math.round(nc.filter(x=>x.result==="WIN").length/nc.length*100):null;
-  if(!t.conforming&&t.result==="LOSS"&&nclr!==null&&nc.length>=4) return{txt:`${nclr}% des non-conformes finissent en LOSS.`,c:"#ff4d4d"};
-  if(!t.conforming&&t.result==="WIN"&&nc.length>=3) return{txt:`WIN non-conforme. WR NC : ${ncwr}% (${nc.length} trades).`,c:"#f0b429"};
-  if(t.conforming&&t.result==="WIN"&&cwr!==null&&cf.length>=3) return{txt:`Conforme → WIN. WR conformes : ${cwr}% (${cf.length} trades).`,c:"#00ff9d"};
-  if(t.conforming&&t.result==="LOSS"&&cwr!==null&&cf.length>=3) return{txt:`LOSS conforme. WR: ${cwr}% / ${cf.length} trades.`,c:"#5aaa7a"};
-  if(all.slice(0,5).filter(x=>x.result==="LOSS").length>=3) return{txt:`3+ LOSS récents. Prends un moment.`,c:"#ff4d4d"};
+function TradingCalendar({trades,neon,lang}) {
+  const t=T[lang];
+  const now=new Date();
+  const year=now.getFullYear(),month=now.getMonth();
+  const firstDay=new Date(year,month,1).getDay();
+  const dIM=new Date(year,month+1,0).getDate();
+  const mN={fr:["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"],en:["January","February","March","April","May","June","July","August","September","October","November","December"]};
+  const dN={fr:["L","M","M","J","V","S","D"],en:["M","T","W","T","F","S","S"]};
+  const byDay={};
+  trades.forEach(tr=>{const d=new Date(tr.date);if(d.getMonth()===month&&d.getFullYear()===year){const k=d.getDate();if(!byDay[k])byDay[k]={w:0,l:0,c:0,t:0};byDay[k].t++;if(tr.result==="WIN")byDay[k].w++;else if(tr.result==="LOSS")byDay[k].l++;if(tr.conforming)byDay[k].c++;}});
+  const cells=[];const sD=(firstDay+6)%7;
+  for(let i=0;i<sD;i++)cells.push(null);
+  for(let d=1;d<=dIM;d++)cells.push(d);
+  return (
+    <div style={{background:`${neon}04`,border:`1px solid ${neon}18`,borderRadius:10,padding:14,marginBottom:12}}>
+      <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:12,textTransform:"uppercase"}}>{t.calendarTitle} · {mN[lang][month]} {year}</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:6}}>{dN[lang].map((d,i)=><div key={i} style={{fontSize:8,color:"#3a5a3a",textAlign:"center"}}>{d}</div>)}</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
+        {cells.map((d,i)=>{
+          if(!d) return <div key={i}/>;
+          const data=byDay[d];const isToday=d===now.getDate();
+          const bg=data?(data.l>data.w?"rgba(255,77,77,0.2)":`${neon}20`):"transparent";
+          const tc=data?(data.l>data.w?"#ff4d4d":neon):"#3a5a3a";
+          return <div key={i} style={{background:bg,border:isToday?`1px solid ${neon}`:"1px solid transparent",borderRadius:4,padding:"4px 2px",textAlign:"center"}}><div style={{fontSize:10,color:tc,fontFamily:MONO}}>{d}</div>{data&&data.c<data.t&&<div style={{width:3,height:3,borderRadius:"50%",background:"#f0b429",margin:"1px auto 0"}}/>}</div>;
+        })}
+      </div>
+    </div>
+  );
+}
+
+function getAdvice(tr,all,lang,neon) {
+  if(!tr||all.length<3) return null;
+  const fr=lang==="fr";
+  const rL=all.slice(0,5).filter(x=>x.result==="LOSS").length;
+  if(tr.isRevenge) return {txt:fr?"Pause obligatoire.\nUn revenge trade, ça se paie toujours.":"Mandatory break.\nRevenge trades always cost more.",icon:"block",c:"#ff4d4d"};
+  if(rL>=3) return {txt:fr?"3 pertes de suite.\nÉteins l'écran. Reviens demain.":"3 losses in a row.\nClose the screen. Come back tomorrow.",icon:"stop",c:"#ff4d4d"};
+  if(tr.result==="LOSS"&&tr.conforming) return {txt:fr?"SL respecté, règles suivies.\nC'est un bon trade perdu.":"SL respected, rules followed.\nThat's a good losing trade.",icon:"ok",c:neon};
+  if(tr.result==="LOSS"&&!tr.conforming) return {txt:fr?"Perdu ET non-conforme.\nLe marché t'a montré quelque chose.":"Lost AND non-compliant.\nThe market just showed you something.",icon:"warn",c:"#f0b429"};
+  if(tr.result==="WIN"&&!tr.conforming) return {txt:fr?"Gagné sans suivre les règles.\nNe prends pas de mauvaises habitudes.":"Won without following rules.\nDon't build bad habits on luck.",icon:"dice",c:"#f0b429"};
+  if(tr.result==="WIN"&&tr.conforming) return {txt:fr?"Setup propre, exécution propre.\nC'est exactement ça.":"Clean setup, clean execution.\nThat's exactly it.",icon:"fire",c:neon};
   return null;
 }
 
-function AdviceCard({ advice, onClose }) {
-  if(!advice) return null;
-  return (
-    <div style={{background:`${advice.c}12`,border:`1px solid ${advice.c}30`,borderRadius:10,padding:"12px 14px",marginBottom:12,display:"flex",justifyContent:"space-between",gap:10}}>
-      <div style={{fontSize:12,color:"#c8e6c8",lineHeight:1.6,fontFamily:MONO,flex:1}}>{advice.txt}</div>
-      <button onClick={onClose} style={{background:"transparent",border:"none",color:"#3a5a3a",fontSize:14,cursor:"pointer",flexShrink:0}}>✕</button>
-    </div>
-  );
-}
-
-function NoTradeButton({ onSave, alreadyDone }) {
+function NoTradeButton({onSave,alreadyDone,lang,neon}) {
+  const t=T[lang];
+  const ntr=NTR[lang]||NTR.fr;
   const [open,setOpen]=useState(false);
   const [reason,setReason]=useState("");
-  if(alreadyDone) return (
-    <div style={{background:"rgba(90,90,90,0.06)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
-      <span style={{color:"#4a5a4a"}}>⊘</span><span style={{fontSize:11,color:"#5a5a5a",fontFamily:MONO}}>Pas de trade aujourd'hui</span>
-    </div>
-  );
-  if(!open) return (
-    <button onClick={()=>setOpen(true)} className="btn" style={{width:"100%",background:"transparent",border:"1px dashed rgba(255,255,255,0.1)",borderRadius:10,padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:10,color:"#5a7a5a",fontFamily:MONO,fontSize:12}}>
-      <span>⊘</span><span>Pas de trade aujourd'hui</span>
-    </button>
-  );
+  if(alreadyDone) return <div style={{background:"rgba(90,90,90,0.06)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}><span style={{color:"#4a5a4a"}}>⊘</span><span style={{fontSize:11,color:"#5a5a5a",fontFamily:MONO}}>{t.noTradeToday}</span></div>;
+  if(!open) return <button onClick={()=>setOpen(true)} className="btn" style={{width:"100%",background:"transparent",border:"1px dashed rgba(255,255,255,0.1)",borderRadius:10,padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:10,color:"#5a7a5a",fontFamily:MONO,fontSize:12}}><span>⊘</span><span>{t.noTradeToday}</span></button>;
   return (
     <div style={{background:"rgba(90,90,90,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:14,marginBottom:12}}>
-      <div style={{fontSize:10,color:"#5a7a5a",letterSpacing:2,marginBottom:10,fontFamily:MONO}}>RAISON (OPTIONNEL)</div>
+      <div style={{fontSize:10,color:"#5a7a5a",letterSpacing:2,marginBottom:10,fontFamily:MONO}}>{t.noTradeReason}</div>
       <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
-        {NTR.map(r=><button key={r} onClick={()=>setReason(reason===r?"":r)} className="btn" style={{background:reason===r?"rgba(255,255,255,0.1)":"#0d1a0d",border:`1px solid ${reason===r?"rgba(255,255,255,0.25)":"rgba(255,255,255,0.08)"}`,color:reason===r?"#c8e6c8":"#5a7a5a",borderRadius:6,padding:"5px 10px",fontSize:11,fontFamily:MONO}}>{r}</button>)}
+        {ntr.map(r=><button key={r} onClick={()=>setReason(reason===r?"":r)} className="btn" style={{background:reason===r?"rgba(255,255,255,0.1)":"#0d1a0d",border:`1px solid ${reason===r?"rgba(255,255,255,0.25)":"rgba(255,255,255,0.08)"}`,color:reason===r?"#c8e6c8":"#5a7a5a",borderRadius:6,padding:"5px 10px",fontSize:11,fontFamily:MONO}}>{r}</button>)}
       </div>
       <div style={{display:"flex",gap:8}}>
-        <button onClick={()=>{onSave({id:Date.now(),date:today(),reason});setOpen(false);setReason("");}} className="btn"
-          style={{flex:1,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.15)",color:"#c8e6c8",borderRadius:8,padding:10,fontSize:12,fontWeight:700,fontFamily:MONO}}>⊘ Confirmer</button>
-        <button onClick={()=>{setOpen(false);setReason("");}} className="btn"
-          style={{background:"transparent",border:"1px solid rgba(255,255,255,0.08)",color:"#5a7a5a",borderRadius:8,padding:"10px 12px",fontSize:12,fontFamily:MONO}}>✕</button>
+        <button onClick={()=>{onSave({id:Date.now(),date:today(),reason});setOpen(false);setReason("");}} className="btn" style={{flex:1,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.15)",color:"#c8e6c8",borderRadius:8,padding:10,fontSize:12,fontWeight:700,fontFamily:MONO}}>{t.confirmBtn}</button>
+        <button onClick={()=>{setOpen(false);setReason("");}} className="btn" style={{background:"transparent",border:"1px solid rgba(255,255,255,0.08)",color:"#5a7a5a",borderRadius:8,padding:"10px 12px",fontFamily:MONO}}>✕</button>
       </div>
     </div>
   );
 }
 
-function SettingsView({ config, onSave, onLogout, period, onPeriodChange, user }) {
-  const [items,setItems]=useState([...config.items]);
-  const [threshold,setThreshold]=useState(config.threshold);
-  const [stratName,setStratName]=useState(config.strategyName||"");
-  const [pnlTarget,setPnlTarget]=useState(config.pnlTarget||"");
-  const [savedOk,setSavedOk]=useState(false);
-  const save=()=>{onSave({items,threshold,strategyName:stratName,pnlTarget:pnlTarget===""?"":parseFloat(pnlTarget)||""});setSavedOk(true);setTimeout(()=>setSavedOk(false),2000);};
+function ResetModal({trades,onReset,onClose,lang,neon}) {
+  const t=T[lang];
+  const [step,setStep]=useState("confirm");
+  const doExport=()=>{
+    const h=["Date","Asset","Dir","Result","P&L%","Score","Conform","Revenge","Humeur","Biais","Notes"];
+    const rows=trades.map(x=>[x.date,x.asset,x.direction,x.result,x.pnlPct,x.setupScore,x.conforming?"Yes":"No",x.isRevenge?"Yes":"No",x.checkin?.humeur||"",x.checkin?.biais||"",`"${(x.notes||"").replace(/"/g,"'")}"`]);
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(new Blob([[h,...rows].map(r=>r.join(",")).join("\n")],{type:"text/csv"}));
+    a.download=`tmt-backup-${today()}.csv`;a.click();setStep("exported");
+  };
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",padding:24}} onClick={onClose}>
+      <div className="slide-up" style={{background:"#0d1a0d",border:"1px solid rgba(255,77,77,0.3)",borderRadius:20,width:"100%",maxWidth:340,overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
+        <div style={{height:3,background:"#ff4d4d",opacity:0.8}}/>
+        <div style={{padding:"26px 22px 22px"}}>
+          {step==="confirm"?(
+            <>
+              <div style={{display:"flex",justifyContent:"center",marginBottom:18}}><svg width="52" height="52" viewBox="0 0 24 24" fill="none"><path d="M12 3L22.5 21H1.5L12 3Z" fill="rgba(255,77,77,0.1)" stroke="#ff4d4d" strokeWidth="1.5" strokeLinejoin="round"/><line x1="12" y1="9.5" x2="12" y2="15" stroke="#ff4d4d" strokeWidth="2.2" strokeLinecap="round"/><circle cx="12" cy="18" r="1.5" fill="#ff4d4d"/></svg></div>
+              <div style={{fontSize:16,fontWeight:700,color:"#e8f5e8",fontFamily:MONO,textAlign:"center",marginBottom:8}}>{t.resetTitle}</div>
+              <div style={{fontSize:12,color:"#5a7a5a",textAlign:"center",lineHeight:1.65,marginBottom:22}}><span style={{color:"#ff4d4d",fontWeight:700}}>{trades.length}</span> {t.resetWarning}</div>
+              <button onClick={doExport} className="btn" style={{width:"100%",background:`${neon}1a`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:"13px 0",fontSize:12,fontWeight:700,fontFamily:MONO,marginBottom:10}}>{t.resetExportBtn}</button>
+              <button onClick={onReset} className="btn" style={{width:"100%",background:"transparent",border:"1px solid rgba(255,77,77,0.25)",color:"#7a3a3a",borderRadius:10,padding:"10px 0",fontSize:11,fontFamily:MONO,marginBottom:10}}>{t.resetSkipBtn}</button>
+              <button onClick={onClose} className="btn" style={{width:"100%",background:"transparent",border:"none",color:"#3a5a3a",fontSize:11,fontFamily:MONO,padding:"6px 0"}}>{t.resetCancel}</button>
+            </>
+          ):(
+            <>
+              <div style={{display:"flex",justifyContent:"center",marginBottom:18}}><svg width="52" height="52" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" fill={`${neon}10`} stroke={neon} strokeWidth="1.5"/><polyline points="7.5,12.5 10.5,15.5 17,8.5" stroke={neon} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg></div>
+              <div style={{fontSize:16,fontWeight:700,color:"#e8f5e8",fontFamily:MONO,textAlign:"center",marginBottom:8}}>{t.resetExportedTitle}</div>
+              <div style={{fontSize:12,color:"#5a7a5a",textAlign:"center",lineHeight:1.65,marginBottom:22}}>{t.resetExportedDesc}</div>
+              <button onClick={onReset} className="btn" style={{width:"100%",background:"rgba(255,77,77,0.15)",border:"1px solid #ff4d4d",color:"#ff4d4d",borderRadius:10,padding:"13px 0",fontSize:12,fontWeight:700,fontFamily:MONO,marginBottom:10}}>{t.resetConfirmBtn}</button>
+              <button onClick={onClose} className="btn" style={{width:"100%",background:"transparent",border:"none",color:"#3a5a3a",fontSize:11,fontFamily:MONO,padding:"6px 0"}}>{t.resetCancel}</button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LoginScreen({onLogin,lang,setLang}) {
+  const t=T[lang];const neon="#00ff9d";
+  const fr=lang==="fr";
+  const [mode,setMode]=useState("login");
+  const [email,setEmail]=useState("");const [pwd,setPwd]=useState("");
+  const [error,setError]=useState("");const [loading,setLoading]=useState(false);
+  const [signupDone,setSignupDone]=useState(false);
+  const inSt=mkInput(neon);
+  const pwdPlaceholder=fr?"Mot de passe (6 car. min.)":"Password (6 chars min.)";
+  const submit=()=>{
+    setError("");if(!email.trim()||!pwd.trim())return;
+    if(pwd.trim().length<6){setError(fr?"Mot de passe trop court (6 car. min.)":"Password too short (6 chars min.)");return;}
+    setLoading(true);
+    setTimeout(()=>{
+      if(mode==="login"){
+        if(authCheck(email.trim().toLowerCase(),pwd)){onLogin({email:email.trim().toLowerCase(),lang:_users[email.trim().toLowerCase()].lang||lang});}
+        else{setError(t.loginError);setLoading(false);}
+      } else {
+        const ok=authRegister(email.trim().toLowerCase(),pwd,lang);
+        if(ok){setSignupDone(true);setLoading(false);}
+        else{setError(t.signupError);setLoading(false);}
+      }
+    },400);
+  };
+  // Signup confirmation screen
+  if(signupDone) return (
+    <div style={{background:"#080f08",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:28,fontFamily:MONO,maxWidth:480,margin:"0 auto"}}>
+      <CSS neon={neon}/>
+      <div className="slide-up" style={{width:"100%",maxWidth:360,textAlign:"center"}}>
+        <div style={{display:"flex",justifyContent:"center",marginBottom:24}}>
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill={`${neon}15`} stroke={neon} strokeWidth="1.5"/><polyline points="7,12.5 10.5,16 17,8.5" stroke={neon} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </div>
+        <div style={{fontSize:20,fontWeight:700,color:"#e8f5e8",fontFamily:MONO,marginBottom:10}}>{fr?"Compte créé !":"Account created!"}</div>
+        <div style={{fontSize:13,color:"#5a7a5a",fontFamily:MONO,lineHeight:1.7,marginBottom:28}}>{fr?`Bienvenue sur TrackMyTrade.\nTon compte est prêt.`:`Welcome to TrackMyTrade.\nYour account is ready.`}</div>
+        <button onClick={()=>onLogin({email:email.trim().toLowerCase(),lang})} className="btn"
+          style={{width:"100%",background:`${neon}22`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:16,fontSize:14,fontWeight:700,fontFamily:MONO,letterSpacing:2}}>
+          {fr?"CONFIGURER MA STRATÉGIE →":"SET UP MY STRATEGY →"}
+        </button>
+      </div>
+    </div>
+  );
+  return (
+    <div style={{background:"#080f08",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:28,fontFamily:MONO,maxWidth:480,margin:"0 auto"}}>
+      <CSS neon={neon}/>
+      <div style={{position:"absolute",top:20,right:20,display:"flex",gap:6}}>
+        {["fr","en"].map(l=><button key={l} onClick={()=>setLang(l)} className="btn" style={{background:lang===l?`${neon}26`:"transparent",border:`1px solid ${lang===l?neon:`${neon}33`}`,color:lang===l?neon:"#3a5a3a",borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:700,fontFamily:MONO}}>{l.toUpperCase()}</button>)}
+      </div>
+      <div style={{marginBottom:24}}><Logo size="lg" neon={neon}/></div>
+      <div className="slide-up" style={{width:"100%",maxWidth:360}}>
+        <div style={{textAlign:"center",fontSize:9,color:"#3a5a3a",letterSpacing:4,marginBottom:20,fontFamily:MONO}}>{mode==="login"?t.loginTitle.toUpperCase():t.signupBtn.toUpperCase()}</div>
+        <input type="email" value={email} onChange={e=>{setEmail(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={t.loginEmailPlaceholder} style={{...inSt,marginBottom:10,fontSize:14}} autoFocus/>
+        <input type="password" value={pwd} onChange={e=>{setPwd(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={pwdPlaceholder} style={{...inSt,marginBottom:error?10:16,fontSize:14}}/>
+        {error&&<div style={{fontSize:11,color:"#ff4d4d",marginBottom:14,padding:"8px 12px",background:"rgba(255,77,77,0.08)",borderRadius:8,border:"1px solid rgba(255,77,77,0.2)"}}>{error}</div>}
+        <button onClick={submit} disabled={loading} className="btn"
+          style={{width:"100%",background:`${neon}22`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:16,fontSize:14,fontWeight:700,fontFamily:MONO,marginBottom:20,letterSpacing:2}}>
+          {loading?"...":(mode==="login"?(fr?"SE CONNECTER":"SIGN IN"):(fr?"CRÉER UN COMPTE":"CREATE ACCOUNT"))}
+        </button>
+        <div style={{textAlign:"center",display:"flex",flexDirection:"column",gap:10}}>
+          {mode==="login"&&<div style={{fontSize:11,color:"#3a5a3a",fontFamily:MONO}}>{fr?"Mot de passe oublié ?":"Forgot password?"}</div>}
+          <div style={{fontSize:11,color:"#3a5a3a",fontFamily:MONO}}>
+            {mode==="login"?t.loginSwitch:t.signupSwitch}{" "}
+            <button onClick={()=>{setMode(mode==="login"?"signup":"login");setError("");}} style={{background:"transparent",border:"none",color:neon,fontSize:11,cursor:"pointer",fontFamily:MONO,textDecoration:"underline"}}>{mode==="login"?t.signupBtn:t.loginTitle}</button>
+          </div>
+          {mode==="login"&&<div style={{fontSize:10,color:"#2a3a2a",fontFamily:MONO,marginTop:4}}>{fr?"CGU & Confidentialité":"Terms & Privacy"}</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Onboarding({onDone}) {
+  const [step,setStep]=useState(0);const [lang,setLang]=useState("fr");
+  const t=T[lang];const neon="#00ff9d";
+  const slides=[
+    {visual:(
+      <div style={{position:"relative",width:"100%",height:220,display:"flex",alignItems:"center",justifyContent:"center"}}>
+        {/* Rings animées */}
+        {[1,2].map(i=>(
+          <div key={i} style={{position:"absolute",borderRadius:"50%",border:`1px solid ${neon}`,opacity:0.08+i*0.04,width:80+i*60,height:80+i*60,animation:`ring ${1.8+i*0.6}s ease-in-out infinite`,animationDelay:`${i*0.3}s`}}/>
+        ))}
+        {/* Halo central */}
+        <div style={{position:"absolute",width:140,height:140,borderRadius:"50%",background:`radial-gradient(circle, ${neon}22 0%, ${neon}06 50%, transparent 75%)`}}/>
+        {/* Logo centré large */}
+        <div style={{position:"relative",zIndex:2}}>
+          <Logo size="lg" neon={neon}/>
+        </div>
+      </div>
+    ),title:t.welcome,desc:t.welcomeDesc,cta:t.discover},
+    {visual:<div style={{display:"flex",flexDirection:"column",gap:8,maxWidth:260,margin:"0 auto"}}>{["HA M5 claire ✓","MM20 orientée ✓","BB approche ✓","Rejet propre —"].map((item,i)=><div key={i} className="fu" style={{background:i<3?"rgba(0,255,157,0.08)":"rgba(255,77,77,0.06)",border:`1px solid ${i<3?"rgba(0,255,157,0.2)":"rgba(255,77,77,0.15)"}`,borderRadius:8,padding:"10px 14px",fontSize:12,color:i<3?"#00ff9d":"#ff4d4d",fontFamily:MONO,animationDelay:`${i*0.08}s`}}>{item}</div>)}</div>,title:t.checklist,desc:t.checklistDesc,cta:t.next},
+    {visual:<div style={{maxWidth:260,margin:"0 auto"}}><div style={{display:"flex",gap:10,marginBottom:10}}>{[["WIN RATE","73%"],["P&L","+4.2%"]].map(([l,v])=><div key={l} style={{flex:1,background:"rgba(0,255,157,0.08)",border:"1px solid rgba(0,255,157,0.2)",borderRadius:8,padding:12,textAlign:"center"}}><div style={{fontSize:22,fontWeight:800,color:neon,fontFamily:MONO}}>{v}</div><div style={{fontSize:9,color:"#5a7a5a",marginTop:4}}>{l}</div></div>)}</div></div>,title:t.measure,desc:t.measureDesc,cta:t.start},
+  ];
+  const s=slides[step];
+  return (
+    <div style={{background:"#080f08",minHeight:"100vh",display:"flex",flexDirection:"column",fontFamily:MONO,maxWidth:480,margin:"0 auto"}}>
+      <CSS neon={neon}/>
+      <div style={{padding:"16px 24px 0",display:"flex",justifyContent:"flex-end",gap:6}}>{["fr","en"].map(l=><button key={l} onClick={()=>setLang(l)} className="btn" style={{background:lang===l?`${neon}26`:"transparent",border:`1px solid ${lang===l?neon:`${neon}33`}`,color:lang===l?neon:"#3a5a3a",borderRadius:6,padding:"5px 12px",fontSize:11,fontWeight:700,fontFamily:MONO}}>{l.toUpperCase()}</button>)}</div>
+      <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"12px 28px 24px"}}>
+        <div className="fi" key={`v${step}${lang}`} style={{marginBottom:28,width:"100%"}}>{s.visual}</div>
+        <div className="fi" key={`t${step}${lang}`} style={{textAlign:"center",marginBottom:28}}>
+          <div style={{fontSize:24,fontWeight:700,color:neon,whiteSpace:"pre-line",lineHeight:1.25,marginBottom:12,fontFamily:MONO}}>{s.title}</div>
+          <div style={{fontSize:13,color:"#5a7a5a",lineHeight:1.8,maxWidth:300,margin:"0 auto"}}>{s.desc}</div>
+        </div>
+        <button onClick={()=>step<slides.length-1?setStep(step+1):onDone(lang)} className="btn" style={{width:"100%",maxWidth:300,background:`${neon}1a`,border:`1px solid ${neon}`,color:neon,borderRadius:12,padding:16,fontSize:14,fontWeight:700,fontFamily:MONO,marginBottom:12}}>{s.cta}</button>
+        {step>0&&<button onClick={()=>setStep(step-1)} className="btn" style={{background:"transparent",border:"none",color:"#3a5a3a",fontSize:12,fontFamily:MONO}}>{t.back}</button>}
+      </div>
+      <div style={{padding:"8px 28px 32px"}}><Dots total={slides.length} current={step} neon={neon}/></div>
+    </div>
+  );
+}
+
+function GuidedSetup({onDone,lang}) {
+  const t=T[lang];const neon="#00ff9d";
+  const [step,setStep]=useState(0);const [stratName,setStratName]=useState("");
+  const [selAssets,setSelAssets]=useState(["XAU/USD"]);const [customAsset,setCustomAsset]=useState("");
+  const [criteria,setCriteria]=useState([...DEFAULT_CRITERIA]);const [threshold,setThreshold]=useState(6);const [newItem,setNewItem]=useState("");
+  const allAssets=[...new Set([...PRESET_ASSETS,...selAssets.filter(a=>!PRESET_ASSETS.includes(a))])];
+  const TOTAL=4;const titles=[t.strategy,t.assets,t.criteria,t.threshold];const descs=[t.strategyDesc,t.assetsDesc,t.criteriaDesc,t.thresholdDesc];
+  const canNext=step===1?selAssets.length>0:step===2?criteria.length>=2:true;
+  const launch=()=>onDone({strategyName:stratName.trim()||"Ma Stratégie",defaultAsset:selAssets[0]||"XAU/USD",items:criteria,threshold,customAssets:selAssets});
+  const inSt=mkInput(neon);
+  const renderContent=()=>{
+    if(step===0) return <input value={stratName} onChange={e=>setStratName(e.target.value)} placeholder="Ex: XAU/USD Scalping BB" style={{...inSt,fontSize:14,padding:14}} autoFocus/>;
+    if(step===1) return <div><div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:10}}>{allAssets.map(a=><button key={a} onClick={()=>setSelAssets(p=>p.includes(a)?p.filter(x=>x!==a):[...p,a])} className="btn" style={{background:selAssets.includes(a)?`${neon}26`:"#0d1a0d",border:`1px solid ${selAssets.includes(a)?neon:`${neon}22`}`,color:selAssets.includes(a)?neon:"#3a5a3a",borderRadius:8,padding:"9px 14px",fontSize:12,fontWeight:700,fontFamily:MONO}}>{a}</button>)}</div><div style={{display:"flex",gap:8}}><input value={customAsset} onChange={e=>setCustomAsset(e.target.value)} placeholder={t.customAsset} onKeyDown={e=>{if(e.key==="Enter"&&customAsset.trim()){setSelAssets(p=>[...p,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} style={{...inSt,marginBottom:0,flex:1}}/><button onClick={()=>{if(customAsset.trim()){setSelAssets(p=>[...p,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} className="btn" style={{background:`${neon}1a`,border:`1px solid ${neon}55`,color:neon,borderRadius:8,padding:"0 16px",fontSize:18}}>+</button></div></div>;
+    if(step===2) return <div>{criteria.map((c,i)=><div key={i} style={{display:"flex",gap:8,marginBottom:8}}><input value={c} onChange={e=>{const n=[...criteria];n[i]=e.target.value;setCriteria(n);}} style={{...inSt,marginBottom:0,flex:1}}/><button onClick={()=>setCriteria(criteria.filter((_,idx)=>idx!==i))} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d",borderRadius:6,padding:"8px 10px",cursor:"pointer"}}>✕</button></div>)}<div style={{display:"flex",gap:8}}><input value={newItem} onChange={e=>setNewItem(e.target.value)} placeholder={lang==="fr"?"Ajouter…":"Add…"} onKeyDown={e=>{if(e.key==="Enter"&&newItem.trim()){setCriteria([...criteria,newItem.trim()]);setNewItem("");}}} style={{...inSt,marginBottom:0,flex:1}}/><button onClick={()=>{if(newItem.trim()){setCriteria([...criteria,newItem.trim()]);setNewItem("");}}} className="btn" style={{background:`${neon}1a`,border:`1px solid ${neon}55`,color:neon,borderRadius:8,padding:"0 16px",fontSize:18}}>+</button></div></div>;
+    return <div><div style={{display:"flex",gap:8,marginBottom:20}}>{Array.from({length:Math.min(7,criteria.length-1)},(_,i)=>i+2).map(n=><button key={n} onClick={()=>setThreshold(n)} className="btn" style={{flex:1,padding:"12px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:threshold===n?`${neon}33`:"#0d1a0d",border:`1px solid ${threshold===n?neon:`${neon}22`}`,color:threshold===n?neon:"#3a5a3a"}}>{n}</button>)}</div><div style={{background:`${neon}0d`,border:`1px solid ${neon}22`,borderRadius:10,padding:16}}><div style={{fontSize:12,color:neon,marginBottom:4}}>✓ {threshold}/{criteria.length}</div><div style={{fontSize:10,color:"#3a5a3a"}}>{threshold/criteria.length>=0.875?`↑ ${t.highStd}`:threshold/criteria.length>=0.6?`· ${t.balanced}`:`↓ ${t.lowStd}`}</div></div></div>;
+  };
+  return (
+    <div style={{background:"#080f08",minHeight:"100vh",fontFamily:MONO,maxWidth:480,margin:"0 auto",display:"flex",flexDirection:"column"}}>
+      <CSS neon={neon}/>
+      <div style={{padding:"24px 24px 16px",borderBottom:`1px solid ${neon}14`}}><Logo size="sm" neon={neon}/><div style={{marginTop:20}}><Dots total={TOTAL} current={step} neon={neon}/></div></div>
+      <div style={{flex:1,padding:"28px 24px",overflow:"auto"}}>
+        <div className="fu" key={step}>
+          <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:3,marginBottom:6}}>{t.step} 0{step+1} / 04</div>
+          <div style={{fontSize:22,fontWeight:700,color:neon,marginBottom:8,lineHeight:1.2}}>{titles[step]}</div>
+          <div style={{fontSize:13,color:"#5a7a5a",marginBottom:24,lineHeight:1.7}}>{descs[step]}</div>
+          {renderContent()}
+        </div>
+      </div>
+      <div style={{padding:"16px 24px 36px",borderTop:`1px solid ${neon}14`}}>
+        <button onClick={()=>canNext&&(step<TOTAL-1?setStep(step+1):launch())} className="btn" style={{width:"100%",background:canNext?`${neon}26`:`${neon}06`,border:`1px solid ${canNext?neon:`${neon}18`}`,color:canNext?neon:"#2a3a2a",borderRadius:12,padding:16,fontSize:14,fontWeight:700,fontFamily:MONO,marginBottom:12}}>{step===TOTAL-1?t.launch:t.continue}</button>
+        {step>0&&<button onClick={()=>setStep(step-1)} className="btn" style={{width:"100%",background:"transparent",border:"none",color:"#3a5a3a",fontSize:12,fontFamily:MONO}}>{t.prevStep}</button>}
+      </div>
+    </div>
+  );
+}
+
+function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChange,neon,phases}) {
+  const t=T[lang];const inSt=mkInput(neon);
+  const [items,setItems]=useState([...config.items]);const [threshold,setThreshold]=useState(config.threshold);
+  const [stratName,setStratName]=useState(config.strategyName||"");const [maxTrades,setMaxTrades]=useState(config.maxTrades||1);
+  const [neonColor,setNeonColor]=useState(neon);const [calendarOn,setCalendarOn]=useState(config.calendarOn!==false);
+  const [notifOn,setNotifOn]=useState(config.notifOn!==false);const [customAsset,setCustomAsset]=useState("");
+  const [assets,setAssets]=useState(config.customAssets||PRESET_ASSETS);
+  const [savedOk,setSavedOk]=useState(false);const [phaseConfirm,setPhaseConfirm]=useState(false);
+  const save=()=>{onSave({items,threshold,strategyName:stratName,maxTrades,neonColor,calendarOn,notifOn,customAssets:assets});setSavedOk(true);setTimeout(()=>setSavedOk(false),2000);};
+  const Toggle=({label,val,set})=>(
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${neonColor}0d`}}>
+      <span style={{fontSize:12,color:"#c8e6c8",fontFamily:MONO}}>{label}</span>
+      <button onClick={()=>set(!val)} className="btn" style={{width:44,height:24,borderRadius:12,background:val?`${neonColor}33`:"#1e2a1e",border:`1px solid ${val?neonColor:`${neonColor}30`}`,position:"relative",transition:"all 0.2s"}}>
+        <div style={{width:16,height:16,borderRadius:"50%",background:val?neonColor:"#3a5a3a",position:"absolute",top:3,left:val?24:4,transition:"all 0.2s"}}/>
+      </button>
+    </div>
+  );
   return (
     <div className="fi" style={{padding:20}}>
-      {user&&<div style={{fontSize:10,color:"#3a5a3a",marginBottom:16,padding:"10px 12px",background:"rgba(0,255,157,0.04)",borderRadius:8,fontFamily:MONO}}>
-        ◈ <span style={{color:"#00ff9d"}}>{user.username}</span> · {user.email}
-      </div>}
-      <div style={{background:"rgba(0,255,157,0.03)",border:"1px solid rgba(0,255,157,0.08)",borderRadius:10,padding:14,marginBottom:14}}>
-        <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:10}}>PÉRIODE D'ANALYSE</div>
+      <div style={{background:`${neon}04`,border:`1px solid ${neon}18`,borderRadius:10,padding:14,marginBottom:14}}>
+        <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:10}}>{t.langLabel}</div>
+        <div style={{display:"flex",gap:8}}>{[["fr","Français"],["en","English"]].map(([l,label])=><button key={l} onClick={()=>onLangChange(l)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:lang===l?`${neonColor}26`:"#0d1a0d",border:`1px solid ${lang===l?neonColor:`${neonColor}22`}`,color:lang===l?neonColor:"#3a5a3a"}}>{label}</button>)}</div>
+      </div>
+      <div style={{background:`${neon}04`,border:`1px solid ${neon}18`,borderRadius:10,padding:14,marginBottom:14}}>
+        <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:10}}>{t.colorLabel}</div>
+        <div style={{display:"flex",gap:8}}>{NEON_COLORS.map(c=><button key={c.value} onClick={()=>setNeonColor(c.value)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,background:neonColor===c.value?`${c.value}26`:"#0d1a0d",border:`2px solid ${neonColor===c.value?c.value:"transparent"}`,cursor:"pointer"}}><div style={{width:16,height:16,borderRadius:"50%",background:c.value,margin:"0 auto",boxShadow:neonColor===c.value?`0 0 8px ${c.value}`:"none"}}/></button>)}</div>
+      </div>
+      <div style={{background:`${neon}04`,border:`1px solid ${neon}18`,borderRadius:10,padding:14,marginBottom:14}}>
+        <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:10}}>{t.maxTradesLabel}</div>
         <div style={{display:"flex",gap:6}}>
-          {[["all","Tout"],["month","Mois"],["week","Semaine"],["day","Jour"]].map(([v,l])=>(
-            <button key={v} onClick={()=>onPeriodChange(v)} className="btn"
-              style={{flex:1,padding:"8px 0",borderRadius:7,fontSize:11,fontWeight:700,fontFamily:MONO,background:period===v?"rgba(0,255,157,0.15)":"#0d1a0d",border:`1px solid ${period===v?"#00ff9d":"rgba(0,255,157,0.15)"}`,color:period===v?"#00ff9d":"#3a5a3a"}}>{l}</button>
-          ))}
+          {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setMaxTrades(n)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:maxTrades===n?`${neonColor}26`:"#0d1a0d",border:`1px solid ${maxTrades===n?neonColor:`${neonColor}22`}`,color:maxTrades===n?neonColor:"#3a5a3a"}}>{n}</button>)}
+          <button onClick={()=>setMaxTrades(0)} className="btn" style={{flex:1.4,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:maxTrades===0?`${neonColor}26`:"#0d1a0d",border:`1px solid ${maxTrades===0?neonColor:`${neonColor}22`}`,color:maxTrades===0?neonColor:"#3a5a3a"}}>∞</button>
         </div>
       </div>
-      <div style={{background:"rgba(0,255,157,0.03)",border:"1px solid rgba(0,255,157,0.08)",borderRadius:10,padding:14,marginBottom:14}}>
-        <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:4}}>OBJECTIF P&L %</div>
-        <div style={{fontSize:10,color:"#2a4a2a",marginBottom:10}}>Objectif de performance cumulée (optionnel)</div>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <input type="number" step="0.5" value={pnlTarget} onChange={e=>setPnlTarget(e.target.value)} placeholder="Ex: 5"
-            style={{...inputSt,marginBottom:0,flex:1,color:parseFloat(pnlTarget)>0?"#00ff9d":parseFloat(pnlTarget)<0?"#ff4d4d":"#c8e6c8"}}/>
-          <span style={{fontSize:13,color:"#3a5a3a",fontFamily:MONO}}>%</span>
-          {pnlTarget!==""&&<button onClick={()=>setPnlTarget("")} style={{background:"transparent",border:"none",color:"#3a5a3a",fontSize:14,cursor:"pointer"}}>✕</button>}
-        </div>
+      <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:8}}>ACTIFS</div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
+        {assets.map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4,background:"#0d1a0d",border:`1px solid ${neon}26`,borderRadius:6,padding:"4px 8px"}}>
+          <span style={{fontSize:11,color:"#c8e6c8",fontFamily:MONO}}>{a}</span>
+          {!PRESET_ASSETS.includes(a)&&<button onClick={()=>setAssets(assets.filter(x=>x!==a))} style={{background:"transparent",border:"none",color:"#ff4d4d",fontSize:10,cursor:"pointer"}}>✕</button>}
+        </div>)}
       </div>
-      <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:8}}>NOM DE LA STRATÉGIE</div>
-      <input value={stratName} onChange={e=>setStratName(e.target.value)} style={inputSt}/>
-      <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:8}}>SEUIL DE CONFORMITÉ</div>
+      <div style={{display:"flex",gap:8,marginBottom:14}}>
+        <input value={customAsset} onChange={e=>setCustomAsset(e.target.value)} placeholder={t.customAsset} onKeyDown={e=>{if(e.key==="Enter"&&customAsset.trim()){setAssets([...assets,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} style={{...inSt,marginBottom:0,flex:1}}/>
+        <button onClick={()=>{if(customAsset.trim()){setAssets([...assets,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} className="btn" style={{background:`${neonColor}1a`,border:`1px solid ${neonColor}55`,color:neonColor,borderRadius:8,padding:"0 14px",fontSize:18}}>+</button>
+      </div>
+      <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:8}}>{t.strategyName}</div>
+      <input value={stratName} onChange={e=>setStratName(e.target.value)} style={inSt}/>
+      <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:8}}>{t.thresholdLabel}</div>
       <div style={{display:"flex",gap:6,marginBottom:16}}>
-        {[4,5,6,7,8].map(n=>(
-          <button key={n} onClick={()=>setThreshold(n)} className="btn"
-            style={{flex:1,padding:8,borderRadius:8,fontSize:13,fontWeight:700,fontFamily:MONO,background:threshold===n?"rgba(0,255,157,0.2)":"#080f08",border:`1px solid ${threshold===n?"#00ff9d":"rgba(0,255,157,0.15)"}`,color:threshold===n?"#00ff9d":"#3a5a3a"}}>{n}</button>
-        ))}
+        {[4,5,6,7,8].map(n=><button key={n} onClick={()=>setThreshold(n)} className="btn" style={{flex:1,padding:8,borderRadius:8,fontSize:13,fontWeight:700,fontFamily:MONO,background:threshold===n?`${neonColor}33`:"#080f08",border:`1px solid ${threshold===n?neonColor:`${neonColor}22`}`,color:threshold===n?neonColor:"#3a5a3a"}}>{n}</button>)}
       </div>
-      <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:10}}>CRITÈRES ({items.length})</div>
-      {items.map((item,i)=>(
-        <div key={i} style={{display:"flex",gap:8,marginBottom:8}}>
-          <input value={item} onChange={e=>{const n=[...items];n[i]=e.target.value;setItems(n);}} style={{...inputSt,marginBottom:0,flex:1}}/>
-          <button onClick={()=>setItems(items.filter((_,idx)=>idx!==i))} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d",borderRadius:6,padding:"8px 10px",fontSize:11,cursor:"pointer"}}>✕</button>
+      <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:10}}>{t.criteriaLabel} ({items.length})</div>
+      {items.map((item,i)=><div key={i} style={{display:"flex",gap:8,marginBottom:8}}><input value={item} onChange={e=>{const n=[...items];n[i]=e.target.value;setItems(n);}} style={{...inSt,marginBottom:0,flex:1}}/><button onClick={()=>setItems(items.filter((_,idx)=>idx!==i))} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d",borderRadius:6,padding:"8px 10px",cursor:"pointer"}}>✕</button></div>)}
+      <button onClick={()=>setItems([...items,""])} style={{width:"100%",background:"transparent",border:`1px dashed ${neon}35`,color:"#3a5a3a",borderRadius:8,padding:10,fontSize:12,cursor:"pointer",fontFamily:MONO,marginBottom:16}}>{t.addCriteria}</button>
+      <div style={{background:`${neon}04`,border:`1px solid ${neon}18`,borderRadius:10,padding:14,marginBottom:16}}>
+        <Toggle label={t.calendarToggle} val={calendarOn} set={setCalendarOn}/>
+        <Toggle label={t.enableNotif} val={notifOn} set={setNotifOn}/>
+      </div>
+      <button onClick={save} className="btn" style={{width:"100%",background:`${neonColor}26`,border:`1px solid ${neonColor}`,color:neonColor,borderRadius:10,padding:14,fontSize:13,fontWeight:700,fontFamily:MONO,marginBottom:10}}>{savedOk?t.savedOk:t.saveBtn}</button>
+      <div style={{height:1,background:`${neon}14`,margin:"14px 0"}}/>
+      {!phaseConfirm?(
+        <button onClick={()=>setPhaseConfirm(true)} className="btn" style={{width:"100%",background:`${neon}0a`,border:`1px solid ${neon}28`,color:neon,borderRadius:10,padding:12,fontSize:12,fontFamily:MONO,marginBottom:10}}>{t.newPhaseBtn}{phases.length>0?` — Phase ${phases.length+1}`:""}</button>
+      ):(
+        <div style={{background:`${neon}08`,border:`1px solid ${neon}30`,borderRadius:10,padding:14,marginBottom:10}}>
+          <div style={{fontSize:12,fontWeight:700,color:neon,fontFamily:MONO,marginBottom:4}}>{t.newPhaseConfirmQ}</div>
+          <div style={{fontSize:11,color:"#5a7a5a",marginBottom:12,lineHeight:1.5}}>{t.newPhaseDesc}</div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>{onNewPhase();setPhaseConfirm(false);}} className="btn" style={{flex:2,background:`${neon}22`,border:`1px solid ${neon}`,color:neon,borderRadius:8,padding:"10px 0",fontSize:12,fontWeight:700,fontFamily:MONO}}>{t.newPhaseConfirmBtn}</button>
+            <button onClick={()=>setPhaseConfirm(false)} className="btn" style={{flex:1,background:"transparent",border:`1px solid ${neon}26`,color:"#5a7a5a",borderRadius:8,padding:"10px 0",fontSize:11,fontFamily:MONO}}>{t.cancelBtn}</button>
+          </div>
         </div>
-      ))}
-      <button onClick={()=>setItems([...items,""])} style={{width:"100%",background:"transparent",border:"1px dashed rgba(0,255,157,0.2)",color:"#3a5a3a",borderRadius:8,padding:10,fontSize:12,cursor:"pointer",fontFamily:MONO,marginBottom:20}}>+ Ajouter un critère</button>
-      <button onClick={save} className="btn" style={{width:"100%",background:"rgba(0,255,157,0.15)",border:"1px solid #00ff9d",color:"#00ff9d",borderRadius:10,padding:14,fontSize:13,fontWeight:700,fontFamily:MONO,marginBottom:10}}>
-        {savedOk?"✓ Enregistré !":"✓ ENREGISTRER"}
-      </button>
-      <button onClick={onLogout} className="btn" style={{width:"100%",background:"transparent",border:"1px solid rgba(255,77,77,0.15)",color:"#5a2a2a",borderRadius:10,padding:12,fontSize:12,fontFamily:MONO}}>Se déconnecter</button>
+      )}
+      <div style={{height:1,background:"rgba(255,77,77,0.1)",margin:"6px 0 10px"}}/>
+      <button onClick={onReset} className="btn" style={{width:"100%",background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#7a3a3a",borderRadius:10,padding:12,fontSize:12,fontFamily:MONO,marginBottom:10}}>{t.resetBtn}</button>
+      <button onClick={onLogout} className="btn" style={{width:"100%",background:"transparent",border:"1px solid rgba(255,77,77,0.1)",color:"#4a2a2a",borderRadius:10,padding:12,fontSize:11,fontFamily:MONO}}>{t.logout}</button>
     </div>
   );
 }
 
-function ExportModal({ trades, onClose }) {
-  const dl=(c,n,t)=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([c],{type:t}));a.download=n;a.click();};
-  const pnl=trades.reduce((s,t)=>s+(parseFloat(t.pnlPct)||0),0);
-  const wins=trades.filter(t=>t.result==="WIN").length;
+function ExportModal({trades,onClose,lang,neon}) {
+  const t=T[lang];
+  const dl=(c,n,tp)=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([c],{type:tp}));a.download=n;a.click();};
+  const pnl=trades.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
+  const wins=trades.filter(x=>x.result==="WIN").length;
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
-      <div className="slide-up" style={{background:"#0d1a0d",border:"1px solid rgba(0,255,157,0.2)",borderRadius:"16px 16px 0 0",width:"100%",maxWidth:480,padding:20}}>
+      <div className="slide-up" style={{background:"#0d1a0d",border:`1px solid ${neon}35`,borderRadius:"16px 16px 0 0",width:"100%",maxWidth:480,padding:20}}>
         <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}>
-          <div style={{fontSize:13,fontWeight:700,color:"#00ff9d",fontFamily:MONO}}>EXPORTER</div>
+          <div style={{fontSize:13,fontWeight:700,color:neon,fontFamily:MONO}}>{t.exportTitle}</div>
           <button onClick={onClose} style={{background:"transparent",border:"none",color:"#5a7a5a",fontSize:18,cursor:"pointer"}}>✕</button>
         </div>
         <div style={{display:"flex",gap:10,marginBottom:20}}>
-          <Stat label="Trades" value={trades.length} color="#38bdf8"/>
-          <Stat label="Win Rate" value={trades.length?Math.round(wins/trades.length*100)+"%":"—"} color={trades.length&&wins/trades.length>=0.5?"#00ff9d":"#ff4d4d"}/>
-          <Stat label="P&L" value={fmtPct(pnl)} color={pnl>=0?"#00ff9d":"#ff4d4d"}/>
+          <Stat label={t.trades.toUpperCase()} value={trades.length} color="#38bdf8"/>
+          <Stat label="WIN RATE" value={trades.length?Math.round(wins/trades.length*100)+"%":"—"} color={trades.length&&wins/trades.length>=0.5?neon:"#ff4d4d"}/>
+          <Stat label="P&L" value={fmtPct(pnl)} color={pnl>=0?neon:"#ff4d4d"}/>
         </div>
         <div style={{display:"flex",gap:10}}>
-          <button onClick={()=>{const h=["Date","Asset","Dir","Résultat","P&L%","Score","Conforme","Notes"];const rows=trades.map(t=>[t.date,t.asset,t.direction,t.result,t.pnlPct,t.setupScore,t.conforming?"Oui":"Non",`"${(t.notes||"").replace(/"/g,"'")}"`]);dl([h,...rows].map(r=>r.join(",")).join("\n"),`tmt-${today()}.csv`,"text/csv");}} className="btn"
-            style={{flex:1,background:"rgba(0,255,157,0.12)",border:"1px solid #00ff9d",color:"#00ff9d",borderRadius:10,padding:14,fontSize:12,fontWeight:700,fontFamily:MONO}}>
-            ↓ CSV<br/><span style={{fontSize:9,opacity:0.6}}>Excel / Sheets</span>
-          </button>
-          <button onClick={()=>dl(JSON.stringify(trades,null,2),`tmt-${today()}.json`,"application/json")} className="btn"
-            style={{flex:1,background:"rgba(56,189,248,0.1)",border:"1px solid #38bdf8",color:"#38bdf8",borderRadius:10,padding:14,fontSize:12,fontWeight:700,fontFamily:MONO}}>
-            ↓ JSON<br/><span style={{fontSize:9,opacity:0.6}}>Backup complet</span>
-          </button>
+          <button onClick={()=>{const h=["Date","Asset","Dir","Result","P&L%","Score","Conform","Revenge","Humeur","Biais","Notes"];const rows=trades.map(x=>[x.date,x.asset,x.direction,x.result,x.pnlPct,x.setupScore,x.conforming?"Yes":"No",x.isRevenge?"Yes":"No",x.checkin?.humeur||"",x.checkin?.biais||"",`"${(x.notes||"").replace(/"/g,"'")}"`]);dl([h,...rows].map(r=>r.join(",")).join("\n"),`tmt-${today()}.csv`,"text/csv");}} className="btn" style={{flex:1,background:`${neon}1a`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:14,fontSize:12,fontWeight:700,fontFamily:MONO}}>↓ CSV<br/><span style={{fontSize:9,opacity:0.6}}>{t.exportCsv}</span></button>
+          <button onClick={()=>dl(JSON.stringify(trades,null,2),`tmt-${today()}.json`,"application/json")} className="btn" style={{flex:1,background:"rgba(56,189,248,0.1)",border:"1px solid #38bdf8",color:"#38bdf8",borderRadius:10,padding:14,fontSize:12,fontWeight:700,fontFamily:MONO}}>↓ JSON<br/><span style={{fontSize:9,opacity:0.6}}>{t.exportJson}</span></button>
         </div>
       </div>
     </div>
   );
 }
 
-// ─── MAIN ─────────────────────────────────────────────────────────────────────
 export default function App() {
-  const [phase,setPhase]=useState("loading");
-  const [user,setUser]=useState(null);
+  const [phase,setPhase]=useState("onboarding");
+  const [lang,setLang]=useState("fr");
   const [trades,setTrades]=useState([]);
   const [noTrades,setNoTrades]=useState([]);
-  const [lastAdvice,setLastAdvice]=useState(null);
+  const [notif,setNotif]=useState(null);
   const [showNoTrades,setShowNoTrades]=useState(true);
-  const [period,setPeriod]=useState("all");
-  const [config,setConfig]=useState({items:DEFAULT_CRITERIA,threshold:6,strategyName:"Ma Stratégie",defaultAsset:"XAU/USD",pnlTarget:""});
+  const [statsMode,setStatsMode]=useState("phase");
+  const [phases,setPhases]=useState([]);
+  const [showWeeklyRecap,setShowWeeklyRecap]=useState(false);
+  const [showExport,setShowExport]=useState(false);
+  const [showReset,setShowReset]=useState(false);
   const [view,setView]=useState("dashboard");
   const [form,setForm]=useState(emptyForm());
   const [editingId,setEditingId]=useState(null);
-  const [showExport,setShowExport]=useState(false);
+  const [checkinOpen,setCheckinOpen]=useState(false);
   const [saved,setSaved]=useState(false);
-  const [historyFilter,setHistoryFilter]=useState("ALL");
-  const [historyAsset,setHistoryAsset]=useState("ALL");
+  const [histFilter,setHistFilter]=useState("ALL");
+  const [histAsset,setHistAsset]=useState("ALL");
   const [confirmDeleteId,setConfirmDeleteId]=useState(null);
   const [detailTrade,setDetailTrade]=useState(null);
-  const fileRef=useRef();
-
-  const getToken=useCallback(async u=>{
-    const s=lsGet("tmt:session")||u;
-    if(!s?.refreshToken) return s?.token||null;
-    if(Date.now()<(s.expiresAt||0)-60000) return s.token;
-    try{const r=await fbRefresh(s.refreshToken);if(r.id_token){const up={...s,token:r.id_token,expiresAt:Date.now()+3600000};lsSet("tmt:session",up);setUser(up);return r.id_token;}}catch{}
-    return s?.token||null;
-  },[]);
-
-  const loadUserData=useCallback(async u=>{
-    const cached=lsGet(`tmt:data:${u.id}`);
-    if(cached){if(cached.trades)setTrades(cached.trades);if(cached.config)setConfig(c=>({...c,...cached.config}));if(cached.noTrades)setNoTrades(cached.noTrades);}
-    try{
-      const tok=await getToken(u);if(!tok)return;
-      const data=await fsRead(u.id,tok);
-      if(data){if(data.trades)setTrades(data.trades);if(data.config)setConfig(c=>({...c,...data.config}));if(data.noTrades)setNoTrades(data.noTrades);lsSet(`tmt:data:${u.id}`,data);}
-    }catch{}
-  },[getToken]);
+  const [config,setConfig]=useState({items:DEFAULT_CRITERIA,threshold:6,strategyName:"Ma Stratégie",defaultAsset:"XAU/USD",maxTrades:1,neonColor:"#00ff9d",calendarOn:true,notifOn:true,customAssets:[...PRESET_ASSETS]});
+  const fileRef=useRef();const pageRef=useRef();const weeklyShownRef=useRef(false);
+  const neon=config.neonColor||"#00ff9d";const t=T[lang];const inSt=mkInput(neon);
 
   useEffect(()=>{
-    (async()=>{
-      try{
-        const ob=lsGet("tmt:onboarded");if(!ob){setPhase("onboarding");return;}
-        const session=lsGet("tmt:session");
-        if(session){await loadUserData(session);setUser(session);setPhase("app");return;}
-        setPhase("auth");
-      }catch{setPhase("onboarding");}
-    })();
-  },[]);
+    const isMonday=new Date().getDay()===1;
+    if(phase==="app"&&view==="dashboard"&&!weeklyShownRef.current&&trades.length>=2&&isMonday){
+      const cutoff=new Date(Date.now()-7*86400000).toISOString().split("T")[0];
+      if(trades.some(x=>x.date>=cutoff)){weeklyShownRef.current=true;const id=setTimeout(()=>setShowWeeklyRecap(true),1000);return ()=>clearTimeout(id);}
+    }
+  },[phase,view,trades]);
 
-  const persist=useCallback(async(nt,nc,nnt)=>{
-    if(!user)return;
-    const cur=lsGet(`tmt:data:${user.id}`)||{};
-    const updated={trades:nt!==undefined?nt:(cur.trades||trades),config:nc!==undefined?nc:(cur.config||config),noTrades:nnt!==undefined?nnt:(cur.noTrades||noTrades)};
-    lsSet(`tmt:data:${user.id}`,updated);
-    try{const tok=await getToken(user);if(tok)await fsWrite(user.id,tok,updated);}catch{}
-  },[user,trades,config,noTrades,getToken]);
+  const scrollToTop=()=>{if(pageRef.current)pageRef.current.scrollTo({top:0,behavior:"smooth"});};
+  // Phase uses trade.id (timestamp) not date — trades before phase creation excluded even if date is today
+  const currentPhaseTs=phases.length>0?phases[phases.length-1].id:0;
+  const getPhaseKey=useCallback(tradeId=>{if(phases.length===0)return 0;for(let i=phases.length-1;i>=0;i--){if(tradeId>phases[i].id)return i+1;}return 0;},[phases]);
+  const handleNewPhase=()=>{const num=phases.length+2;setPhases(p=>[...p,{id:Date.now(),date:today()}]);setStatsMode("phase");setNotif({txt:lang==="fr"?`Phase ${num} démarrée.\nStats remises à zéro instantanément.`:`Phase ${num} started.\nStats reset instantly.`,color:neon,icon:"ok",lang});};
 
-  const onOnboarding=()=>{lsSet("tmt:onboarded","1");setPhase("setup");};
-  const onSetup=cfg=>{const nc={...config,...cfg};setConfig(nc);setForm(emptyForm(cfg.defaultAsset));setPhase("auth");};
-  const onAuth=async u=>{setUser(u);lsSet("tmt:session",u);await loadUserData(u);setPhase("app");};
-  const logout=()=>{lsDel("tmt:session");setUser(null);setTrades([]);setNoTrades([]);setConfig({items:DEFAULT_CRITERIA,threshold:6,strategyName:"Ma Stratégie",defaultAsset:"XAU/USD",pnlTarget:""});setPhase("auth");};
-
-  const handleScreenshot=e=>{
-    const file=e.target.files[0];if(!file)return;
-    const reader=new FileReader();
-    reader.onload=ev=>setForm(f=>({...f,screenshot:ev.target.result}));
-    reader.readAsDataURL(file);
-  };
-
-  const getPnl=()=>form.pnlManual!==""?form.pnlManual:form.pnlPreset;
-
-  const saveTrade=async()=>{
-    const score=form.checklist.length,pnl=getPnl();
-    let updated,updatedTrade=null;
-    if(editingId!==null){updated=trades.map(x=>x.id===editingId?{...x,...form,pnlPct:pnl,setupScore:score,conforming:score>=config.threshold,checklistMax:config.items.length}:x);}
-    else{const trade={...form,pnlPct:pnl,id:Date.now(),setupScore:score,conforming:score>=config.threshold,checklistMax:config.items.length};updatedTrade=trade;updated=[trade,...trades];}
-    setTrades(updated);await persist(updated);
-    setForm(emptyForm(config.defaultAsset||"XAU/USD"));setEditingId(null);
-    if(editingId===null){const adv=getAdvice(updatedTrade,updated);if(adv)setLastAdvice(adv);}
-    setSaved(true);setTimeout(()=>setSaved(false),2000);
-    setView(editingId!==null?"history":"dashboard");
-  };
-
-  const startEdit=x=>{
-    setForm({date:x.date,asset:x.asset,direction:x.direction,checklist:[...x.checklist],result:x.result,
-      pnlPreset:PNL_PRESETS.includes(x.pnlPct)?x.pnlPct:"",pnlManual:PNL_PRESETS.includes(x.pnlPct)?"":x.pnlPct,
-      notes:x.notes||"",rejetScore:x.rejetScore||0,time:x.time||"",screenshot:x.screenshot||""});
-    setEditingId(x.id);setView("log");
-  };
-  const cancelEdit=()=>{setForm(emptyForm(config.defaultAsset||"XAU/USD"));setEditingId(null);setView("history");};
-  const deleteTrade=async id=>{const u=trades.filter(x=>x.id!==id);setTrades(u);await persist(u);setConfirmDeleteId(null);};
-  const saveNoTrade=async e=>{const u=[e,...noTrades];setNoTrades(u);await persist(undefined,undefined,u);};
-  const deleteNoTrade=async id=>{const u=noTrades.filter(x=>x.id!==id);setNoTrades(u);await persist(undefined,undefined,u);};
-  const saveConfig=async cfg=>{const nc={...config,...cfg};setConfig(nc);await persist(undefined,nc);};
-
-  const now2=new Date();
-  const pStart=period==="all"?null:period==="day"?new Date(now2.getFullYear(),now2.getMonth(),now2.getDate()):period==="week"?new Date(now2.getTime()-7*86400000):period==="month"?new Date(now2.getFullYear(),now2.getMonth(),1):null;
-  const pf=pStart?trades.filter(x=>new Date(x.date)>=pStart):trades;
+  const pf=statsMode==="phase"?trades.filter(x=>x.id>currentPhaseTs):trades;
   const total=pf.length,wins=pf.filter(x=>x.result==="WIN").length,losses=pf.filter(x=>x.result==="LOSS").length;
   const winRate=total?Math.round(wins/total*100):0;
   const totalPnl=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
+  const discScore=calcDisc(pf);
+  const scoreColor=discScore===null?"#5a7a5a":discScore>=8?neon:discScore>=5?"#f0b429":"#ff4d4d";
   const usedAssets=[...new Set(trades.map(x=>x.asset))];
-  const histFiltered=trades.filter(x=>(historyFilter==="ALL"||x.result===historyFilter)&&(historyAsset==="ALL"||x.asset===historyAsset));
-  const mergedHistory=[...histFiltered.map(x=>({...x,_type:"trade"})),...(showNoTrades?noTrades.map(x=>({...x,_type:"notrade"})):[])].sort((a,b)=>new Date(b.date)-new Date(a.date)||b.id-a.id);
-  const pnlVal=getPnl();
-  const pnlIncoherent=pnlVal!==""&&((form.result==="WIN"&&parseFloat(pnlVal)<0)||(form.result==="LOSS"&&parseFloat(pnlVal)>0));
-  const editingTrade=editingId!==null?trades.find(x=>x.id===editingId):null;
-  const pnlProgress=config.pnlTarget&&config.pnlTarget!==""?Math.min(100,Math.max(0,Math.round((totalPnl/parseFloat(config.pnlTarget))*100))):null;
 
-  if(phase==="loading") return <div style={{background:"#080f08",height:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}><CSS/><Logo size="md"/></div>;
-  if(phase==="onboarding") return <><CSS/><Onboarding onDone={onOnboarding}/></>;
-  if(phase==="setup") return <><CSS/><GuidedSetup onDone={onSetup}/></>;
-  if(phase==="auth") return <AuthScreen onAuth={onAuth}/>;
+  const checkRevenge=fd=>{if(!config.maxTrades||config.maxTrades===0)return false;return trades.filter(x=>x.date===fd&&x.id!==editingId).length>=config.maxTrades;};
+  const isRevengeNow=editingId===null&&checkRevenge(form.date);
+  const pnlVal=form.pnlManual!==""?form.pnlManual:form.pnlPreset;
+  const pnlIncoherent=pnlVal!==""&&((form.result==="WIN"&&parseFloat(pnlVal)<0)||(form.result==="LOSS"&&parseFloat(pnlVal)>0));
+
+  const saveTrade=()=>{
+    const score=form.checklist.length,pnl=form.pnlManual!==""?form.pnlManual:form.pnlPreset;
+    const isRevenge=form.isRevenge||checkRevenge(form.date);
+    const conforming=isRevenge?false:score>=config.threshold;
+    let updated,ut=null;
+    if(editingId!==null){updated=trades.map(x=>x.id===editingId?{...x,...form,pnlPct:pnl,setupScore:score,conforming,isRevenge,checklistMax:config.items.length}:x);}
+    else{const trade={...form,pnlPct:pnl,id:Date.now(),setupScore:score,conforming,isRevenge,checklistMax:config.items.length};ut=trade;updated=[trade,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);}
+    setTrades(updated);setForm(emptyForm(config.defaultAsset||"XAU/USD"));setEditingId(null);setCheckinOpen(false);
+    // Conseil biais/direction incohérents
+    const biaisCheck=form.checkin?.biais||"";
+    const isBullish=biaisCheck.includes("Haussier")||biaisCheck.includes("Bullish");
+    const isBearish=biaisCheck.includes("Baissier")||biaisCheck.includes("Bearish");
+    const biaisMismatch=biaisCheck&&((isBullish&&form.direction==="SELL")||(isBearish&&form.direction==="BUY"));
+    if(biaisMismatch){
+      setNotif({txt:lang==="fr"?`Biais ${biaisCheck} avec un ${form.direction}.\nTu trades à contre-sens de ton analyse.`:`Bias ${biaisCheck} with a ${form.direction}.\nYou're trading against your own analysis.`,color:"#f0b429",icon:"warn",lang});
+    } else if(editingId===null&&config.notifOn){const adv=getAdvice(ut,updated,lang,neon);if(adv)setNotif({txt:adv.txt,color:adv.c,icon:adv.icon,trade:ut,lang});}
+    setSaved(true);setTimeout(()=>setSaved(false),2000);
+    setView(editingId!==null?"history":"dashboard");scrollToTop();
+  };
+
+  const startEdit=x=>{setForm({date:x.date,asset:x.asset,direction:x.direction,checklist:[...x.checklist],result:x.result,pnlPreset:PNL_PRESETS.includes(x.pnlPct)?x.pnlPct:"",pnlManual:PNL_PRESETS.includes(x.pnlPct)?"":x.pnlPct,notes:x.notes||"",rejetScore:x.rejetScore||0,time:x.time||"",screenshot:x.screenshot||"",isRevenge:x.isRevenge||false,slDirection:x.slDirection||"",checkin:x.checkin||{humeur:"",biais:""}});setEditingId(x.id);setView("log");};
+  const cancelEdit=()=>{setForm(emptyForm(config.defaultAsset||"XAU/USD"));setEditingId(null);setView("history");scrollToTop();};
+  const deleteTrade=id=>{setTrades(u=>u.filter(x=>x.id!==id));setConfirmDeleteId(null);};
+  const handleReset=()=>{setTrades([]);setNoTrades([]);setPhases([]);setShowReset(false);};
+
+  const histFiltered=trades.filter(x=>(histFilter==="ALL"||x.result===histFilter)&&(histAsset==="ALL"||x.asset===histAsset));
+  const mergedHistory=[...histFiltered.map(x=>({...x,_type:"trade"})),...(showNoTrades?noTrades.map(x=>({...x,_type:"notrade"})):[])].sort((a,b)=>new Date(b.date)-new Date(a.date)||b.id-a.id);
+  const editingTrade=editingId!==null?trades.find(x=>x.id===editingId):null;
+  const allAssets=config.customAssets||PRESET_ASSETS;
+  const humeurPills=HUMEUR_PILLS[lang]||HUMEUR_PILLS.fr;
+  const biaisPills=BIAIS_PILLS[lang]||BIAIS_PILLS.fr;
+
+  if(phase==="onboarding") return <><CSS neon={neon}/><Onboarding onDone={l=>{setLang(l);setPhase("login");}}/></>;
+  if(phase==="login") return <LoginScreen onLogin={u=>{if(u.lang)setLang(u.lang);setPhase("setup");}} lang={lang} setLang={setLang}/>;
+  if(phase==="setup") return <><CSS neon={neon}/><GuidedSetup onDone={cfg=>{setConfig(c=>({...c,...cfg}));setForm(emptyForm(cfg.defaultAsset||"XAU/USD"));setPhase("app");}} lang={lang}/></>;
 
   return (
-    <div className="grid-bg" style={{background:"#080f08",minHeight:"100vh",color:"#c8e6c8",fontFamily:MONO,maxWidth:480,margin:"0 auto",paddingBottom:80}}>
-      <CSS/>
+    <div ref={pageRef} className="grid-bg" style={{background:"#080f08",minHeight:"100vh",color:"#c8e6c8",fontFamily:MONO,maxWidth:480,margin:"0 auto",paddingBottom:80,overflowY:"auto",height:"100vh"}}>
+      <CSS neon={neon}/>
+      {notif&&<NotifCard notif={notif} onClose={()=>setNotif(null)}/>}
+      {showWeeklyRecap&&<WeeklyRecapModal trades={trades} lang={lang} neon={neon} onClose={()=>setShowWeeklyRecap(false)}/>}
 
-      {/* HEADER */}
-      <div style={{padding:"16px 20px 10px",borderBottom:"1px solid rgba(0,255,157,0.1)",background:"rgba(8,15,8,0.7)",backdropFilter:"blur(8px)"}}>
+      <div style={{padding:"16px 20px 10px",borderBottom:`1px solid ${neon}1a`,background:"rgba(8,15,8,0.7)",backdropFilter:"blur(8px)"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <div>
-            <Logo size="sm"/>
-            <div style={{fontSize:10,color:"#3a5a3a",marginTop:4}}>{config.strategyName}</div>
-          </div>
+          <div><Logo size="sm" neon={neon}/><div style={{fontSize:10,color:"#3a5a3a",marginTop:4}}>{config.strategyName}</div></div>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
-            {total>0&&<div style={{textAlign:"right"}}>
-              <div style={{fontSize:12,color:winRate>=50?"#00ff9d":"#ff4d4d",fontWeight:700,fontFamily:MONO}}>{winRate}% WR</div>
-              <div style={{fontSize:11,color:totalPnl>=0?"#00ff9d":"#ff4d4d",fontFamily:MONO}}>{fmtPct(totalPnl)}</div>
-            </div>}
-            <button onClick={()=>setShowExport(true)} className="btn" style={{background:"rgba(0,255,157,0.06)",border:"1px solid rgba(0,255,157,0.15)",borderRadius:8,padding:"7px 11px",color:"#5a7a5a",fontSize:13}}>↓</button>
+            {total>0&&<div style={{textAlign:"right"}}><div style={{fontSize:12,color:winRate>=50?neon:"#ff4d4d",fontWeight:700,fontFamily:MONO}}>{winRate}% WR</div><div style={{fontSize:11,color:totalPnl>=0?neon:"#ff4d4d",fontFamily:MONO}}>{fmtPct(totalPnl)}</div></div>}
+            <button onClick={()=>setShowExport(true)} className="btn" style={{background:`${neon}0f`,border:`1px solid ${neon}26`,borderRadius:8,padding:"7px 11px",color:`${neon}99`,fontSize:13}}>↓</button>
           </div>
         </div>
-        {pnlProgress!==null&&(
-          <div style={{marginTop:6,height:2,background:"#1e2a1e",borderRadius:2,overflow:"hidden"}}>
-            <div style={{width:`${pnlProgress}%`,height:"100%",background:totalPnl>=parseFloat(config.pnlTarget)?"#00ff9d":"#00ff9d55",borderRadius:2,transition:"width 0.5s"}}/>
-          </div>
-        )}
       </div>
 
-      {/* NAV */}
-      <div style={{display:"flex",gap:6,padding:"10px 20px",borderBottom:"1px solid rgba(0,255,157,0.08)"}}>
-        {[["dashboard","STATS"],["log",editingId?"✏ ÉDITION":"+ TRADE"],["history","HISTORIQUE"],["settings","⚙"]].map(([v,l])=>(
-          <button key={v} className="btn" onClick={()=>{if(editingId&&v!=="log")cancelEdit();else setView(v);}}
-            style={{background:view===v?(editingId&&v==="log"?"rgba(240,180,41,0.15)":"rgba(0,255,157,0.12)"):"transparent",border:`1px solid ${view===v?(editingId&&v==="log"?"#f0b429":"#00ff9d"):"rgba(0,255,157,0.15)"}`,color:view===v?(editingId&&v==="log"?"#f0b429":"#00ff9d"):"#3a5a3a",borderRadius:6,padding:v==="settings"?"7px 12px":"7px 0",fontSize:11,fontWeight:700,letterSpacing:1,fontFamily:MONO,flex:v==="settings"?0:1}}>{l}</button>
+      <div style={{display:"flex",gap:6,padding:"10px 20px",borderBottom:`1px solid ${neon}14`}}>
+        {[["dashboard",t.stats],["log",editingId?t.editLabel:`+ ${t.addTrade.replace("+ ","")}`],["history",t.history],["settings",t.settings]].map(([v,l])=>(
+          <button key={v} className="btn" onClick={()=>{if(editingId&&v!=="log")cancelEdit();else{setView(v);scrollToTop();}}}
+            style={{background:view===v?(editingId&&v==="log"?"rgba(240,180,41,0.15)":`${neon}1a`):"transparent",border:`1px solid ${view===v?(editingId&&v==="log"?"#f0b429":neon):`${neon}26`}`,color:view===v?(editingId&&v==="log"?"#f0b429":neon):"#3a5a3a",borderRadius:6,padding:v==="settings"?"7px 12px":"7px 0",fontSize:11,fontWeight:700,letterSpacing:1,fontFamily:MONO,flex:v==="settings"?0:1}}>{l}</button>
         ))}
       </div>
 
-      {/* DASHBOARD */}
       {view==="dashboard"&&(
         <div className="fi" style={{padding:20}}>
-          <StreakBadge trades={pf}/>
-          <AdviceCard advice={lastAdvice} onClose={()=>setLastAdvice(null)}/>
+          <StreakBadge trades={pf} neon={neon} lang={lang}/>
           {trades.length>0&&(
-            <div className="row" onClick={()=>setDetailTrade(trades[0])}
-              style={{background:"rgba(0,255,157,0.03)",border:`1px solid ${rc(trades[0].result)}35`,borderRadius:10,padding:14,marginBottom:12,borderLeft:`3px solid ${rc(trades[0].result)}`}}>
+            <div style={{display:"flex",gap:4,background:"#0a150a",borderRadius:8,padding:3,marginBottom:12}}>
+              {[["phase",t.phaseEnCours],["all",t.toutHistorique]].map(([m,l])=>(
+                <button key={m} onClick={()=>setStatsMode(m)} className="btn" style={{flex:1,padding:"7px 0",borderRadius:6,fontSize:10,fontWeight:700,fontFamily:MONO,background:statsMode===m?neon:"transparent",color:statsMode===m?"#080f08":"#3a5a3a",border:"none",transition:"all 0.2s"}}>{l}</button>
+              ))}
+            </div>
+          )}
+          {total>0&&(
+            <div style={{display:"flex",gap:10,marginBottom:12}}>
+              <div style={{flex:1,background:`${neon}0a`,border:`1px solid ${neon}22`,borderRadius:12,padding:"14px 16px",boxShadow:`0 4px 24px ${winRate>=50?neon+"18":"#ff4d4d18"}, inset 0 1px 0 ${neon}15`}}>
+                <div style={{fontSize:9,color:"#5a7a5a",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>{t.winRate}</div>
+                <div style={{fontSize:30,fontWeight:800,fontFamily:MONO,lineHeight:1,textShadow:`0 0 28px ${winRate>=50?neon+"cc":"#ff4d4dcc"}, 0 2px 8px rgba(0,0,0,0.6)`,color:winRate>=50?neon:"#ff4d4d"}}>{winRate}%</div>
+                <div style={{fontSize:10,color:"#5a7a5a",marginTop:6}}>{wins}W · {losses}L · {total-wins-losses}BE</div>
+              </div>
+              <div style={{flex:1,background:`${neon}0a`,border:`1px solid ${neon}22`,borderRadius:12,padding:"14px 16px",boxShadow:`0 4px 24px ${totalPnl>=0?neon+"18":"#ff4d4d18"}, inset 0 1px 0 ${neon}15`}}>
+                <div style={{fontSize:9,color:"#5a7a5a",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>{t.totalPnl}</div>
+                <div style={{fontSize:30,fontWeight:800,fontFamily:MONO,lineHeight:1,textShadow:`0 0 28px ${totalPnl>=0?neon+"cc":"#ff4d4dcc"}, 0 2px 8px rgba(0,0,0,0.6)`,color:totalPnl>=0?neon:"#ff4d4d"}}>{fmtPct(totalPnl)}</div>
+                <div style={{fontSize:10,color:"#5a7a5a",marginTop:6}}>{total} {t.trades}</div>
+              </div>
+            </div>
+          )}
+          {total>=2&&discScore!==null&&(
+            <div style={{background:`${scoreColor}08`,border:`1px solid ${scoreColor}30`,borderRadius:12,padding:"13px 16px",marginBottom:12,boxShadow:`0 4px 32px ${scoreColor}14, inset 0 1px 0 ${scoreColor}20`}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div>
+                  <div style={{fontSize:9,color:"#5a7a5a",letterSpacing:2,fontFamily:MONO,marginBottom:4}}>{t.disciplineLabel}</div>
+                  <div style={{fontSize:36,fontWeight:800,fontFamily:MONO,lineHeight:1,textShadow:`0 0 32px ${scoreColor}dd, 0 0 8px ${scoreColor}88, 0 2px 10px rgba(0,0,0,0.7)`,color:scoreColor}}>{discScore}<span style={{fontSize:15,color:"#3a5a3a",textShadow:"none"}}>/10</span></div>
+                  <div style={{fontSize:9,color:scoreColor,marginTop:3,letterSpacing:1}}>{discScore>=8?t.disciplineExcellent:discScore>=6?t.disciplineGood:discScore>=4?t.disciplineWork:t.disciplinePoor}</div>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:8,minWidth:130}}>
+                  {[{l:t.conformiteLabel,v:Math.round(pf.filter(x=>x.conforming).length/total*100),c:neon},{l:t.sansRevengeLabel,v:Math.round(pf.filter(x=>!x.isRevenge).length/total*100),c:pf.filter(x=>x.isRevenge).length===0?neon:"#f0b429"}].map(({l,v,c})=>(
+                    <div key={l}>
+                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:8,color:"#5a7a5a",fontFamily:MONO}}>{l}</span><span style={{fontSize:9,fontWeight:700,color:c,fontFamily:MONO}}>{v}%</span></div>
+                      <div style={{height:3,background:"#1e2a1e",borderRadius:2}}><div style={{width:`${v}%`,height:"100%",background:c,borderRadius:2,transition:"width 0.5s"}}/></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          {trades.length>0&&(
+            <div className="row" onClick={()=>setDetailTrade(trades[0])} style={{background:`${rc(trades[0].result,neon)}0a`,border:`1px solid ${rc(trades[0].result,neon)}35`,borderRadius:10,padding:14,marginBottom:12,borderLeft:`3px solid ${rc(trades[0].result,neon)}`}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>Dernier trade · {trades[0].date}{trades[0].time?" · "+trades[0].time:""}</div>
+                  <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>{t.lastTrade} · {trades[0].date}{trades[0].time?" · "+trades[0].time:""}</div>
                   <div style={{fontSize:14,fontWeight:700,color:"#c8e6c8"}}>{trades[0].asset} · {trades[0].direction}</div>
                   <div style={{display:"flex",gap:8,marginTop:6,alignItems:"center",flexWrap:"wrap"}}>
-                    <span style={{fontSize:13,fontWeight:700,color:rc(trades[0].result)}}>{trades[0].result}</span>
-                    {trades[0].pnlPct!==""&&parseFloat(trades[0].pnlPct)!==0&&<span style={{fontSize:12,color:parseFloat(trades[0].pnlPct)>0?"#00ff9d":"#ff4d4d",fontWeight:600}}>{fmtPct(parseFloat(trades[0].pnlPct))}</span>}
-                    <span style={{fontSize:10,padding:"2px 7px",borderRadius:4,background:trades[0].conforming?"rgba(0,255,157,0.1)":"rgba(255,77,77,0.1)",color:trades[0].conforming?"#00ff9d":"#ff4d4d",border:`1px solid ${trades[0].conforming?"rgba(0,255,157,0.2)":"rgba(255,77,77,0.2)"}`}}>
-                      {trades[0].conforming?"✓ conforme":"✗ non-conforme"}
-                    </span>
+                    <span style={{fontSize:13,fontWeight:700,color:rc(trades[0].result,neon),textShadow:`0 0 12px ${rc(trades[0].result,neon)}99`}}>{trades[0].result}</span>
+                    {trades[0].pnlPct!==""&&parseFloat(trades[0].pnlPct)!==0&&<span style={{fontSize:12,color:parseFloat(trades[0].pnlPct)>0?neon:"#ff4d4d",fontWeight:600,textShadow:`0 0 10px ${parseFloat(trades[0].pnlPct)>0?neon+"88":"#ff4d4d88"}`}}>{fmtPct(parseFloat(trades[0].pnlPct))}</span>}
+                    {trades[0].isRevenge&&<span style={{fontSize:10,padding:"2px 7px",borderRadius:4,background:"rgba(255,77,77,0.15)",color:"#ff4d4d",border:"1px solid rgba(255,77,77,0.3)"}}>REVENGE</span>}
+                    <span style={{fontSize:10,padding:"2px 7px",borderRadius:4,background:trades[0].conforming?`${neon}1a`:"rgba(255,77,77,0.1)",color:trades[0].conforming?neon:"#ff4d4d",border:`1px solid ${trades[0].conforming?`${neon}35`:"rgba(255,77,77,0.2)"}`}}>{trades[0].conforming?t.conformLabel:t.nonConformLabel}</span>
                   </div>
                 </div>
                 <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6,marginLeft:10}}>
-                  <ScoreRing score={trades[0].setupScore} max={trades[0].checklistMax||config.items.length} size={42} threshold={config.threshold}/>
-                  <button onClick={e=>{e.stopPropagation();startEdit(trades[0]);}} className="btn" style={{background:"rgba(0,255,157,0.06)",border:"1px solid rgba(0,255,157,0.15)",color:"#5aaa7a",borderRadius:6,padding:"3px 8px",fontSize:10,fontFamily:MONO}}>✏</button>
+                  <ScoreRing score={trades[0].setupScore} max={trades[0].checklistMax||config.items.length} size={42} threshold={config.threshold} neon={neon}/>
+                  <button onClick={e=>{e.stopPropagation();startEdit(trades[0]);}} className="btn" style={{background:`${neon}0f`,border:`1px solid ${neon}26`,color:`${neon}bb`,borderRadius:6,padding:"3px 8px",fontSize:10,fontFamily:MONO}}>✏</button>
                 </div>
               </div>
             </div>
           )}
-          <NoTradeButton onSave={saveNoTrade} alreadyDone={noTrades.some(x=>x.date===today())}/>
-          <div style={{display:"flex",gap:10,marginBottom:12}}>
-            <Stat label="Win Rate" value={`${winRate}%`} sub={`${wins}W · ${losses}L · ${total-wins-losses}BE`} color={winRate>=50?"#00ff9d":"#ff4d4d"}/>
-            <Stat label="P&L Total" value={fmtPct(totalPnl)} sub={`${total} trades`} color={totalPnl>=0?"#00ff9d":"#ff4d4d"}/>
-          </div>
-          {total>0&&<><ConformityBar trades={pf} threshold={config.threshold} maxItems={config.items.length}/><PerformanceChart trades={pf}/></>}
-          {total===0&&(
-            <div style={{textAlign:"center",padding:"40px 20px",color:"#2a3a2a"}}>
-              <div style={{display:"inline-block",marginBottom:20}}><Logo size="lg"/></div>
-              <div style={{fontSize:13,color:"#3a5a3a",marginBottom:8,fontWeight:700}}>Journal vide</div>
-              <div style={{fontSize:11,color:"#2a3a2a",marginBottom:24,lineHeight:1.6}}>Saisis ton premier trade pour commencer à mesurer ta performance.</div>
-              <button onClick={()=>setView("log")} className="btn" style={{background:"rgba(0,255,157,0.12)",border:"1px solid #00ff9d",color:"#00ff9d",borderRadius:10,padding:"12px 28px",fontSize:12,fontFamily:MONO,fontWeight:700}}>+ Saisir un trade</button>
-            </div>
-          )}
+          <NoTradeButton onSave={e=>setNoTrades(u=>[e,...u])} alreadyDone={noTrades.some(x=>x.date===today())} lang={lang} neon={neon}/>
+          {total>0&&<>
+            <AdvancedStats trades={pf} neon={neon} lang={lang}/>
+            <ConformityBar trades={pf} threshold={config.threshold} maxItems={config.items.length} neon={neon} lang={lang}/>
+            <PerformanceChart trades={pf} neon={neon} lang={lang}/>
+            {config.calendarOn&&<TradingCalendar trades={trades} neon={neon} lang={lang}/>}
+          </>}
+          {total===0&&<div style={{textAlign:"center",padding:"40px 20px"}}><div style={{display:"inline-block",marginBottom:20}}><Logo size="lg" neon={neon}/></div><div style={{fontSize:13,color:"#3a5a3a",marginBottom:8,fontWeight:700}}>{t.journalEmpty}</div><div style={{fontSize:11,color:"#2a3a2a",marginBottom:24,lineHeight:1.6}}>{t.journalEmptyDesc}</div><button onClick={()=>setView("log")} className="btn" style={{background:`${neon}1a`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:"12px 28px",fontSize:12,fontFamily:MONO,fontWeight:700}}>{t.firstTrade}</button></div>}
         </div>
       )}
 
-      {/* LOG */}
       {view==="log"&&(
         <div className="fi" style={{padding:20}}>
-          {editingId!==null&&editingTrade&&(
-            <div style={{background:"rgba(240,180,41,0.08)",border:"1px solid rgba(240,180,41,0.3)",borderRadius:10,padding:"12px 14px",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <div><div style={{fontSize:11,color:"#f0b429",fontWeight:700,marginBottom:2}}>✏ Modification du trade</div><div style={{fontSize:10,color:"#5a7a5a"}}>{editingTrade.asset} · {editingTrade.date}</div></div>
-              <button onClick={cancelEdit} className="btn" style={{background:"transparent",border:"1px solid rgba(240,180,41,0.4)",color:"#f0b429",borderRadius:6,padding:"5px 10px",fontSize:10,fontFamily:MONO,fontWeight:700}}>ANNULER</button>
-            </div>
-          )}
-          {editingId===null&&<div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:16,textTransform:"uppercase"}}>Nouveau trade</div>}
+          {isRevengeNow&&<div style={{background:"rgba(255,77,77,0.1)",border:"1px solid rgba(255,77,77,0.4)",borderRadius:10,padding:"12px 14px",marginBottom:16}}><div style={{fontSize:12,color:"#ff4d4d",fontFamily:MONO,fontWeight:700}}>{t.revengeWarning}</div></div>}
+          {editingId!==null&&editingTrade&&<div style={{background:"rgba(240,180,41,0.08)",border:"1px solid rgba(240,180,41,0.3)",borderRadius:10,padding:"12px 14px",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style={{fontSize:11,color:"#f0b429",fontWeight:700,marginBottom:2}}>{t.modifyTrade}</div><div style={{fontSize:10,color:"#5a7a5a"}}>{editingTrade.asset} · {editingTrade.date}</div></div><button onClick={cancelEdit} className="btn" style={{background:"transparent",border:"1px solid rgba(240,180,41,0.4)",color:"#f0b429",borderRadius:6,padding:"5px 10px",fontSize:10,fontFamily:MONO,fontWeight:700}}>{t.cancelEdit}</button></div>}
+          {editingId===null&&<div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:16,textTransform:"uppercase"}}>{t.newTrade}</div>}
+
           <div style={{marginBottom:14}}>
-            <div style={{display:"flex",gap:8}}>
-              <input type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} style={{...inputSt,marginBottom:0,flex:2}}/>
-              <input type="time" value={form.time} onChange={e=>setForm({...form,time:e.target.value})} style={{...inputSt,marginBottom:0,flex:1,color:form.time?"#c8e6c8":"#3a5a3a"}}/>
-            </div>
-            <div style={{fontSize:9,color:"#2a4a2a",marginTop:5}}>⏱ Heure d'entrée (optionnel)</div>
-          </div>
-          <div style={{display:"flex",gap:8,marginBottom:10}}>
-            <select value={form.asset} onChange={e=>setForm({...form,asset:e.target.value})} style={{flex:2,background:"#0d1a0d",border:"1px solid rgba(0,255,157,0.2)",borderRadius:8,color:"#c8e6c8",padding:"12px",fontSize:12,fontFamily:MONO,outline:"none"}}>
-              {ALL_ASSETS.map(a=><option key={a}>{a}</option>)}
-            </select>
-            {["BUY","SELL"].map(d=>(
-              <button key={d} onClick={()=>setForm({...form,direction:d})} className="btn"
-                style={{flex:1,padding:10,background:form.direction===d?(d==="BUY"?"rgba(0,255,157,0.2)":"rgba(255,77,77,0.2)"):"#0d1a0d",border:`1px solid ${form.direction===d?(d==="BUY"?"#00ff9d":"#ff4d4d"):"rgba(0,255,157,0.2)"}`,color:form.direction===d?(d==="BUY"?"#00ff9d":"#ff4d4d"):"#3a5a3a",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO}}>{d}</button>
-            ))}
-          </div>
-          <div style={{background:"#0d1a0d",border:"1px solid rgba(0,255,157,0.15)",borderRadius:10,padding:14,marginBottom:10}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-              <div>
-                <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2}}>CHECKLIST SETUP</div>
-                <div style={{fontSize:10,marginTop:4,color:form.checklist.length>=config.threshold?"#00ff9d":"#ff4d4d"}}>
-                  {form.checklist.length>=config.threshold?"✓ Conforme":`⚠ ${config.threshold-form.checklist.length} critère(s) manquant(s)`}
+            <button onClick={()=>setCheckinOpen(!checkinOpen)} className="btn" style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",background:checkinOpen?`${neon}0d`:"transparent",border:`1px solid ${checkinOpen?neon:`${neon}26`}`,borderRadius:checkinOpen?"10px 10px 0 0":10,color:checkinOpen?neon:"#5a7a5a",fontFamily:MONO,fontSize:12}}>
+              <span>{checkinOpen?"▼":"▶"} {t.checkinToggle}{(form.checkin.humeur||form.checkin.biais)?" ✓":""}</span>
+              <span style={{fontSize:9,color:"#3a5a3a"}}>{t.optional}</span>
+            </button>
+            {checkinOpen&&(
+              <div style={{background:"#0d1a0d",border:`1px solid ${neon}26`,borderTop:"none",borderRadius:"0 0 10px 10px",padding:14}}>
+                <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:8}}>{t.humeurLabel}</div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
+                  {humeurPills.map(h=>(
+                    <button key={h} onClick={()=>setForm(f=>({...f,checkin:{...f.checkin,humeur:f.checkin.humeur===h?"":h}}))} className="btn"
+                      style={{background:form.checkin.humeur===h?`${neon}22`:"#080f08",border:`1px solid ${form.checkin.humeur===h?neon:`${neon}26`}`,color:form.checkin.humeur===h?neon:"#5a7a5a",borderRadius:8,padding:"7px 12px",fontSize:12,fontFamily:MONO}}>{h}</button>
+                  ))}
+                </div>
+                <input value={humeurPills.includes(form.checkin.humeur)?"":form.checkin.humeur} onChange={e=>setForm(f=>({...f,checkin:{...f.checkin,humeur:e.target.value}}))} placeholder={t.humeurPlaceholder} style={{...inSt,marginBottom:12,fontSize:12}}/>
+                <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:8}}>{t.biaisLabel}</div>
+                <div style={{display:"flex",gap:6}}>
+                  {biaisPills.map(b=>(
+                    <button key={b} onClick={()=>setForm(f=>({...f,checkin:{...f.checkin,biais:f.checkin.biais===b?"":b}}))} className="btn"
+                      style={{flex:1,background:form.checkin.biais===b?`${neon}22`:"#080f08",border:`1px solid ${form.checkin.biais===b?neon:`${neon}26`}`,color:form.checkin.biais===b?neon:"#5a7a5a",borderRadius:8,padding:"8px 0",fontSize:12,fontFamily:MONO}}>{b}</button>
+                  ))}
                 </div>
               </div>
-              <ScoreRing score={form.checklist.length} max={config.items.length} threshold={config.threshold}/>
+            )}
+          </div>
+
+          <div style={{marginBottom:14}}>
+            <div style={{display:"flex",gap:8}}><input type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} style={{...inSt,marginBottom:0,flex:2}}/><input type="time" value={form.time} onChange={e=>setForm({...form,time:e.target.value})} style={{...inSt,marginBottom:0,flex:1,color:form.time?"#c8e6c8":"#3a5a3a"}}/></div>
+            <div style={{fontSize:9,color:"#2a4a2a",marginTop:5}}>{t.entryTime}</div>
+          </div>
+          <div style={{display:"flex",gap:8,marginBottom:10}}>
+            <select value={form.asset} onChange={e=>setForm({...form,asset:e.target.value})} style={{flex:2,background:"#0d1a0d",border:`1px solid ${neon}35`,borderRadius:8,color:"#c8e6c8",padding:"12px",fontSize:12,fontFamily:MONO,outline:"none"}}>{allAssets.map(a=><option key={a}>{a}</option>)}</select>
+            {["BUY","SELL"].map(d=><button key={d} onClick={()=>setForm({...form,direction:d})} className="btn" style={{flex:1,padding:10,background:form.direction===d?(d==="BUY"?`${neon}33`:"rgba(255,77,77,0.2)"):"#0d1a0d",border:`1px solid ${form.direction===d?(d==="BUY"?neon:"#ff4d4d"):`${neon}35`}`,color:form.direction===d?(d==="BUY"?neon:"#ff4d4d"):"#3a5a3a",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO}}>{d}</button>)}
+          </div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",background:"rgba(255,77,77,0.06)",border:"1px solid rgba(255,77,77,0.15)",borderRadius:8,marginBottom:10}}>
+            <span style={{fontSize:12,color:form.isRevenge||isRevengeNow?"#ff4d4d":"#5a7a5a",fontFamily:MONO}}>{t.revengeLabel} {(form.isRevenge||isRevengeNow)?"⚠️":""}</span>
+            <button onClick={()=>setForm({...form,isRevenge:!form.isRevenge})} className="btn" style={{width:44,height:24,borderRadius:12,background:(form.isRevenge||isRevengeNow)?"rgba(255,77,77,0.3)":"#1e2a1e",border:`1px solid ${(form.isRevenge||isRevengeNow)?"#ff4d4d":"rgba(255,77,77,0.2)"}`,position:"relative",transition:"all 0.2s"}}>
+              <div style={{width:16,height:16,borderRadius:"50%",background:(form.isRevenge||isRevengeNow)?"#ff4d4d":"#3a5a3a",position:"absolute",top:3,left:(form.isRevenge||isRevengeNow)?24:4,transition:"all 0.2s"}}/>
+            </button>
+          </div>
+          <div style={{background:"#0d1a0d",border:`1px solid ${neon}26`,borderRadius:10,padding:14,marginBottom:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <div><div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2}}>{t.checklistSetup}</div><div style={{fontSize:10,marginTop:4,color:form.checklist.length>=config.threshold?neon:"#ff4d4d"}}>{form.checklist.length>=config.threshold?t.conform:`⚠ ${config.threshold-form.checklist.length} ${t.missing}`}</div></div>
+              <ScoreRing score={form.checklist.length} max={config.items.length} threshold={config.threshold} neon={neon}/>
             </div>
             {config.items.map((item,i)=>(
-              <label key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:"1px solid rgba(0,255,157,0.05)",cursor:"pointer"}}>
+              <label key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:`1px solid ${neon}08`,cursor:"pointer"}}>
                 <input type="checkbox" checked={form.checklist.includes(i)} onChange={e=>setForm({...form,checklist:e.target.checked?[...form.checklist,i]:form.checklist.filter(x=>x!==i)})}/>
                 <span style={{fontSize:12,color:form.checklist.includes(i)?"#c8e6c8":"#3a5a3a"}}>{item}</span>
               </label>
             ))}
           </div>
-          <div style={{background:"#0d1a0d",border:"1px solid rgba(0,255,157,0.12)",borderRadius:10,padding:"12px 14px",marginBottom:10}}>
+          <div style={{background:"#0d1a0d",border:`1px solid ${neon}1a`,borderRadius:10,padding:"12px 14px",marginBottom:10}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-              <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2}}>QUALITÉ DU REJET <span style={{color:"#2a4a2a"}}>(optionnel)</span></div>
-              {form.rejetScore>0&&<span style={{fontSize:15,fontWeight:800,color:form.rejetScore>=8?"#00ff9d":form.rejetScore>=5?"#f0b429":"#ff4d4d",fontFamily:MONO}}>{form.rejetScore}/10</span>}
+              <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2}}>{t.rejectQuality} <span style={{color:"#2a4a2a"}}>{t.optional}</span></div>
+              {form.rejetScore>0&&<span style={{fontSize:15,fontWeight:800,color:form.rejetScore>=8?neon:form.rejetScore>=5?"#f0b429":"#ff4d4d",fontFamily:MONO}}>{form.rejetScore}/10</span>}
             </div>
             <div style={{display:"flex",gap:3}}>
               {[1,2,3,4,5,6,7,8,9,10].map(n=>(
-                <button key={n} onClick={()=>setForm({...form,rejetScore:form.rejetScore===n?0:n})} className="btn"
-                  style={{flex:1,padding:"6px 0",borderRadius:5,fontSize:11,fontWeight:700,fontFamily:MONO,background:form.rejetScore>=n?(n>=8?"rgba(0,255,157,0.2)":n>=5?"rgba(240,180,41,0.2)":"rgba(255,77,77,0.2)"):"#0d1a0d",border:`1px solid ${form.rejetScore>=n?(n>=8?"#00ff9d":n>=5?"#f0b429":"#ff4d4d"):"rgba(0,255,157,0.08)"}`,color:form.rejetScore>=n?(n>=8?"#00ff9d":n>=5?"#f0b429":"#ff4d4d"):"#2a3a2a"}}>{n}</button>
+                <button key={n} onClick={()=>setForm({...form,rejetScore:form.rejetScore===n?0:n})} className="btn" style={{flex:1,padding:"6px 0",borderRadius:5,fontSize:11,fontWeight:700,fontFamily:MONO,background:form.rejetScore>=n?(n>=8?`${neon}33`:n>=5?"rgba(240,180,41,0.2)":"rgba(255,77,77,0.2)"):"#0d1a0d",border:`1px solid ${form.rejetScore>=n?(n>=8?neon:n>=5?"#f0b429":"#ff4d4d"):`${neon}10`}`,color:form.rejetScore>=n?(n>=8?neon:n>=5?"#f0b429":"#ff4d4d"):"#2a3a2a"}}>{n}</button>
               ))}
             </div>
           </div>
-          <div style={{display:"flex",gap:8,marginBottom:10}}>
-            {["WIN","LOSS","BE"].map(r=>(
-              <button key={r} onClick={()=>setForm({...form,result:r})} className="btn"
-                style={{flex:1,background:form.result===r?`${rc(r)}22`:"#0d1a0d",border:`1px solid ${form.result===r?rc(r):"rgba(0,255,157,0.15)"}`,color:form.result===r?rc(r):"#3a5a3a",borderRadius:8,padding:10,fontSize:12,fontWeight:700,fontFamily:MONO}}>{r}</button>
-            ))}
-          </div>
-          {/* P&L presets + manuel même ligne */}
+          <div style={{display:"flex",gap:8,marginBottom:10}}>{["WIN","LOSS","BE"].map(r=><button key={r} onClick={()=>setForm({...form,result:r,slDirection:r!=="LOSS"?"":form.slDirection})} className="btn" style={{flex:1,background:form.result===r?`${rc(r,neon)}22`:"#0d1a0d",border:`1px solid ${form.result===r?rc(r,neon):`${neon}26`}`,color:form.result===r?rc(r,neon):"#3a5a3a",borderRadius:8,padding:10,fontSize:12,fontWeight:700,fontFamily:MONO}}>{r}</button>)}</div>
+          {form.result==="LOSS"&&(
+            <div style={{background:"rgba(255,77,77,0.06)",border:"1px solid rgba(255,77,77,0.15)",borderRadius:8,padding:"10px 12px",marginBottom:10}}>
+              <div style={{fontSize:9,color:"#ff4d4d",letterSpacing:2,marginBottom:8}}>{t.slDirectionLabel} <span style={{color:"#3a4a3a"}}>{t.optional}</span></div>
+              <div style={{display:"flex",gap:8}}>
+                {[["with",t.slWith,neon],["against",t.slAgainst,"#ff4d4d"]].map(([v,l,c])=>(
+                  <button key={v} onClick={()=>setForm({...form,slDirection:form.slDirection===v?"":v})} className="btn" style={{flex:1,padding:"8px 0",borderRadius:7,fontSize:11,fontFamily:MONO,fontWeight:700,background:form.slDirection===v?`${c}22`:"#0d1a0d",border:`1px solid ${form.slDirection===v?c:`${c}26`}`,color:form.slDirection===v?c:"#3a5a3a"}}>{l}</button>
+                ))}
+              </div>
+            </div>
+          )}
           <div style={{marginBottom:pnlIncoherent?4:10}}>
-            <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:8}}>P&L %</div>
+            <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:8}}>{t.pnl}</div>
             <div style={{display:"flex",gap:4,alignItems:"center"}}>
               {PNL_PRESETS.map(v=>(
-                <button key={v} onClick={()=>setForm({...form,pnlPreset:v,pnlManual:""})} className="btn"
-                  style={{padding:"8px 0",borderRadius:6,fontSize:11,fontWeight:700,fontFamily:MONO,flex:1,
-                    background:form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?"rgba(0,255,157,0.2)":parseFloat(v)<0?"rgba(255,77,77,0.2)":"rgba(240,180,41,0.2)"):"#0d1a0d",
-                    border:`1px solid ${form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?"#00ff9d":parseFloat(v)<0?"#ff4d4d":"#f0b429"):"rgba(0,255,157,0.1)"}`,
-                    color:form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?"#00ff9d":parseFloat(v)<0?"#ff4d4d":"#f0b429"):"#3a5a3a"}}>{v}%</button>
+                <button key={v} onClick={()=>setForm({...form,pnlPreset:v,pnlManual:""})} className="btn" style={{padding:"8px 0",borderRadius:6,fontSize:11,fontWeight:700,fontFamily:MONO,flex:1,background:form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?`${neon}33`:parseFloat(v)<0?"rgba(255,77,77,0.2)":"rgba(240,180,41,0.2)"):"#0d1a0d",border:`1px solid ${form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?neon:parseFloat(v)<0?"#ff4d4d":"#f0b429"):`${neon}14`}`,color:form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?neon:parseFloat(v)<0?"#ff4d4d":"#f0b429"):"#3a5a3a"}}>{v}%</button>
               ))}
-              <input type="number" step="0.1" placeholder="…" value={form.pnlManual}
-                onChange={e=>setForm({...form,pnlManual:e.target.value,pnlPreset:""})}
-                style={{width:52,background:form.pnlManual?"#0d2a0d":"#0d1a0d",border:`1px solid ${form.pnlManual?"rgba(0,255,157,0.4)":"rgba(0,255,157,0.1)"}`,borderRadius:6,color:form.pnlManual?(parseFloat(form.pnlManual)>=0?"#00ff9d":"#ff4d4d"):"#3a5a3a",padding:"8px 4px",fontSize:10,fontFamily:MONO,outline:"none",textAlign:"center",flexShrink:0}}/>
+              <input type="number" step="0.1" placeholder={t.manualPnl} value={form.pnlManual} onChange={e=>setForm({...form,pnlManual:e.target.value,pnlPreset:""})} style={{width:52,background:form.pnlManual?"#0d2a0d":"#0d1a0d",border:`1px solid ${form.pnlManual?`${neon}66`:`${neon}14`}`,borderRadius:6,color:form.pnlManual?(parseFloat(form.pnlManual)>=0?neon:"#ff4d4d"):"#3a5a3a",padding:"8px 4px",fontSize:10,fontFamily:MONO,outline:"none",textAlign:"center",flexShrink:0}}/>
             </div>
-            {pnlVal!==""&&<div style={{fontSize:11,color:parseFloat(pnlVal)>=0?"#00ff9d":"#ff4d4d",fontFamily:MONO,fontWeight:700,marginTop:5,textAlign:"right"}}>{fmtPct(parseFloat(pnlVal))}</div>}
+            {pnlVal!==""&&<div style={{fontSize:11,color:parseFloat(pnlVal)>=0?neon:"#ff4d4d",fontFamily:MONO,fontWeight:700,marginTop:5,textAlign:"right"}}>{fmtPct(parseFloat(pnlVal))}</div>}
           </div>
-          {pnlIncoherent&&<div style={{fontSize:10,color:"#f0b429",background:"rgba(240,180,41,0.08)",border:"1px solid rgba(240,180,41,0.2)",borderRadius:6,padding:"6px 10px",marginBottom:10}}>⚠ P&L incohérent avec {form.result}</div>}
-          <textarea placeholder="Notes comportementales, erreurs, observations..." value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} rows={3}
-            style={{width:"100%",background:"#0d1a0d",border:"1px solid rgba(0,255,157,0.15)",borderRadius:8,color:"#c8e6c8",padding:"12px",fontSize:12,fontFamily:MONO,resize:"none",marginBottom:10,outline:"none"}}/>
+          {pnlIncoherent&&<div style={{fontSize:10,color:"#f0b429",background:"rgba(240,180,41,0.08)",border:"1px solid rgba(240,180,41,0.2)",borderRadius:6,padding:"6px 10px",marginBottom:10}}>⚠ P&L {t.inconsistent} {form.result}</div>}
+          <textarea placeholder={t.notesPlaceholder} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} rows={3} style={{width:"100%",background:"#0d1a0d",border:`1px solid ${neon}26`,borderRadius:8,color:"#c8e6c8",padding:"12px",fontSize:12,fontFamily:MONO,resize:"none",marginBottom:10,outline:"none"}}/>
           <div style={{marginBottom:16}}>
-            <input type="file" ref={fileRef} accept="image/*" onChange={handleScreenshot}/>
-            <button onClick={()=>fileRef.current&&fileRef.current.click()}
-              style={{width:"100%",display:"flex",alignItems:"center",gap:8,cursor:"pointer",padding:"8px 12px",borderRadius:8,border:"1px dashed rgba(0,255,157,0.15)",color:form.screenshot?"#00ff9d":"#3a5a3a",fontSize:11,fontFamily:MONO,background:"transparent"}}>
-              📎 {form.screenshot?"Capture ajoutée ✓":"Ajouter une capture (optionnel)"}
-            </button>
-            {form.screenshot&&<div style={{display:"flex",gap:8,alignItems:"center",marginTop:8}}>
-              <img src={form.screenshot} alt="" style={{height:40,borderRadius:4,border:"1px solid rgba(0,255,157,0.15)"}}/>
-              <button onClick={()=>setForm({...form,screenshot:""})} style={{background:"transparent",border:"none",color:"#ff4d4d",fontSize:12,cursor:"pointer",fontFamily:MONO}}>✕ Supprimer</button>
-            </div>}
+            <input type="file" ref={fileRef} accept="image/*" onChange={e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setForm(fm=>({...fm,screenshot:ev.target.result}));r.readAsDataURL(f);}}/>
+            <button onClick={()=>fileRef.current&&fileRef.current.click()} style={{width:"100%",display:"flex",alignItems:"center",gap:8,cursor:"pointer",padding:"8px 12px",borderRadius:8,border:`1px dashed ${neon}26`,color:form.screenshot?neon:"#3a5a3a",fontSize:11,fontFamily:MONO,background:"transparent"}}>{form.screenshot?t.screenshotAdded:t.addScreenshot}</button>
+            {form.screenshot&&<div style={{display:"flex",gap:8,alignItems:"center",marginTop:8}}><img src={form.screenshot} alt="" style={{height:40,borderRadius:4,border:`1px solid ${neon}26`}}/><button onClick={()=>setForm({...form,screenshot:""})} style={{background:"transparent",border:"none",color:"#ff4d4d",fontSize:12,cursor:"pointer"}}>✕</button></div>}
           </div>
-          <button onClick={saveTrade} className="btn"
-            style={{width:"100%",background:editingId!==null?"rgba(240,180,41,0.18)":(form.checklist.length>=config.threshold?"rgba(0,255,157,0.18)":"rgba(255,77,77,0.1)"),border:`1px solid ${editingId!==null?"#f0b429":(form.checklist.length>=config.threshold?"#00ff9d":"#ff4d4d")}`,color:editingId!==null?"#f0b429":(form.checklist.length>=config.threshold?"#00ff9d":"#ff4d4d"),borderRadius:10,padding:14,fontSize:13,fontWeight:700,fontFamily:MONO}}>
-            {editingId!==null?"✓ METTRE À JOUR":form.checklist.length>=config.threshold?"✓ ENREGISTRER — Conforme":`⚠ ENREGISTRER — ${form.checklist.length}/${config.items.length} — Non-conforme`}
+          <button onClick={saveTrade} className="btn" style={{width:"100%",background:editingId!==null?"rgba(240,180,41,0.18)":(isRevengeNow||form.isRevenge?"rgba(255,77,77,0.15)":form.checklist.length>=config.threshold?`${neon}2a`:"rgba(255,77,77,0.1)"),border:`1px solid ${editingId!==null?"#f0b429":(isRevengeNow||form.isRevenge?"#ff4d4d":form.checklist.length>=config.threshold?neon:"#ff4d4d")}`,color:editingId!==null?"#f0b429":(isRevengeNow||form.isRevenge?"#ff4d4d":form.checklist.length>=config.threshold?neon:"#ff4d4d"),borderRadius:10,padding:14,fontSize:13,fontWeight:700,fontFamily:MONO}}>
+            {editingId!==null?t.updateBtn:isRevengeNow||form.isRevenge?"⚠️ REVENGE — Non-conforme":form.checklist.length>=config.threshold?t.saveConform:`${t.saveNonConform} — ${form.checklist.length}/${config.items.length}`}
           </button>
-          {saved&&<div style={{textAlign:"center",marginTop:10,color:"#00ff9d",fontSize:12}}>✓ {editingId!==null?"Trade modifié":"Trade enregistré"}</div>}
+          {saved&&<div style={{textAlign:"center",marginTop:10,color:neon,fontSize:12}}>{editingId!==null?t.tradeUpdated:t.tradeSaved}</div>}
         </div>
       )}
 
-      {/* HISTORIQUE */}
       {view==="history"&&(
         <div className="fi" style={{padding:20}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-            <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,textTransform:"uppercase"}}>Historique · {trades.length} trades</div>
-            {noTrades.length>0&&<button onClick={()=>setShowNoTrades(v=>!v)} className="btn" style={{background:"transparent",border:"1px solid rgba(255,255,255,0.1)",color:"#5a7a5a",borderRadius:6,padding:"4px 10px",fontSize:10,fontFamily:MONO}}>{showNoTrades?"⊘ Masquer":"⊘ Afficher"}</button>}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,textTransform:"uppercase"}}>{t.histTitle} · {trades.length} {t.trades}</div>
+            {noTrades.length>0&&<button onClick={()=>setShowNoTrades(v=>!v)} className="btn" style={{background:"transparent",border:`1px solid ${neon}18`,color:"#5a7a5a",borderRadius:6,padding:"4px 10px",fontSize:10,fontFamily:MONO}}>{showNoTrades?t.hideBtn:t.showBtn}</button>}
           </div>
           {trades.length>0&&<>
             <div style={{display:"flex",gap:6,marginBottom:8}}>
-              {[["ALL","Tous"],["WIN","WIN"],["LOSS","LOSS"],["BE","BE"]].map(([v,l])=>(
-                <button key={v} className="btn" onClick={()=>setHistoryFilter(v)}
-                  style={{flex:1,background:historyFilter===v?(v==="ALL"?"rgba(0,255,157,0.15)":`${rc(v)}22`):"transparent",border:`1px solid ${historyFilter===v?(v==="ALL"?"#00ff9d":rc(v)):"rgba(0,255,157,0.15)"}`,color:historyFilter===v?(v==="ALL"?"#00ff9d":rc(v)):"#3a5a3a",borderRadius:6,padding:"6px 0",fontSize:11,fontWeight:700,fontFamily:MONO}}>{l}</button>
+              {[["ALL",t.allLabel],["WIN","WIN"],["LOSS","LOSS"],["BE","BE"]].map(([v,l])=>(
+                <button key={v} className="btn" onClick={()=>setHistFilter(v)} style={{flex:1,background:histFilter===v?(v==="ALL"?`${neon}26`:`${rc(v,neon)}22`):"transparent",border:`1px solid ${histFilter===v?(v==="ALL"?neon:rc(v,neon)):`${neon}26`}`,color:histFilter===v?(v==="ALL"?neon:rc(v,neon)):"#3a5a3a",borderRadius:6,padding:"6px 0",fontSize:11,fontWeight:700,fontFamily:MONO}}>{l}</button>
               ))}
             </div>
             {usedAssets.length>1&&<div style={{display:"flex",gap:4,marginBottom:14,overflowX:"auto",paddingBottom:4}}>
-              {["ALL",...usedAssets].map(a=>(
-                <button key={a} className="btn" onClick={()=>setHistoryAsset(a)}
-                  style={{background:historyAsset===a?"rgba(0,255,157,0.12)":"transparent",border:`1px solid ${historyAsset===a?"rgba(0,255,157,0.4)":"rgba(0,255,157,0.1)"}`,color:historyAsset===a?"#00ff9d":"#3a5a3a",borderRadius:5,padding:"4px 8px",fontSize:9,fontWeight:700,fontFamily:MONO,whiteSpace:"nowrap"}}>{a}</button>
-              ))}
+              {["ALL",...usedAssets].map(a=><button key={a} className="btn" onClick={()=>setHistAsset(a)} style={{background:histAsset===a?`${neon}1a`:"transparent",border:`1px solid ${histAsset===a?`${neon}55`:`${neon}1a`}`,color:histAsset===a?neon:"#3a5a3a",borderRadius:5,padding:"4px 8px",fontSize:9,fontWeight:700,fontFamily:MONO,whiteSpace:"nowrap"}}>{a}</button>)}
             </div>}
           </>}
-          {trades.length===0&&<div style={{textAlign:"center",padding:40,color:"#2a3a2a",fontSize:12}}>Aucun trade enregistré.</div>}
-          {mergedHistory.map(x=>x._type==="notrade"?(
-            <div key={x.id} style={{background:"rgba(90,90,90,0.06)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"12px 14px",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <span style={{fontSize:16,color:"#4a5a4a"}}>⊘</span>
-                <div><div style={{fontSize:12,color:"#5a7a5a",fontFamily:MONO,fontWeight:700}}>Pas de trade</div><div style={{fontSize:10,color:"#3a4a3a",marginTop:2}}>{x.date}{x.reason?" · "+x.reason:""}</div></div>
-              </div>
-              <button onClick={()=>deleteNoTrade(x.id)} style={{background:"transparent",border:"none",color:"#2a3a2a",fontSize:12,cursor:"pointer"}}>✕</button>
-            </div>
-          ):(
-            <div key={x.id} className="row" onClick={()=>setDetailTrade(x)}
-              style={{background:"rgba(0,255,157,0.03)",border:"1px solid rgba(0,255,157,0.08)",borderRadius:10,padding:14,marginBottom:10,borderLeft:`3px solid ${rc(x.result)}`}}>
-              <div style={{display:"flex",justifyContent:"space-between"}}>
-                <div>
-                  <div style={{fontSize:13,fontWeight:700,color:"#c8e6c8"}}>{x.asset} · {x.direction}</div>
-                  <div style={{fontSize:10,color:"#3a5a3a",marginTop:3}}>{x.date}{x.time?" · "+x.time:""}</div>
-                </div>
-                <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                  <ScoreRing score={x.setupScore} max={x.checklistMax||config.items.length} size={42} threshold={config.threshold}/>
-                  <div style={{textAlign:"right"}}>
-                    <div style={{fontSize:14,fontWeight:700,color:rc(x.result)}}>{x.result}</div>
-                    {x.pnlPct!==""&&<div style={{fontSize:11,color:parseFloat(x.pnlPct)>=0?"#00ff9d":"#ff4d4d",fontWeight:600}}>{fmtPct(parseFloat(x.pnlPct))}</div>}
+          {trades.length===0&&<div style={{textAlign:"center",padding:40,color:"#2a3a2a",fontSize:12}}>{t.noTrades}</div>}
+          {(()=>{
+            const els=[];let lastPk=null;
+            for(const x of mergedHistory){
+              if(x._type==="trade"&&phases.length>0){
+                const pk=getPhaseKey(x.id);
+                if(lastPk!==null&&pk!==lastPk){
+                  const phStart=lastPk>0?phases[lastPk-1].date:"0000-00-00";
+                  const phEnd=lastPk<phases.length?phases[lastPk].date:"9999-99-99";
+                  const phTr=trades.filter(z=>z.date>=phStart&&z.date<phEnd);
+                  const phWR=phTr.length?Math.round(phTr.filter(z=>z.result==="WIN").length/phTr.length*100):0;
+                  const phPnl=phTr.reduce((s,z)=>s+(parseFloat(z.pnlPct)||0),0);
+                  els.push(<div key={`sep-${lastPk}`} style={{display:"flex",alignItems:"center",gap:8,margin:"4px 0 14px"}}><div style={{flex:1,height:1,background:`${neon}18`}}/><div style={{background:`${neon}08`,border:`1px solid ${neon}20`,borderRadius:8,padding:"5px 12px",textAlign:"center",flexShrink:0}}><span style={{fontSize:9,color:neon,fontFamily:MONO,fontWeight:700,letterSpacing:1}}>PHASE {lastPk+1}</span><span style={{fontSize:9,color:"#3a5a3a",fontFamily:MONO}}> · {t.phaseSince} {phStart}</span><span style={{fontSize:9,color:"#5a7a5a",fontFamily:MONO}}> · {phTr.length}t · {phWR}% · {fmtPct(phPnl)}</span></div><div style={{flex:1,height:1,background:`${neon}18`}}/></div>);
+                }
+                lastPk=pk;
+              }
+              if(x._type==="notrade"){
+                els.push(<div key={x.id} style={{background:"rgba(90,90,90,0.06)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"12px 14px",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:16,color:"#4a5a4a"}}>⊘</span><div><div style={{fontSize:12,color:"#5a7a5a",fontFamily:MONO,fontWeight:700}}>{t.noTradeToday}</div><div style={{fontSize:10,color:"#3a4a3a",marginTop:2}}>{x.date}{x.reason?" · "+x.reason:""}</div></div></div><button onClick={()=>setNoTrades(u=>u.filter(n=>n.id!==x.id))} style={{background:"transparent",border:"none",color:"#2a3a2a",fontSize:12,cursor:"pointer"}}>✕</button></div>);
+              } else {
+                els.push(
+                  <div key={x.id} className="row" onClick={()=>setDetailTrade(x)} style={{background:`${rc(x.result,neon)}0a`,border:`1px solid ${neon}14`,borderRadius:10,padding:14,marginBottom:10,borderLeft:`3px solid ${rc(x.result,neon)}`}}>
+                    <div style={{display:"flex",justifyContent:"space-between"}}>
+                      <div><div style={{fontSize:13,fontWeight:700,color:"#c8e6c8"}}>{x.asset} · {x.direction}</div><div style={{fontSize:10,color:"#3a5a3a",marginTop:3}}>{x.date}{x.time?" · "+x.time:""}</div></div>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        <ScoreRing score={x.setupScore} max={x.checklistMax||config.items.length} size={42} threshold={config.threshold} neon={neon}/>
+                        <div style={{textAlign:"right"}}><div style={{fontSize:14,fontWeight:700,color:rc(x.result,neon),textShadow:`0 0 10px ${rc(x.result,neon)}88`}}>{x.result}</div>{x.pnlPct!==""&&<div style={{fontSize:11,color:parseFloat(x.pnlPct)>=0?neon:"#ff4d4d",fontWeight:600}}>{fmtPct(parseFloat(x.pnlPct))}</div>}</div>
+                      </div>
+                    </div>
+                    <div style={{marginTop:8,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}>
+                      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                        <span style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:x.conforming?`${neon}1a`:"rgba(255,77,77,0.1)",color:x.conforming?neon:"#ff4d4d",border:`1px solid ${x.conforming?`${neon}35`:"rgba(255,77,77,0.2)"}`}}>{x.conforming?t.conformLabel:t.nonConformLabel}</span>
+                        {x.isRevenge&&<span style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:"rgba(255,77,77,0.15)",color:"#ff4d4d",border:"1px solid rgba(255,77,77,0.3)"}}>REVENGE</span>}
+                        {x.checkin?.humeur&&<span style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:`${neon}0d`,color:"#5a7a5a",border:`1px solid ${neon}18`}}>{x.checkin.humeur}</span>}
+                        {x.slDirection&&<span style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:x.slDirection==="with"?`${neon}15`:"rgba(255,77,77,0.1)",color:x.slDirection==="with"?neon:"#ff4d4d",border:`1px solid ${x.slDirection==="with"?`${neon}35`:"rgba(255,77,77,0.2)"}`}}>{x.slDirection==="with"?t.slWith:t.slAgainst}</span>}
+                      </div>
+                      {x.rejetScore>0&&<span style={{fontSize:10,color:"#3a5a3a"}}>{t.rejectStat} <b style={{color:x.rejetScore>=8?neon:x.rejetScore>=5?"#f0b429":"#ff4d4d"}}>{x.rejetScore}/10</b></span>}
+                    </div>
+                    {x.notes&&<div style={{fontSize:11,color:"#5a7a5a",marginTop:6,fontStyle:"italic",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>"{x.notes}"</div>}
+                    <div style={{marginTop:10,display:"flex",gap:8}} onClick={e=>e.stopPropagation()}>
+                      {confirmDeleteId===x.id?(
+                        <><span style={{fontSize:10,color:"#5a7a5a"}}>{t.deleteConfirm}</span><button onClick={()=>deleteTrade(x.id)} className="btn" style={{background:"rgba(255,77,77,0.18)",border:"1px solid #ff4d4d",color:"#ff4d4d",borderRadius:6,padding:"5px 12px",fontSize:10,fontFamily:MONO,fontWeight:700}}>{t.deleteBtn}</button><button onClick={()=>setConfirmDeleteId(null)} className="btn" style={{background:"transparent",border:`1px solid ${neon}26`,color:"#5a7a5a",borderRadius:6,padding:"5px 12px",fontSize:10,fontFamily:MONO}}>{t.cancelBtn}</button></>
+                      ):(
+                        <><button onClick={e=>{e.stopPropagation();startEdit(x);}} className="btn" style={{background:`${neon}0f`,border:`1px solid ${neon}35`,color:`${neon}bb`,borderRadius:6,padding:"5px 12px",fontSize:10,fontFamily:MONO,fontWeight:700}}>✏ {lang==="fr"?"MODIFIER":"EDIT"}</button><button onClick={()=>setConfirmDeleteId(x.id)} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.15)",color:"#5a2a2a",borderRadius:6,padding:"5px 10px",fontSize:10,cursor:"pointer",fontFamily:MONO}}>{t.deleteLink}</button></>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </div>
-              <div style={{marginTop:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:x.conforming?"rgba(0,255,157,0.1)":"rgba(255,77,77,0.1)",color:x.conforming?"#00ff9d":"#ff4d4d",border:`1px solid ${x.conforming?"rgba(0,255,157,0.2)":"rgba(255,77,77,0.2)"}`}}>
-                  {x.conforming?"✓ conforme":"✗ non-conforme"}
-                </span>
-                <div style={{display:"flex",alignItems:"center",gap:6}}>
-                  {x.screenshot&&<span style={{fontSize:9,color:"#3a5a3a"}}>📎</span>}
-                  {x.rejetScore>0&&<span style={{fontSize:10,color:"#3a5a3a"}}>rejet <b style={{color:x.rejetScore>=8?"#00ff9d":x.rejetScore>=5?"#f0b429":"#ff4d4d"}}>{x.rejetScore}/10</b></span>}
-                </div>
-              </div>
-              {x.notes&&<div style={{fontSize:11,color:"#5a7a5a",marginTop:6,fontStyle:"italic",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>"{x.notes}"</div>}
-              <div style={{marginTop:10,display:"flex",gap:8}} onClick={e=>e.stopPropagation()}>
-                {confirmDeleteId===x.id?(
-                  <><span style={{fontSize:10,color:"#5a7a5a"}}>Supprimer ?</span>
-                    <button onClick={()=>deleteTrade(x.id)} className="btn" style={{background:"rgba(255,77,77,0.18)",border:"1px solid #ff4d4d",color:"#ff4d4d",borderRadius:6,padding:"5px 12px",fontSize:10,fontFamily:MONO,fontWeight:700}}>Confirmer</button>
-                    <button onClick={()=>setConfirmDeleteId(null)} className="btn" style={{background:"transparent",border:"1px solid rgba(0,255,157,0.15)",color:"#5a7a5a",borderRadius:6,padding:"5px 12px",fontSize:10,fontFamily:MONO}}>Annuler</button></>
-                ):(
-                  <><button onClick={e=>{e.stopPropagation();startEdit(x);}} className="btn" style={{background:"rgba(0,255,157,0.06)",border:"1px solid rgba(0,255,157,0.2)",color:"#5aaa7a",borderRadius:6,padding:"5px 12px",fontSize:10,fontFamily:MONO,fontWeight:700}}>✏ MODIFIER</button>
-                    <button onClick={()=>setConfirmDeleteId(x.id)} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.15)",color:"#5a2a2a",borderRadius:6,padding:"5px 10px",fontSize:10,cursor:"pointer",fontFamily:MONO}}>supprimer</button></>
-                )}
-              </div>
-            </div>
-          ))}
+                );
+              }
+            }
+            return els;
+          })()}
         </div>
       )}
 
-      {/* SETTINGS */}
-      {view==="settings"&&<SettingsView config={config} onSave={saveConfig} onLogout={logout} period={period} onPeriodChange={setPeriod} user={user}/>}
+      {view==="settings"&&<SettingsView config={config} onSave={cfg=>setConfig(c=>({...c,...cfg}))} onLogout={()=>{setTrades([]);setNoTrades([]);setPhases([]);setPhase("onboarding");}} onReset={()=>setShowReset(true)} onNewPhase={handleNewPhase} lang={lang} onLangChange={setLang} neon={neon} phases={phases}/>}
 
-      {/* FOOTER */}
-      <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(8,15,8,0.95)",backdropFilter:"blur(10px)",borderTop:"1px solid rgba(0,255,157,0.1)",padding:"10px 20px",display:"flex",justifyContent:"space-between"}}>
-        <div style={{fontSize:9,color:"#1e3a1e"}}>◈ TrackMyTrade</div>
-        <div style={{fontSize:9,color:"#1e3a1e"}}>{config.strategyName}</div>
+      <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(8,15,8,0.95)",backdropFilter:"blur(10px)",borderTop:`1px solid ${neon}1a`,padding:"10px 20px",display:"flex",justifyContent:"space-between"}}>
+        <div style={{fontSize:9,color:"#1e3a1e"}}>◈ TrackMyTrade v5</div>
+        <div style={{fontSize:9,color:"#1e3a1e"}}>{lang==="fr"?"MODE DÉMO":"DEMO MODE"}</div>
       </div>
 
-      {detailTrade&&<TradeDetailModal trade={detailTrade} config={config} onClose={()=>setDetailTrade(null)} onEdit={startEdit}/>}
-      {showExport&&<ExportModal trades={trades} onClose={()=>setShowExport(false)}/>}
+      {detailTrade&&<TradeDetailModal trade={detailTrade} config={config} onClose={()=>setDetailTrade(null)} onEdit={startEdit} lang={lang} neon={neon}/>}
+      {showExport&&<ExportModal trades={trades} onClose={()=>setShowExport(false)} lang={lang} neon={neon}/>}
+      {showReset&&<ResetModal trades={trades} onReset={handleReset} onClose={()=>setShowReset(false)} lang={lang} neon={neon}/>}
     </div>
   );
 }
