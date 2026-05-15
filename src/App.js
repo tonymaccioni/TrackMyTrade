@@ -193,7 +193,7 @@ const CSS = ({neon="#00ff9d"}) => (
     .btn:hover{opacity:0.85;transform:translateY(-1px)}
     .row{transition:background 0.2s;cursor:pointer}
     .row:hover{background:${neon}0a!important}
-    ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:#1e2a1e}
+    ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:${neon}26}
     @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
     @keyframes fadeIn{from{opacity:0}to{opacity:1}}
     @keyframes pulse{0%,100%{opacity:1;text-shadow:0 0 8px ${neon}66}50%{opacity:0.85;text-shadow:0 0 14px ${neon}aa}}
@@ -739,6 +739,164 @@ function SplashScreen({onDone,neon}) {
   );
 }
 
+function StatsInsightsModal({trades,lang,neon,onClose}) {
+  const fr=lang==="fr";
+  if(!trades||trades.length<3) return null;
+
+  // ── Calculs enrichis ──
+  const wins=trades.filter(x=>x.result==="WIN");
+  const losses=trades.filter(x=>x.result==="LOSS");
+  const wr=Math.round(wins.length/trades.length*100);
+  const avgWin=wins.length?wins.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0)/wins.length:0;
+  const avgLoss=losses.length?Math.abs(losses.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0)/losses.length):0;
+  const ratio=avgLoss>0?(avgWin/avgLoss):0;
+  const totalPnl=trades.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
+  const fmtP=v=>{const n=Number(v),a=Math.abs(n);return`${n>=0?"+":""}${a%1===0?a.toFixed(0):a.toFixed(1)}%`;};
+
+  // Par jour de la semaine
+  const days=fr?["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"]:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const byDay={};
+  trades.forEach(x=>{const d=new Date(x.date).getDay();if(!byDay[d])byDay[d]={w:0,t:0};byDay[d].t++;if(x.result==="WIN")byDay[d].w++;});
+  const dayStats=Object.entries(byDay).filter(([,v])=>v.t>=2).map(([d,v])=>({day:days[d],wr:Math.round(v.w/v.t*100),t:v.t})).sort((a,b)=>b.wr-a.wr);
+
+  // Par heure
+  const byHour={};
+  trades.filter(x=>x.time).forEach(x=>{const h=parseInt(x.time.split(":")[0]);const k=`${h}h`;if(!byHour[k])byHour[k]={w:0,t:0};byHour[k].t++;if(x.result==="WIN")byHour[k].w++;});
+  const hourStats=Object.entries(byHour).filter(([,v])=>v.t>=2).map(([h,v])=>({h,wr:Math.round(v.w/v.t*100),t:v.t})).sort((a,b)=>b.wr-a.wr);
+
+  // Par actif
+  const byAsset={};
+  trades.forEach(x=>{if(!byAsset[x.asset])byAsset[x.asset]={w:0,t:0,pnl:0};byAsset[x.asset].t++;byAsset[x.asset].pnl+=parseFloat(x.pnlPct)||0;if(x.result==="WIN")byAsset[x.asset].w++;});
+  const assetStats=Object.entries(byAsset).filter(([,v])=>v.t>=2).map(([a,v])=>({a,wr:Math.round(v.w/v.t*100),pnl:parseFloat(v.pnl.toFixed(1)),t:v.t})).sort((a,b)=>b.wr-a.wr);
+
+  // Conformes vs non-conformes
+  const conf=trades.filter(x=>x.conforming);
+  const nconf=trades.filter(x=>!x.conforming);
+  const confWR=conf.length?Math.round(conf.filter(x=>x.result==="WIN").length/conf.length*100):0;
+  const nconfWR=nconf.length?Math.round(nconf.filter(x=>x.result==="WIN").length/nconf.length*100):0;
+
+  // Par humeur
+  const byHumeur={};
+  trades.filter(x=>x.checkin?.humeur).forEach(x=>{const h=x.checkin.humeur;if(!byHumeur[h])byHumeur[h]={w:0,t:0};byHumeur[h].t++;if(x.result==="WIN")byHumeur[h].w++;});
+  const humeurStats=Object.entries(byHumeur).filter(([,v])=>v.t>=2).map(([h,v])=>({h,wr:Math.round(v.w/v.t*100),t:v.t})).sort((a,b)=>b.wr-a.wr);
+
+  // Par score de rejet
+  const highRejet=trades.filter(x=>x.rejetScore>=8);
+  const lowRejet=trades.filter(x=>x.rejetScore>0&&x.rejetScore<8);
+  const highRWR=highRejet.length?Math.round(highRejet.filter(x=>x.result==="WIN").length/highRejet.length*100):null;
+  const lowRWR=lowRejet.length?Math.round(lowRejet.filter(x=>x.result==="WIN").length/lowRejet.length*100):null;
+
+  // Revenge trades
+  const revs=trades.filter(x=>x.isRevenge);
+  const revLoss=revs.length?Math.round(revs.filter(x=>x.result==="LOSS").length/revs.length*100):null;
+
+  // Score discipline
+  const disc=Math.round((conf.length/trades.length*0.6+(1-revs.length/trades.length)*0.4)*10);
+  const discColor=disc>=8?neon:disc>=5?"#f0b429":"#ff4d4d";
+
+  const Section=({title,children})=>(
+    <div style={{marginBottom:20}}>
+      <div style={{fontSize:9,color:`${neon}66`,letterSpacing:3,textTransform:"uppercase",marginBottom:10,fontFamily:"'IBM Plex Mono',monospace",paddingBottom:6,borderBottom:`1px solid ${neon}14`}}>{title}</div>
+      {children}
+    </div>
+  );
+
+  const Row=({label,value,color,sub})=>(
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:`1px solid ${neon}08`}}>
+      <div>
+        <span style={{fontSize:12,color:"#c8e6c8",fontFamily:"'IBM Plex Mono',monospace"}}>{label}</span>
+        {sub&&<div style={{fontSize:9,color:`${neon}44`,marginTop:2}}>{sub}</div>}
+      </div>
+      <span style={{fontSize:13,fontWeight:700,color:color||neon,fontFamily:"'IBM Plex Mono',monospace"}}>{value}</span>
+    </div>
+  );
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:400,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
+      <div className="slide-up" style={{background:"#0d1a0d",border:`1px solid ${neon}30`,borderRadius:"20px 20px 0 0",width:"100%",maxWidth:480,maxHeight:"85vh",overflowY:"auto",paddingBottom:40}} onClick={e=>e.stopPropagation()}>
+        <div style={{position:"sticky",top:0,background:"#0d1a0d",padding:"16px 20px 12px",borderBottom:`1px solid ${neon}14`,zIndex:1}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{fontSize:14,fontWeight:700,color:neon,fontFamily:"'IBM Plex Mono',monospace"}}>{fr?"RÉSUMÉ COMPLET":"FULL STATS"}</div>
+            <button onClick={onClose} style={{background:"transparent",border:"none",color:`${neon}66`,fontSize:20,cursor:"pointer"}}>✕</button>
+          </div>
+          <div style={{fontSize:10,color:`${neon}44`,marginTop:2,fontFamily:"'IBM Plex Mono',monospace"}}>{trades.length} {fr?"trades analysés":"trades analyzed"}</div>
+        </div>
+
+        <div style={{padding:"16px 20px"}}>
+          {/* Vue globale */}
+          <Section title={fr?"VUE GLOBALE":"OVERVIEW"}>
+            <Row label="Win Rate" value={`${wr}%`} color={wr>=50?neon:"#ff4d4d"}/>
+            <Row label="P&L total" value={fmtP(totalPnl)} color={totalPnl>=0?neon:"#ff4d4d"}/>
+            <Row label={fr?"Ratio G/P":"R/R Ratio"} value={ratio.toFixed(2)} color={ratio>=1?neon:"#f0b429"} sub={fr?`Gain moy. ${fmtP(avgWin)} · Perte moy. -${fmtP(avgLoss)}`:`Avg win ${fmtP(avgWin)} · Avg loss -${fmtP(avgLoss)}`}/>
+            <Row label={fr?"Discipline":"Discipline"} value={`${disc}/10`} color={discColor}/>
+          </Section>
+
+          {/* Conformité */}
+          <Section title={fr?"CONFORMITÉ":"COMPLIANCE"}>
+            <Row label={fr?"Setups conformes":"Compliant setups"} value={`${confWR}% WR`} color={confWR>=50?neon:"#ff4d4d"} sub={`${conf.length} ${fr?"trades":"trades"}`}/>
+            {nconf.length>0&&<Row label={fr?"Setups non-conformes":"Non-compliant"} value={`${nconfWR}% WR`} color={nconfWR>=50?"#f0b429":"#ff4d4d"} sub={`${nconf.length} ${fr?"trades":"trades"}`}/>}
+            {confWR-nconfWR>10&&<div style={{background:`${neon}0d`,border:`1px solid ${neon}22`,borderRadius:8,padding:"8px 12px",marginTop:8,fontSize:11,color:neon,fontFamily:"'IBM Plex Mono',monospace"}}>
+              ✓ {fr?`+${confWR-nconfWR}% WR quand tu respectes les règles`:`+${confWR-nconfWR}% WR when following rules`}
+            </div>}
+          </Section>
+
+          {/* Par actif */}
+          {assetStats.length>0&&<Section title={fr?"PAR ACTIF":"BY ASSET"}>
+            {assetStats.map(({a,wr:awr,pnl,t})=>(
+              <Row key={a} label={a} value={`${awr}% WR`} color={awr>=50?neon:"#ff4d4d"} sub={`${t} ${fr?"trades":"trades"} · P&L ${fmtP(pnl)}`}/>
+            ))}
+          </Section>}
+
+          {/* Par jour */}
+          {dayStats.length>0&&<Section title={fr?"PAR JOUR":"BY DAY"}>
+            {dayStats.map(({day,wr:dwr,t})=>(
+              <Row key={day} label={day} value={`${dwr}% WR`} color={dwr>=50?neon:"#ff4d4d"} sub={`${t} ${fr?"trades":"trades"}`}/>
+            ))}
+            {dayStats.length>=2&&dayStats[0].wr-dayStats[dayStats.length-1].wr>20&&(
+              <div style={{background:"rgba(240,180,41,0.08)",border:"1px solid rgba(240,180,41,0.2)",borderRadius:8,padding:"8px 12px",marginTop:8,fontSize:11,color:"#f0b429",fontFamily:"'IBM Plex Mono',monospace"}}>
+                ⚠ {fr?`Évite le ${dayStats[dayStats.length-1].day} (${dayStats[dayStats.length-1].wr}% WR)`:`Avoid ${dayStats[dayStats.length-1].day} (${dayStats[dayStats.length-1].wr}% WR)`}
+              </div>
+            )}
+          </Section>}
+
+          {/* Par heure */}
+          {hourStats.length>0&&<Section title={fr?"PAR HEURE":"BY HOUR"}>
+            {hourStats.map(({h,wr:hwr,t})=>(
+              <Row key={h} label={h} value={`${hwr}% WR`} color={hwr>=50?neon:"#ff4d4d"} sub={`${t} ${fr?"trades":"trades"}`}/>
+            ))}
+          </Section>}
+
+          {/* Par humeur */}
+          {humeurStats.length>0&&<Section title={fr?"PAR HUMEUR":"BY MOOD"}>
+            {humeurStats.map(({h,wr:hwr,t})=>(
+              <Row key={h} label={h} value={`${hwr}% WR`} color={hwr>=50?neon:"#ff4d4d"} sub={`${t} ${fr?"trades":"trades"}`}/>
+            ))}
+          </Section>}
+
+          {/* Qualité du rejet */}
+          {highRWR!==null&&<Section title={fr?"QUALITÉ DU REJET":"REJECTION QUALITY"}>
+            <Row label={fr?"Rejet ≥ 8/10":"Rejection ≥ 8/10"} value={`${highRWR}% WR`} color={highRWR>=50?neon:"#ff4d4d"} sub={`${highRejet.length} ${fr?"trades":"trades"}`}/>
+            {lowRWR!==null&&<Row label={fr?"Rejet < 8/10":"Rejection < 8/10"} value={`${lowRWR}% WR`} color={lowRWR>=50?"#f0b429":"#ff4d4d"} sub={`${lowRejet.length} ${fr?"trades":"trades"}`}/>}
+            {highRWR!==null&&lowRWR!==null&&highRWR-lowRWR>15&&<div style={{background:`${neon}0d`,border:`1px solid ${neon}22`,borderRadius:8,padding:"8px 12px",marginTop:8,fontSize:11,color:neon,fontFamily:"'IBM Plex Mono',monospace"}}>
+              ✓ {fr?`+${highRWR-lowRWR}% WR avec un rejet de qualité`:`+${highRWR-lowRWR}% WR with quality rejection`}
+            </div>}
+          </Section>}
+
+          {/* Revenge trades */}
+          {revs.length>0&&<Section title="REVENGE TRADES">
+            <Row label={fr?"Nombre total":"Total count"} value={revs.length} color="#ff4d4d"/>
+            <Row label={fr?"Taux de perte":"Loss rate"} value={`${revLoss}%`} color="#ff4d4d"/>
+            <div style={{background:"rgba(255,77,77,0.08)",border:"1px solid rgba(255,77,77,0.2)",borderRadius:8,padding:"8px 12px",marginTop:8,fontSize:11,color:"#ff4d4d",fontFamily:"'IBM Plex Mono',monospace"}}>
+              ⚠ {fr?"Le revenge trading te coûte de l'argent. Stop.":"Revenge trading is costing you money. Stop."}
+            </div>
+          </Section>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 function ShareModal({trade,trades,lang,neon,onClose}) {
   const t=T[lang];
   const fr=lang==="fr";
@@ -811,7 +969,7 @@ function Onboarding({onDone}) {
       </div>
     ),title:t.welcome,desc:t.welcomeDesc,cta:t.discover},
     {visual:<div style={{display:"flex",flexDirection:"column",gap:8,maxWidth:260,margin:"0 auto"}}>{["HA M5 claire ✓","MM20 orientée ✓","BB approche ✓","Rejet propre —"].map((item,i)=><div key={i} className="fu" style={{background:i<3?"rgba(0,255,157,0.1)":"rgba(255,77,77,0.06)",border:`1px solid ${i<3?"rgba(0,255,157,0.3)":"rgba(255,77,77,0.2)"}`,borderRadius:10,padding:"11px 16px",fontSize:13,fontWeight:600,color:i<3?"#00ff9d":"#ff4d4d",fontFamily:MONO,animationDelay:`${i*0.1}s`,boxShadow:i<3?"0 2px 12px rgba(0,255,157,0.08)":"none",textShadow:i<3?"0 0 10px rgba(0,255,157,0.5)":"none"}}>{item}</div>)}</div>,title:t.checklist,desc:t.checklistDesc,cta:t.next},
-    {visual:<div style={{maxWidth:260,margin:"0 auto"}}><div style={{display:"flex",gap:10,marginBottom:10}}>{[["WIN RATE","73%"],["P&L","+4.2%"]].map(([l,v])=><div key={l} style={{flex:1,background:"rgba(0,255,157,0.1)",border:"1px solid rgba(0,255,157,0.3)",borderRadius:12,padding:12,textAlign:"center",boxShadow:"0 4px 20px rgba(0,255,157,0.1), inset 0 1px 0 rgba(0,255,157,0.15)"}}><div style={{fontSize:22,fontWeight:800,color:"#00ff9d",fontFamily:MONO,textShadow:"0 0 20px rgba(0,255,157,0.8), 0 2px 6px rgba(0,0,0,0.5)"}}>{v}</div><div style={{fontSize:9,color:"#5a7a5a",marginTop:4,letterSpacing:1}}>{l}</div></div>)}</div></div>,title:t.measure,desc:t.measureDesc,cta:t.start},
+    {visual:<div style={{maxWidth:260,margin:"0 auto"}}><div style={{display:"flex",gap:10,marginBottom:10}}>{[["WIN RATE","73%"],["P&L","+4.2%"]].map(([l,v])=><div key={l} style={{flex:1,background:"rgba(0,255,157,0.1)",border:"1px solid rgba(0,255,157,0.3)",borderRadius:12,padding:12,textAlign:"center",boxShadow:"0 4px 20px rgba(0,255,157,0.1), inset 0 1px 0 rgba(0,255,157,0.15)"}}><div style={{fontSize:22,fontWeight:800,color:{neon},fontFamily:MONO,textShadow:"0 0 20px rgba(0,255,157,0.8), 0 2px 6px rgba(0,0,0,0.5)"}}>{v}</div><div style={{fontSize:9,color:"#5a7a5a",marginTop:4,letterSpacing:1}}>{l}</div></div>)}</div></div>,title:t.measure,desc:t.measureDesc,cta:t.start},
   ];
   const s=slides[step];
   return (
@@ -993,6 +1151,7 @@ export default function App() {
   const [showExport,setShowExport]=useState(false);
   const [showReset,setShowReset]=useState(false);
   const [showShare,setShowShare]=useState(false);
+  const [showStats,setShowStats]=useState(false);
   const [view,setView]=useState("dashboard");
   const [form,setForm]=useState(emptyForm());
   const [editingId,setEditingId]=useState(null);
@@ -1005,6 +1164,11 @@ export default function App() {
   const [config,setConfig]=useState({items:DEFAULT_CRITERIA,threshold:6,strategyName:"Ma Stratégie",defaultAsset:"XAU/USD",maxTrades:1,neonColor:"#00ff9d",calendarOn:true,notifOn:true,customAssets:[...PRESET_ASSETS]});
   const fileRef=useRef();const pageRef=useRef();const weeklyShownRef=useRef(false);const currentUserRef=useRef(null);
   const neon=config.neonColor||"#00ff9d";const t=T[lang];const inSt=mkInput(neon);
+  // Couleurs dérivées du neon pour une cohérence visuelle complète
+  const neonDim = neon+"66";   // texte secondaire
+  const neonFaint = neon+"33"; // bordures légères
+  const neonGhost = neon+"14"; // backgrounds subtils
+  const neonBg = neon+"0a";    // backgrounds très légers
 
   // Session restore from localStorage on page load
   useEffect(()=>{
@@ -1442,13 +1606,17 @@ export default function App() {
         if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{lang:l});
       }} neon={neon} phases={phases}/>}
 
-      <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(8,15,8,0.95)",backdropFilter:"blur(10px)",borderTop:`1px solid ${neon}1a`,padding:"10px 20px",display:"flex",justifyContent:"space-between"}}>
-        <div style={{fontSize:9,color:"#1e3a1e"}}>◈ TrackMyTrade v5</div>
-        <div style={{fontSize:9,color:"#1e3a1e"}}>{lang==="fr"?"MODE DÉMO":"DEMO MODE"}</div>
+      <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(8,15,8,0.97)",backdropFilter:"blur(12px)",borderTop:`1px solid ${neon}18`,padding:"10px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{fontSize:9,color:`${neon}22`,fontFamily:"'IBM Plex Mono',monospace"}}>◈ TrackMyTrade</div>
+        {trades.length>=3&&<button onClick={()=>setShowStats(true)} className="btn" style={{background:`${neon}12`,border:`1px solid ${neon}30`,borderRadius:8,padding:"6px 14px",color:neon,fontSize:10,fontWeight:700,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:1}}>
+          {lang==="fr"?"RÉSUMÉ ↑":"SUMMARY ↑"}
+        </button>}
+        <button onClick={()=>setShowShare(true)} className="btn" style={{background:"transparent",border:`1px solid ${neon}20`,borderRadius:8,padding:"6px 12px",color:`${neon}66`,fontSize:11}}>↑</button>
       </div>
 
       {detailTrade&&<TradeDetailModal trade={detailTrade} config={config} onClose={()=>setDetailTrade(null)} onEdit={startEdit} lang={lang} neon={neon}/>}
       {showExport&&<ExportModal trades={trades} onClose={()=>setShowExport(false)} lang={lang} neon={neon}/>}
+      {showStats&&<StatsInsightsModal trades={trades} lang={lang} neon={neon} onClose={()=>setShowStats(false)}/>}
       {showShare&&<ShareModal trade={trades[0]||null} trades={trades} lang={lang} neon={neon} onClose={()=>setShowShare(false)}/> }
       {showReset&&<ResetModal trades={trades} onReset={handleReset} onClose={()=>setShowReset(false)} lang={lang} neon={neon}/>}
     </div>
