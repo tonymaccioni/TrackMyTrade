@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell } from "recharts";
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA6SLYL7Ep451nu6edynUeBbPROtgRucv8",
@@ -12,17 +13,33 @@ const firebaseConfig = {
   appId: "1:704401956727:web:0d08bffe7f55ef92a58b72"
 };
 let db=null;
+let auth=null;
 try {
   const fbApp = initializeApp(firebaseConfig);
   db = getFirestore(fbApp);
+  auth = getAuth(fbApp);
 } catch(e) { console.error("Firebase init error:",e); }
 
 // Simple Firestore auth — no Firebase Auth SDK needed
 const encEmail = e => e.replace(/\./g,"_DOT_").replace(/@/g,"_AT_");
 const saveUserData = async (id, data) => { if(!db)return; try { await setDoc(doc(db,"users",id), data, {merge:true}); } catch(e) { console.error("Firestore save:",e); } };
 const loadUserData = async id => { if(!db)return null; try { const s=await getDoc(doc(db,"users",id)); return s.exists()?s.data():null; } catch(e) { return null; } };
-const authLogin = async (email, pwd) => { const d=await loadUserData(encEmail(email)); return (d&&d.password===pwd)?d:null; };
-const authRegister = async (email, pwd, lang) => { const id=encEmail(email); if(await loadUserData(id))return false; await saveUserData(id,{password:pwd,setupDone:false,lang,trades:[],noTrades:[],phases:[]}); return true; };
+const authLogin = async (email, pwd) => {
+  if(!auth) return null;
+  try {
+    await signInWithEmailAndPassword(auth, email, pwd);
+    const d = await loadUserData(encEmail(email));
+    return d || { setupDone: false };
+  } catch(e) { return null; }
+};
+const authRegister = async (email, pwd, lang) => {
+  if(!auth) return false;
+  try {
+    await createUserWithEmailAndPassword(auth, email, pwd);
+    await saveUserData(encEmail(email), {setupDone:false, lang, trades:[], noTrades:[], phases:[]});
+    return true;
+  } catch(e) { return false; }
+};
 
 const PRESET_ASSETS = ["XAU/USD","EUR/USD","GBP/USD","NAS100","BTC/USD","ETH/USD","US30","SPX500","GBP/JPY","USD/JPY"];
 const DEFAULT_CRITERIA = ["HA M5 claire (pas de doji)","MM20 bien orientée","BB approche sur M1","Bougie de rejet propre","Fenêtre horaire respectée","Pas de distraction","Contexte macro neutre"];
@@ -903,9 +920,10 @@ export default function App() {
       const saved=localStorage.getItem("tmt_user");
       if(saved){
         const {email,pwd}=JSON.parse(saved);
-        authLogin(email,pwd).then(userData=>{
+        const p = pwd||"";
+        authLogin(email,p).then(userData=>{
           if(userData){
-            currentUserRef.current={email,pwd};
+            currentUserRef.current={email};
             if(userData.setupDone){
               if(Array.isArray(userData.trades))setTrades(userData.trades);
               if(Array.isArray(userData.noTrades))setNoTrades(userData.noTrades);
@@ -997,8 +1015,8 @@ export default function App() {
   // handleLogin must be defined before conditional returns (Rules of Hooks)
   const handleLogin=u=>{
     if(!u) return;
-    currentUserRef.current={email:u.email,pwd:u.pwd};
-    try { localStorage.setItem("tmt_user",JSON.stringify({email:u.email,pwd:u.pwd})); } catch(e){}
+    currentUserRef.current={email:u.email};
+    try { localStorage.setItem("tmt_user",JSON.stringify({email:u.email})); } catch(e){}
     const userData=u.userData;
     if(userData&&userData.setupDone){
       if(Array.isArray(userData.trades))setTrades(userData.trades);
@@ -1301,7 +1319,9 @@ export default function App() {
         setConfig(newCfg);
         if(currentUserRef.current?.email) saveUserData(encEmail(currentUserRef.current?.email||""),{config:newCfg});
       }} onLogout={async()=>{
-        currentUserRef.current=null;try{localStorage.removeItem("tmt_user");}catch(e){}
+        currentUserRef.current=null;
+        try{localStorage.removeItem("tmt_user");}catch(e){}
+        if(auth) try{ await signOut(auth); }catch(e){}
         setTrades([]);setNoTrades([]);setPhases([]);setPhase("onboarding");
       }} onReset={()=>setShowReset(true)} onNewPhase={handleNewPhase} lang={lang} onLangChange={l=>{
         setLang(l);
