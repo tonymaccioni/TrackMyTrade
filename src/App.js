@@ -294,7 +294,7 @@ function NotifCard({notif,onClose}) {
   );
 }
 
-function WeeklyRecapModal({trades,lang,neon,onClose}) {
+function WeeklyRecapModal({trades,lang,neon,onClose,onShareWeek}) {
   const t=T[lang];
   const cutoff=new Date(Date.now()-7*86400000).toISOString().split("T")[0];
   const week=trades.filter(x=>x.date>=cutoff);
@@ -352,7 +352,10 @@ function WeeklyRecapModal({trades,lang,neon,onClose}) {
           {insights.length>0&&<div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:16}}>
             {insights.map((ins,i)=><div key={i} style={{background:`${neon}06`,border:`1px solid ${neon}15`,borderRadius:8,padding:"8px 12px",fontSize:11,color:"#8ab88a",fontFamily:MONO,lineHeight:1.5}}>{ins}</div>)}
           </div>}
-          <button onClick={onClose} className="btn" style={{width:"100%",background:`${neon}1a`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:"12px 0",fontSize:12,fontWeight:700,fontFamily:MONO}}>{t.weeklyClose}</button>
+          <div style={{display:"flex",gap:8}}>
+          <button onClick={()=>{onClose();}} className="btn" style={{flex:2,background:`${neon}1a`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:"12px 0",fontSize:12,fontWeight:700,fontFamily:MONO}}>{t.weeklyClose}</button>
+          <button onClick={()=>{onShareWeek&&onShareWeek();onClose();}} className="btn" style={{flex:1,background:"transparent",border:`1px solid ${neon}30`,color:`${neon}88`,borderRadius:10,padding:"12px 0",fontSize:12,fontFamily:MONO}}>↑</button>
+        </div>
         </div>
       </div>
     </div>
@@ -529,7 +532,7 @@ function AdvancedStats({trades,neon,lang}) {
         <div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#5a7a5a",marginBottom:4}}>{t.expectancy}</div><div style={{fontSize:16,fontWeight:700,color:exp>=0?neon:"#ff4d4d",fontFamily:MONO,textShadow:`0 0 14px ${exp>=0?neon:"#ff4d4d"}99`}}>{fmtPct(exp)}</div></div>
         {best&&<div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#5a7a5a",marginBottom:4}}>{t.bestAsset}</div><div style={{fontSize:14,fontWeight:700,color:neon,fontFamily:MONO}}>{best[0]}</div><div style={{fontSize:10,color:"#5a7a5a"}}>{Math.round(best[1].w/best[1].t*100)}% WR</div></div>}
         <div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#5a7a5a",marginBottom:4}}>{t.avgWin}</div><div style={{fontSize:16,fontWeight:700,color:neon,fontFamily:MONO,textShadow:`0 0 14px ${neon}99`}}>{fmtPct(avgWin)}</div></div>
-        <div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#5a7a5a",marginBottom:4}}>{t.avgLoss}</div><div style={{fontSize:16,fontWeight:700,color:"#ff4d4d",fontFamily:MONO,textShadow:"0 0 14px #ff4d4d99"}}>-{fmtPct(avgLoss)}</div></div>
+        <div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#5a7a5a",marginBottom:4}}>{t.avgLoss}</div><div style={{fontSize:16,fontWeight:700,color:"#ff4d4d",fontFamily:MONO,textShadow:"0 0 14px #ff4d4d99"}}>-{avgLoss%1===0?avgLoss.toFixed(0):avgLoss.toFixed(1)}%</div></div>
         {wins.length>0&&losses.length>0&&(()=>{const r=avgWin/avgLoss;return<div style={{background:`${neon}08`,borderRadius:8,padding:10,gridColumn:"1/-1"}}><div style={{fontSize:9,color:"#5a7a5a",marginBottom:4}}>{t.ratio}</div><div style={{fontSize:16,fontWeight:700,color:r>=1?neon:"#f0b429",fontFamily:MONO}}>{r.toFixed(2)}</div></div>;})()}
         {revs.length>0&&<div style={{background:"rgba(255,77,77,0.06)",border:"1px solid rgba(255,77,77,0.15)",borderRadius:8,padding:10,gridColumn:"1/-1"}}><div style={{fontSize:9,color:"#ff4d4d",marginBottom:4}}>REVENGE TRADES</div><div style={{fontSize:14,fontWeight:700,color:"#ff4d4d",fontFamily:MONO}}>{revs.length} · {Math.round(revs.filter(x=>x.result==="LOSS").length/revs.length*100)}% LOSS</div></div>}
       </div>
@@ -794,102 +797,86 @@ function StatsInsightsModal({trades,lang,neon,onClose}) {
   const disc=Math.round((conf.length/trades.length*0.6+(1-revs.length/trades.length)*0.4)*10);
   const discColor=disc>=8?neon:disc>=5?"#f0b429":"#ff4d4d";
 
-  const Section=({title,children})=>(
-    <div style={{marginBottom:20}}>
-      <div style={{fontSize:9,color:`${neon}66`,letterSpacing:3,textTransform:"uppercase",marginBottom:10,fontFamily:"'IBM Plex Mono',monospace",paddingBottom:6,borderBottom:`1px solid ${neon}14`}}>{title}</div>
-      {children}
-    </div>
-  );
+  // Générer les insights en texte naturel
+  const insights = [];
+  const MONO2 = "'IBM Plex Mono','Courier New',monospace";
 
-  const Row=({label,value,color,sub})=>(
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:`1px solid ${neon}08`}}>
-      <div>
-        <span style={{fontSize:12,color:"#c8e6c8",fontFamily:"'IBM Plex Mono',monospace"}}>{label}</span>
-        {sub&&<div style={{fontSize:9,color:`${neon}44`,marginTop:2}}>{sub}</div>}
-      </div>
-      <span style={{fontSize:13,fontWeight:700,color:color||neon,fontFamily:"'IBM Plex Mono',monospace"}}>{value}</span>
-    </div>
-  );
+  // Vue globale
+  if(fr) {
+    insights.push({type:"global", txt:`Sur ${trades.length} trades, tu affiches un Win Rate de ${wr}% pour un P&L total de ${fmtP(totalPnl)}. ${wr>=55?"C'est une bonne performance — ton edge est réel.":wr>=45?"Ton WR est proche de l'équilibre. Quelques ajustements peuvent faire la différence.":"Il y a du travail à faire sur la sélection des setups."} Ton ratio Gain/Perte est de ${ratio.toFixed(2)}${ratio>=1.5?" — excellent.":ratio>=1?" — correct.":"— à améliorer, tes gains ne couvrent pas assez tes pertes."} Score discipline : ${disc}/10.`});
+  } else {
+    insights.push({type:"global", txt:`Over ${trades.length} trades, your Win Rate is ${wr}% with a total P&L of ${fmtP(totalPnl)}. ${wr>=55?"Strong performance — your edge is real.":wr>=45?"WR near breakeven. A few adjustments can make the difference.":"Work needed on setup selection."} Risk/Reward ratio: ${ratio.toFixed(2)}${ratio>=1.5?" — excellent.":ratio>=1?" — decent.":"— needs improvement, gains don't cover losses enough."} Discipline score: ${disc}/10.`});
+  }
+
+  // Conformité
+  if(conf.length>=2&&nconf.length>=2) {
+    const diff=confWR-nconfWR;
+    if(fr) insights.push({type:diff>0?"good":"warn", txt:diff>10?`Quand tu respectes ta checklist tu gagnes ${confWR}% du temps. Sans la respecter tu tombes à ${nconfWR}%. Cette différence de ${diff}% prouve que tes règles fonctionnent — arrête de les ignorer.`:`Tu gagnes ${confWR}% sur les setups conformes vs ${nconfWR}% sur les non-conformes. L'écart est faible — vérifie si ta checklist est bien calibrée.`});
+    else insights.push({type:diff>0?"good":"warn", txt:diff>10?`When following your checklist you win ${confWR}% of the time. Without it you drop to ${nconfWR}%. This ${diff}% gap proves your rules work — stop ignoring them.`:`${confWR}% WR on compliant vs ${nconfWR}% on non-compliant. Small gap — check if your checklist is well calibrated.`});
+  }
+
+  // Meilleur/pire actif
+  if(assetStats.length>=2) {
+    const best=assetStats[0], worst=assetStats[assetStats.length-1];
+    if(fr) insights.push({type:"asset", txt:`Ton meilleur actif est ${best.a} avec ${best.wr}% WR sur ${best.t} trades (P&L ${fmtP(best.pnl)}). ${worst.wr<40?`Évite ${worst.a} pour l'instant — seulement ${worst.wr}% WR sur ${worst.t} trades.`:`${worst.a} est ton actif le moins performant avec ${worst.wr}% WR.`}`});
+    else insights.push({type:"asset", txt:`Best asset: ${best.a} with ${best.wr}% WR over ${best.t} trades (P&L ${fmtP(best.pnl)}). ${worst.wr<40?`Avoid ${worst.a} for now — only ${worst.wr}% WR over ${worst.t} trades.`:`${worst.a} is your weakest asset with ${worst.wr}% WR.`}`});
+  }
+
+  // Jours
+  if(dayStats.length>=2) {
+    const best=dayStats[0], worst=dayStats[dayStats.length-1];
+    if(fr) insights.push({type:worst.wr<40?"warn":"day", txt:`Tu trades mieux le ${best.day} (${best.wr}% WR).${worst.wr<40?` Le ${worst.day} est clairement ta pire journée avec ${worst.wr}% WR sur ${worst.t} trades — envisage de ne pas trader ce jour-là.`:` Le ${worst.day} est ton jour le plus difficile (${worst.wr}% WR).`}`});
+    else insights.push({type:worst.wr<40?"warn":"day", txt:`You trade best on ${best.day} (${best.wr}% WR).${worst.wr<40?` ${worst.day} is clearly your worst day with ${worst.wr}% WR over ${worst.t} trades — consider avoiding it.`:` ${worst.day} is your hardest day (${worst.wr}% WR).`}`});
+  }
+
+  // Heures
+  if(hourStats.length>=2) {
+    const best=hourStats[0];
+    if(fr) insights.push({type:"hour", txt:`Ta meilleure plage horaire est autour de ${best.h} avec ${best.wr}% WR sur ${best.t} trades. Concentre tes sessions sur ces créneaux.`});
+    else insights.push({type:"hour", txt:`Your best time window is around ${best.h} with ${best.wr}% WR over ${best.t} trades. Focus your sessions on these slots.`});
+  }
+
+  // Humeur
+  if(humeurStats.length>=2) {
+    const best=humeurStats[0], worst=humeurStats[humeurStats.length-1];
+    if(fr) insights.push({type:worst.wr<40?"warn":"mood", txt:`En état "${best.h}" tu affiches ${best.wr}% WR. En état "${worst.h}" tu tombes à ${worst.wr}%.${worst.wr<40?" C'est un signal clair — ne trade pas dans cet état.":""}`});
+    else insights.push({type:worst.wr<40?"warn":"mood", txt:`When "${best.h}" you hit ${best.wr}% WR. When "${worst.h}" you drop to ${worst.wr}%.${worst.wr<40?" Clear signal — don't trade in that state.":""}`});
+  }
+
+  // Rejet
+  if(highRWR!==null&&lowRWR!==null&&Math.abs(highRWR-lowRWR)>10) {
+    if(fr) insights.push({type:highRWR>lowRWR?"good":"neutral", txt:`Avec un rejet ≥8/10 tu gagnes ${highRWR}% du temps. Avec un rejet plus faible c'est ${lowRWR}%.${highRWR-lowRWR>15?" Sois plus sélectif sur la qualité du rejet — ça change tout.":""}`});
+    else insights.push({type:highRWR>lowRWR?"good":"neutral", txt:`With rejection ≥8/10 you win ${highRWR}% of the time. With lower rejection it's ${lowRWR}%.${highRWR-lowRWR>15?" Be more selective on rejection quality — it makes a big difference.":""}`});
+  }
+
+  // Revenge
+  if(revs.length>0) {
+    if(fr) insights.push({type:"danger", txt:`${revs.length} revenge trade${revs.length>1?"s":""} enregistré${revs.length>1?"s":""} avec ${revLoss}% de pertes. Chaque revenge trade est une entorse à ta discipline. Mets en place une règle d'arrêt après 2 pertes consécutives.`});
+    else insights.push({type:"danger", txt:`${revs.length} revenge trade${revs.length>1?"s":""} logged with ${revLoss}% loss rate. Each revenge trade breaks your discipline. Set a hard stop rule after 2 consecutive losses.`});
+  }
+
+  const typeColor={global:neon,good:neon,warn:"#f0b429",danger:"#ff4d4d",asset:neon,day:"#f0b429",hour:neon,mood:"#f0b429",neutral:neon};
+  const typeIcon={global:"◈",good:"✓",warn:"⚠",danger:"✕",asset:"◆",day:"◷",hour:"◷",mood:"●",neutral:"·"};
 
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:400,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
       <div className="slide-up" style={{background:"#0d1a0d",border:`1px solid ${neon}30`,borderRadius:"20px 20px 0 0",width:"100%",maxWidth:480,maxHeight:"85vh",overflowY:"auto",paddingBottom:40}} onClick={e=>e.stopPropagation()}>
         <div style={{position:"sticky",top:0,background:"#0d1a0d",padding:"16px 20px 12px",borderBottom:`1px solid ${neon}14`,zIndex:1}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div style={{fontSize:14,fontWeight:700,color:neon,fontFamily:"'IBM Plex Mono',monospace"}}>{fr?"RÉSUMÉ COMPLET":"FULL STATS"}</div>
+            <div style={{fontSize:14,fontWeight:700,color:neon,fontFamily:MONO2}}>{fr?"RÉSUMÉ COMPLET":"FULL SUMMARY"}</div>
             <button onClick={onClose} style={{background:"transparent",border:"none",color:`${neon}66`,fontSize:20,cursor:"pointer"}}>✕</button>
           </div>
-          <div style={{fontSize:10,color:`${neon}44`,marginTop:2,fontFamily:"'IBM Plex Mono',monospace"}}>{trades.length} {fr?"trades analysés":"trades analyzed"}</div>
+          <div style={{fontSize:10,color:`${neon}44`,marginTop:2,fontFamily:MONO2}}>{trades.length} {fr?"trades analysés":"trades analyzed"}</div>
         </div>
-
-        <div style={{padding:"16px 20px"}}>
-          {/* Vue globale */}
-          <Section title={fr?"VUE GLOBALE":"OVERVIEW"}>
-            <Row label="Win Rate" value={`${wr}%`} color={wr>=50?neon:"#ff4d4d"}/>
-            <Row label="P&L total" value={fmtP(totalPnl)} color={totalPnl>=0?neon:"#ff4d4d"}/>
-            <Row label={fr?"Ratio G/P":"R/R Ratio"} value={ratio.toFixed(2)} color={ratio>=1?neon:"#f0b429"} sub={fr?`Gain moy. ${fmtP(avgWin)} · Perte moy. -${fmtP(avgLoss)}`:`Avg win ${fmtP(avgWin)} · Avg loss -${fmtP(avgLoss)}`}/>
-            <Row label={fr?"Discipline":"Discipline"} value={`${disc}/10`} color={discColor}/>
-          </Section>
-
-          {/* Conformité */}
-          <Section title={fr?"CONFORMITÉ":"COMPLIANCE"}>
-            <Row label={fr?"Setups conformes":"Compliant setups"} value={`${confWR}% WR`} color={confWR>=50?neon:"#ff4d4d"} sub={`${conf.length} ${fr?"trades":"trades"}`}/>
-            {nconf.length>0&&<Row label={fr?"Setups non-conformes":"Non-compliant"} value={`${nconfWR}% WR`} color={nconfWR>=50?"#f0b429":"#ff4d4d"} sub={`${nconf.length} ${fr?"trades":"trades"}`}/>}
-            {confWR-nconfWR>10&&<div style={{background:`${neon}0d`,border:`1px solid ${neon}22`,borderRadius:8,padding:"8px 12px",marginTop:8,fontSize:11,color:neon,fontFamily:"'IBM Plex Mono',monospace"}}>
-              ✓ {fr?`+${confWR-nconfWR}% WR quand tu respectes les règles`:`+${confWR-nconfWR}% WR when following rules`}
-            </div>}
-          </Section>
-
-          {/* Par actif */}
-          {assetStats.length>0&&<Section title={fr?"PAR ACTIF":"BY ASSET"}>
-            {assetStats.map(({a,wr:awr,pnl,t})=>(
-              <Row key={a} label={a} value={`${awr}% WR`} color={awr>=50?neon:"#ff4d4d"} sub={`${t} ${fr?"trades":"trades"} · P&L ${fmtP(pnl)}`}/>
-            ))}
-          </Section>}
-
-          {/* Par jour */}
-          {dayStats.length>0&&<Section title={fr?"PAR JOUR":"BY DAY"}>
-            {dayStats.map(({day,wr:dwr,t})=>(
-              <Row key={day} label={day} value={`${dwr}% WR`} color={dwr>=50?neon:"#ff4d4d"} sub={`${t} ${fr?"trades":"trades"}`}/>
-            ))}
-            {dayStats.length>=2&&dayStats[0].wr-dayStats[dayStats.length-1].wr>20&&(
-              <div style={{background:"rgba(240,180,41,0.08)",border:"1px solid rgba(240,180,41,0.2)",borderRadius:8,padding:"8px 12px",marginTop:8,fontSize:11,color:"#f0b429",fontFamily:"'IBM Plex Mono',monospace"}}>
-                ⚠ {fr?`Évite le ${dayStats[dayStats.length-1].day} (${dayStats[dayStats.length-1].wr}% WR)`:`Avoid ${dayStats[dayStats.length-1].day} (${dayStats[dayStats.length-1].wr}% WR)`}
+        <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
+          {insights.map((ins,i)=>(
+            <div key={i} style={{background:`${typeColor[ins.type]}08`,border:`1px solid ${typeColor[ins.type]}20`,borderRadius:12,padding:"14px 16px",borderLeft:`3px solid ${typeColor[ins.type]}`}}>
+              <div style={{display:"flex",gap:8,marginBottom:6,alignItems:"center"}}>
+                <span style={{fontSize:12,color:typeColor[ins.type],fontWeight:700}}>{typeIcon[ins.type]}</span>
               </div>
-            )}
-          </Section>}
-
-          {/* Par heure */}
-          {hourStats.length>0&&<Section title={fr?"PAR HEURE":"BY HOUR"}>
-            {hourStats.map(({h,wr:hwr,t})=>(
-              <Row key={h} label={h} value={`${hwr}% WR`} color={hwr>=50?neon:"#ff4d4d"} sub={`${t} ${fr?"trades":"trades"}`}/>
-            ))}
-          </Section>}
-
-          {/* Par humeur */}
-          {humeurStats.length>0&&<Section title={fr?"PAR HUMEUR":"BY MOOD"}>
-            {humeurStats.map(({h,wr:hwr,t})=>(
-              <Row key={h} label={h} value={`${hwr}% WR`} color={hwr>=50?neon:"#ff4d4d"} sub={`${t} ${fr?"trades":"trades"}`}/>
-            ))}
-          </Section>}
-
-          {/* Qualité du rejet */}
-          {highRWR!==null&&<Section title={fr?"QUALITÉ DU REJET":"REJECTION QUALITY"}>
-            <Row label={fr?"Rejet ≥ 8/10":"Rejection ≥ 8/10"} value={`${highRWR}% WR`} color={highRWR>=50?neon:"#ff4d4d"} sub={`${highRejet.length} ${fr?"trades":"trades"}`}/>
-            {lowRWR!==null&&<Row label={fr?"Rejet < 8/10":"Rejection < 8/10"} value={`${lowRWR}% WR`} color={lowRWR>=50?"#f0b429":"#ff4d4d"} sub={`${lowRejet.length} ${fr?"trades":"trades"}`}/>}
-            {highRWR!==null&&lowRWR!==null&&highRWR-lowRWR>15&&<div style={{background:`${neon}0d`,border:`1px solid ${neon}22`,borderRadius:8,padding:"8px 12px",marginTop:8,fontSize:11,color:neon,fontFamily:"'IBM Plex Mono',monospace"}}>
-              ✓ {fr?`+${highRWR-lowRWR}% WR avec un rejet de qualité`:`+${highRWR-lowRWR}% WR with quality rejection`}
-            </div>}
-          </Section>}
-
-          {/* Revenge trades */}
-          {revs.length>0&&<Section title="REVENGE TRADES">
-            <Row label={fr?"Nombre total":"Total count"} value={revs.length} color="#ff4d4d"/>
-            <Row label={fr?"Taux de perte":"Loss rate"} value={`${revLoss}%`} color="#ff4d4d"/>
-            <div style={{background:"rgba(255,77,77,0.08)",border:"1px solid rgba(255,77,77,0.2)",borderRadius:8,padding:"8px 12px",marginTop:8,fontSize:11,color:"#ff4d4d",fontFamily:"'IBM Plex Mono',monospace"}}>
-              ⚠ {fr?"Le revenge trading te coûte de l'argent. Stop.":"Revenge trading is costing you money. Stop."}
+              <p style={{fontSize:12,color:"#c8e6c8",lineHeight:1.75,fontFamily:MONO2,margin:0}}>{ins.txt}</p>
             </div>
-          </Section>}
+          ))}
         </div>
       </div>
     </div>
@@ -1151,6 +1138,7 @@ export default function App() {
   const [showExport,setShowExport]=useState(false);
   const [showReset,setShowReset]=useState(false);
   const [showShare,setShowShare]=useState(false);
+  const [shareTarget,setShareTarget]=useState(null);
   const [showStats,setShowStats]=useState(false);
   const [view,setView]=useState("dashboard");
   const [form,setForm]=useState(emptyForm());
@@ -1320,7 +1308,7 @@ export default function App() {
     <div ref={pageRef} className="grid-bg" style={{background:"#080f08",minHeight:"100vh",color:"#c8e6c8",fontFamily:MONO,maxWidth:480,margin:"0 auto",paddingBottom:80,overflowY:"auto",height:"100vh"}}>
       <CSS neon={neon}/>
       {notif&&<NotifCard notif={notif} onClose={()=>setNotif(null)}/>}
-      {showWeeklyRecap&&<WeeklyRecapModal trades={trades} lang={lang} neon={neon} onClose={()=>setShowWeeklyRecap(false)}/>}
+      {showWeeklyRecap&&<WeeklyRecapModal trades={trades} lang={lang} neon={neon} onClose={()=>setShowWeeklyRecap(false)} onShareWeek={()=>{setShareTarget(null);setShowShare(true);}}/>}
 
       <div style={{padding:"16px 20px 10px",borderBottom:`1px solid ${neon}1a`,background:"rgba(8,15,8,0.7)",backdropFilter:"blur(8px)"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
@@ -1399,6 +1387,7 @@ export default function App() {
                 <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6,marginLeft:10}}>
                   <ScoreRing score={trades[0].setupScore} max={trades[0].checklistMax||config.items.length} size={42} threshold={config.threshold} neon={neon}/>
                   <button onClick={e=>{e.stopPropagation();startEdit(trades[0]);}} className="btn" style={{background:`${neon}0f`,border:`1px solid ${neon}26`,color:`${neon}bb`,borderRadius:6,padding:"3px 8px",fontSize:10,fontFamily:MONO}}>✏</button>
+              <button onClick={e=>{e.stopPropagation();setShareTarget(trades[0]);setShowShare(true);}} className="btn" style={{background:"transparent",border:`1px solid ${neon}20`,color:`${neon}66`,borderRadius:6,padding:"3px 8px",fontSize:10,fontFamily:MONO}}>↑</button>
                 </div>
               </div>
             </div>
@@ -1580,7 +1569,11 @@ export default function App() {
                       {confirmDeleteId===x.id?(
                         <><span style={{fontSize:10,color:"#5a7a5a"}}>{t.deleteConfirm}</span><button onClick={()=>deleteTrade(x.id)} className="btn" style={{background:"rgba(255,77,77,0.18)",border:"1px solid #ff4d4d",color:"#ff4d4d",borderRadius:6,padding:"5px 12px",fontSize:10,fontFamily:MONO,fontWeight:700}}>{t.deleteBtn}</button><button onClick={()=>setConfirmDeleteId(null)} className="btn" style={{background:"transparent",border:`1px solid ${neon}26`,color:"#5a7a5a",borderRadius:6,padding:"5px 12px",fontSize:10,fontFamily:MONO}}>{t.cancelBtn}</button></>
                       ):(
-                        <><button onClick={e=>{e.stopPropagation();startEdit(x);}} className="btn" style={{background:`${neon}0f`,border:`1px solid ${neon}35`,color:`${neon}bb`,borderRadius:6,padding:"5px 12px",fontSize:10,fontFamily:MONO,fontWeight:700}}>✏ {lang==="fr"?"MODIFIER":"EDIT"}</button><button onClick={()=>setConfirmDeleteId(x.id)} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.15)",color:"#5a2a2a",borderRadius:6,padding:"5px 10px",fontSize:10,cursor:"pointer",fontFamily:MONO}}>{t.deleteLink}</button></>
+                        <>
+                  <button onClick={e=>{e.stopPropagation();startEdit(x);}} className="btn" style={{background:`${neon}0f`,border:`1px solid ${neon}35`,color:`${neon}bb`,borderRadius:6,padding:"5px 12px",fontSize:10,fontFamily:MONO,fontWeight:700}}>✏ {lang==="fr"?"MODIFIER":"EDIT"}</button>
+                  <button onClick={e=>{e.stopPropagation();setShareTarget(x);setShowShare(true);}} className="btn" style={{background:"transparent",border:`1px solid ${neon}20`,color:`${neon}66`,borderRadius:6,padding:"5px 10px",fontSize:10,cursor:"pointer",fontFamily:MONO}}>↑</button>
+                  <button onClick={()=>setConfirmDeleteId(x.id)} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.15)",color:"#5a2a2a",borderRadius:6,padding:"5px 10px",fontSize:10,cursor:"pointer",fontFamily:MONO}}>{t.deleteLink}</button>
+                </>
                       )}
                     </div>
                   </div>
@@ -1611,7 +1604,7 @@ export default function App() {
         {trades.length>=3&&<button onClick={()=>setShowStats(true)} className="btn" style={{background:`${neon}12`,border:`1px solid ${neon}30`,borderRadius:8,padding:"6px 14px",color:neon,fontSize:10,fontWeight:700,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:1}}>
           {lang==="fr"?"RÉSUMÉ ↑":"SUMMARY ↑"}
         </button>}
-        <button onClick={()=>setShowShare(true)} className="btn" style={{background:"transparent",border:`1px solid ${neon}20`,borderRadius:8,padding:"6px 12px",color:`${neon}66`,fontSize:11}}>↑</button>
+        <button onClick={()=>{setShareTarget(null);setShowShare(true);}} className="btn" style={{background:"transparent",border:`1px solid ${neon}20`,borderRadius:8,padding:"6px 12px",color:`${neon}66`,fontSize:11}}>↑</button>
       </div>
 
       {detailTrade&&<TradeDetailModal trade={detailTrade} config={config} onClose={()=>setDetailTrade(null)} onEdit={startEdit} lang={lang} neon={neon}/>}
