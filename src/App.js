@@ -198,6 +198,7 @@ const CSS = ({neon="#00ff9d"}) => (
     @keyframes fadeIn{from{opacity:0}to{opacity:1}}
     @keyframes pulse{0%,100%{opacity:1;text-shadow:0 0 8px ${neon}66}50%{opacity:0.85;text-shadow:0 0 14px ${neon}aa}}
     @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes ring{0%,100%{opacity:0.06;transform:scale(1)}50%{opacity:0.16;transform:scale(1.04)}}
     .fu{animation:fadeUp 0.45s ease both}
     .fi{animation:fadeIn 0.4s ease both}
     .glow{animation:pulse 3s ease-in-out infinite}
@@ -354,7 +355,7 @@ function WeeklyRecapModal({trades,lang,neon,onClose,onShareWeek}) {
           </div>}
           <div style={{display:"flex",gap:8}}>
           <button onClick={()=>{onClose();}} className="btn" style={{flex:2,background:`${neon}1a`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:"12px 0",fontSize:12,fontWeight:700,fontFamily:MONO}}>{t.weeklyClose}</button>
-          <button onClick={()=>{onShareWeek&&onShareWeek();onClose();}} className="btn" style={{flex:1,background:"transparent",border:`1px solid ${neon}30`,color:`${neon}88`,borderRadius:10,padding:"12px 0",fontSize:12,fontFamily:MONO}}>↑</button>
+          <button onClick={()=>{onShareWeek&&onShareWeek();onClose();}} className="btn" style={{flex:1,background:`${neon}0d`,border:`1px solid ${neon}30`,color:neon,borderRadius:10,padding:"12px 0",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
         </div>
         </div>
       </div>
@@ -722,10 +723,15 @@ function SplashScreen({onDone,neon}) {
     <div style={{background:"#080f08",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'IBM Plex Mono','Courier New',monospace"}}>
       <CSS neon={neon}/>
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:28}}>
-        <div style={{animation:"splashPulse 1.8s ease-out forwards"}}>
-          <style>{`@keyframes splashPulse{0%{opacity:0;transform:scale(0.8)}50%{opacity:1;transform:scale(1.05)}100%{opacity:1;transform:scale(1)}}`}</style>
-          <div style={{width:80,height:80,borderRadius:18,background:`${neon}18`,border:`2px solid ${neon}66`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 40px ${neon}44`}}>
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" className="glow">
+        {/* Logo avec cercles concentriques */}
+        <div style={{position:"relative",width:200,height:200,display:"flex",alignItems:"center",justifyContent:"center",animation:"splashPulse 1.8s ease-out forwards"}}>
+          <style>{`@keyframes splashPulse{0%{opacity:0;transform:scale(0.8)}50%{opacity:1;transform:scale(1.05)}100%{opacity:1;transform:scale(1)}}@keyframes ringS{0%,100%{opacity:0.06;transform:scale(1)}50%{opacity:0.15;transform:scale(1.03)}}`}</style>
+          {[200,155,110].map((s,i)=>(
+            <div key={i} style={{position:"absolute",width:s,height:s,borderRadius:"50%",border:`1px solid ${neon}`,opacity:0.05+i*0.05,animation:`ringS ${2+i*0.5}s ease-in-out infinite`,animationDelay:`${i*0.25}s`}}/>
+          ))}
+          <div style={{position:"absolute",width:90,height:90,borderRadius:"50%",background:`radial-gradient(circle,${neon}18 0%,transparent 70%)`}}/>
+          <div style={{width:72,height:72,borderRadius:16,background:`${neon}18`,border:`2px solid ${neon}66`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 40px ${neon}44`,position:"relative",zIndex:1}}>
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" className="glow">
               <polygon points="12,2 22,12 12,22 2,12" fill={`${neon}22`} stroke={neon} strokeWidth="1.6" strokeLinejoin="round"/>
               <polygon points="12,7 17,12 12,17 7,12" fill={neon} stroke={neon} strokeWidth="0.5"/>
             </svg>
@@ -943,13 +949,13 @@ function Onboarding({onDone}) {
   const slides=[
     {visual:(
       <div style={{position:"relative",width:"100%",height:220,display:"flex",alignItems:"center",justifyContent:"center"}}>
-        {/* Rings animées */}
-        {[1,2].map(i=>(
-          <div key={i} style={{position:"absolute",borderRadius:"50%",border:`1px solid ${neon}`,opacity:0.08+i*0.04,width:80+i*60,height:80+i*60,animation:`ring ${1.8+i*0.6}s ease-in-out infinite`,animationDelay:`${i*0.3}s`}}/>
+        {/* 3 Cercles concentriques animés */}
+        {[200,155,110].map((s,i)=>(
+          <div key={i} style={{position:"absolute",width:s,height:s,borderRadius:"50%",border:`1px solid ${neon}`,opacity:0.05+i*0.05,animation:`ring ${2.2+i*0.5}s ease-in-out infinite`,animationDelay:`${i*0.25}s`}}/>
         ))}
         {/* Halo central */}
-        <div style={{position:"absolute",width:140,height:140,borderRadius:"50%",background:`radial-gradient(circle, ${neon}22 0%, ${neon}06 50%, transparent 75%)`}}/>
-        {/* Logo centré large */}
+        <div style={{position:"absolute",width:100,height:100,borderRadius:"50%",background:`radial-gradient(circle,${neon}1a 0%,transparent 70%)`}}/>
+        {/* Logo centré */}
         <div style={{position:"relative",zIndex:2}}>
           <Logo size="lg" neon={neon}/>
         </div>
@@ -1387,11 +1393,14 @@ export default function App() {
                 <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6,marginLeft:10}}>
                   <ScoreRing score={trades[0].setupScore} max={trades[0].checklistMax||config.items.length} size={42} threshold={config.threshold} neon={neon}/>
                   <button onClick={e=>{e.stopPropagation();startEdit(trades[0]);}} className="btn" style={{background:`${neon}0f`,border:`1px solid ${neon}26`,color:`${neon}bb`,borderRadius:6,padding:"3px 8px",fontSize:10,fontFamily:MONO}}>✏</button>
-              <button onClick={e=>{e.stopPropagation();setShareTarget(trades[0]);setShowShare(true);}} className="btn" style={{background:"transparent",border:`1px solid ${neon}20`,color:`${neon}66`,borderRadius:6,padding:"3px 8px",fontSize:10,fontFamily:MONO}}>↑</button>
+              <button onClick={e=>{e.stopPropagation();setShareTarget(trades[0]);setShowShare(true);}} className="btn" style={{background:`${neon}08`,border:`1px solid ${neon}25`,color:neon,borderRadius:6,padding:"4px 8px",display:"flex",alignItems:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
                 </div>
               </div>
             </div>
           )}
+          {total>=3&&<button onClick={()=>setShowStats(true)} className="btn" style={{width:"100%",background:`${neon}0d`,border:`1px solid ${neon}28`,borderRadius:10,padding:"12px 0",color:neon,fontSize:11,fontWeight:700,fontFamily:MONO,letterSpacing:2,marginBottom:12}}>
+            {lang==="fr"?"◈ RÉSUMÉ & INSIGHTS":"◈ SUMMARY & INSIGHTS"}
+          </button>}
           <NoTradeButton onSave={e=>{
             const updated=[e,...noTrades];
             setNoTrades(updated);
@@ -1571,7 +1580,7 @@ export default function App() {
                       ):(
                         <>
                   <button onClick={e=>{e.stopPropagation();startEdit(x);}} className="btn" style={{background:`${neon}0f`,border:`1px solid ${neon}35`,color:`${neon}bb`,borderRadius:6,padding:"5px 12px",fontSize:10,fontFamily:MONO,fontWeight:700}}>✏ {lang==="fr"?"MODIFIER":"EDIT"}</button>
-                  <button onClick={e=>{e.stopPropagation();setShareTarget(x);setShowShare(true);}} className="btn" style={{background:"transparent",border:`1px solid ${neon}20`,color:`${neon}66`,borderRadius:6,padding:"5px 10px",fontSize:10,cursor:"pointer",fontFamily:MONO}}>↑</button>
+                  <button onClick={e=>{e.stopPropagation();setShareTarget(x);setShowShare(true);}} className="btn" style={{background:`${neon}08`,border:`1px solid ${neon}25`,color:neon,borderRadius:6,padding:"5px 10px",fontSize:10,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
                   <button onClick={()=>setConfirmDeleteId(x.id)} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.15)",color:"#5a2a2a",borderRadius:6,padding:"5px 10px",fontSize:10,cursor:"pointer",fontFamily:MONO}}>{t.deleteLink}</button>
                 </>
                       )}
@@ -1601,10 +1610,8 @@ export default function App() {
 
       <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(8,15,8,0.97)",backdropFilter:"blur(12px)",borderTop:`1px solid ${neon}18`,padding:"10px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div style={{fontSize:9,color:`${neon}22`,fontFamily:"'IBM Plex Mono',monospace"}}>◈ TrackMyTrade</div>
-        {trades.length>=3&&<button onClick={()=>setShowStats(true)} className="btn" style={{background:`${neon}12`,border:`1px solid ${neon}30`,borderRadius:8,padding:"6px 14px",color:neon,fontSize:10,fontWeight:700,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:1}}>
-          {lang==="fr"?"RÉSUMÉ ↑":"SUMMARY ↑"}
-        </button>}
-        <button onClick={()=>{setShareTarget(null);setShowShare(true);}} className="btn" style={{background:"transparent",border:`1px solid ${neon}20`,borderRadius:8,padding:"6px 12px",color:`${neon}66`,fontSize:11}}>↑</button>
+
+        <button onClick={()=>{setShareTarget(null);setShowShare(true);}} className="btn" style={{background:`${neon}08`,border:`1px solid ${neon}22`,borderRadius:8,padding:"6px 10px",color:neon,display:"flex",alignItems:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
       </div>
 
       {detailTrade&&<TradeDetailModal trade={detailTrade} config={config} onClose={()=>setDetailTrade(null)} onEdit={startEdit} lang={lang} neon={neon}/>}
