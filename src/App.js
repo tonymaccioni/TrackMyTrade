@@ -657,8 +657,8 @@ function LoginScreen({onLogin,lang,setLang}) {
     try {
       const em=email.trim().toLowerCase();
       if(mode==="login"){
-        const userData=await authLogin(em,pwd);
-        if(userData){onLogin({email:em,pwd,userData});}
+        const result=await authLogin(em,pwd);
+        if(result){onLogin({email:em, _uid:result._uid, userData:result});}
         else{setError(t.loginError);setLoading(false);}
       } else {
         const ok=await authRegister(em,pwd,lang);
@@ -1026,14 +1026,29 @@ export default function App() {
     try { localStorage.setItem("tmt_user",JSON.stringify({email:u.email, uid})); } catch(e){}
     const userData=u.userData;
     if(userData&&userData.setupDone){
-      if(Array.isArray(userData.trades))setTrades(userData.trades);
-      if(Array.isArray(userData.noTrades))setNoTrades(userData.noTrades);
-      if(Array.isArray(userData.phases))setPhases(userData.phases);
-      if(userData.config&&typeof userData.config==="object")setConfig(c=>({...c,...userData.config}));
-      if(userData.lang)setLang(userData.lang);
+      // Parser les strings JSON si nécessaire (ancien format Firestore)
+      const parseSafe = (v) => {
+        if(Array.isArray(v)) return v;
+        if(typeof v === "string") { try { return JSON.parse(v); } catch(e) { return []; } }
+        return [];
+      };
+      const parseObj = (v) => {
+        if(v && typeof v === "object" && !Array.isArray(v)) return v;
+        if(typeof v === "string") { try { return JSON.parse(v); } catch(e) { return {}; } }
+        return {};
+      };
+      const trades = parseSafe(userData.trades);
+      const noTrades = parseSafe(userData.noTrades);
+      const phases = parseSafe(userData.phases);
+      const config = parseObj(userData.config);
+      if(trades.length) setTrades(trades);
+      if(noTrades.length) setNoTrades(noTrades);
+      if(phases.length) setPhases(phases);
+      if(Object.keys(config).length) setConfig(c=>({...c,...config}));
+      if(userData.lang) setLang(userData.lang);
       setPhase("app");
     } else {
-      if(u.lang)setLang(u.lang);
+      if(u.lang) setLang(u.lang);
       setPhase("setup");
     }
   };
