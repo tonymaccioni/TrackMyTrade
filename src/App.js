@@ -11,43 +11,34 @@ const firebaseConfig = {
   messagingSenderId: "704401956727",
   appId: "1:704401956727:web:0d08bffe7f55ef92a58b72"
 };
-
-let db = null;
+let db=null;
 try {
   const fbApp = initializeApp(firebaseConfig);
   db = getFirestore(fbApp);
-} catch(e) { console.error("Firebase init error:", e); }
+} catch(e) { console.error("Firebase init error:",e); }
 
+// Simple Firestore auth — no Firebase Auth SDK needed
 const encEmail = e => e.replace(/\./g,"_DOT_").replace(/@/g,"_AT_");
+const saveUserData = async (id, data) => { if(!db)return; try { await setDoc(doc(db,"users",id), data, {merge:true}); } catch(e) { console.error("Firestore save:",e); } };
+const loadUserData = async id => { if(!db)return null; try { const s=await getDoc(doc(db,"users",id)); return s.exists()?s.data():null; } catch(e) { return null; } };
+const authLogin = async (email, pwd) => { const d=await loadUserData(encEmail(email)); return (d&&d.password===pwd)?d:null; };
+const authRegister = async (email, pwd, lang) => { const id=encEmail(email); if(await loadUserData(id))return false; await saveUserData(id,{password:pwd,setupDone:false,lang,trades:[],noTrades:[],phases:[]}); return true; };
 
-const saveUserData = async (id, data) => {
-  if(!db) return;
-  try { await setDoc(doc(db,"users",id), data, {merge:true}); }
-  catch(e) { console.error("saveUserData error:",e); }
-};
-
-const loadUserData = async id => {
-  if(!db) return null;
-  try { const s=await getDoc(doc(db,"users",id)); return s.exists()?s.data():null; }
-  catch(e) { return null; }
-};
-
-const authLogin = async (email, pwd) => {
-  const id = encEmail(email);
-  const data = await loadUserData(id);
-  if(!data || data.password !== pwd) return null;
-  return data;
-};
-
-const authRegister = async (email, pwd, lang) => {
-  const id = encEmail(email);
-  if(await loadUserData(id)) return false;
-  await saveUserData(id, { password: pwd, lang, setupDone: false });
-  return true;
-};
-
+const PRESET_ASSETS = ["XAU/USD","EUR/USD","GBP/USD","NAS100","BTC/USD","ETH/USD","US30","SPX500","GBP/JPY","USD/JPY"];
+const DEFAULT_CRITERIA = ["HA M5 claire (pas de doji)","MM20 bien orientée","BB approche sur M1","Bougie de rejet propre","Fenêtre horaire respectée","Pas de distraction","Contexte macro neutre"];
+const MONO = "'IBM Plex Mono','Courier New',monospace";
+const PNL_PRESETS = ["-1","-0.5","0","+1","+2","+3","+4","+5"];
+const NEON_COLORS = [{name:"Vert",value:"#00ff9d"},{name:"Bleu",value:"#00d4ff"},{name:"Violet",value:"#bf00ff"},{name:"Rose",value:"#ff00aa"},{name:"Or",value:"#f0b429"}];
+const HUMEUR_PILLS = {fr:["🎯 Focus","😐 Neutre","😤 Tendu","😴 Fatigué"],en:["🎯 Focus","😐 Neutral","😤 Tense","😴 Tired"]};
+const BIAIS_PILLS = {fr:["↑ Haussier","→ Range","↓ Baissier"],en:["↑ Bullish","→ Range","↓ Bearish"]};
+const NTR = {fr:["Pas de setup valide","Hors fenêtre","Marché difficile","Journée chargée","Jour de repos"],en:["No valid setup","Out of window","Difficult market","Busy day","Rest day"]};
+const today = () => new Date().toISOString().split("T")[0];
+const rc = (r, neon="#00ff9d") => r==="WIN"?neon:r==="LOSS"?"#ff4d4d":"#f0b429";
+const fmtPct = v => { if(v===""||v===null||v===undefined) return "—"; const n=Number(v),abs=Math.abs(n); const s=abs%1===0?abs.toFixed(0):abs*10%1===0?abs.toFixed(1):abs.toFixed(2); return `${n>=0?"+":""}${n<0?"-":""}${s}%`; };
+const calcDisc = list => { if(!list||!list.length) return null; return Math.round((list.filter(x=>x.conforming).length/list.length*0.6+list.filter(x=>!x.isRevenge).length/list.length*0.4)*10); };
+const emptyForm = (asset="XAU/USD") => ({date:today(),asset,direction:"BUY",checklist:[],result:"WIN",pnlPreset:"",pnlManual:"",notes:"",rejetScore:0,time:"",screenshot:"",isRevenge:false,slDirection:"",checkin:{humeur:"",biais:""}});
 const mkInput = neon => ({width:"100%",background:"#0d1a0d",border:`1px solid ${neon}33`,borderRadius:8,color:"#c8e6c8",padding:"12px 14px",fontSize:13,fontFamily:MONO,marginBottom:10,outline:"none"});
-// Auth handled by Firebase Firestore
+// Auth handled by Firebase Auth
 
 const T = {
   fr:{
@@ -639,7 +630,7 @@ function LoginScreen({onLogin,lang,setLang}) {
   const submit=async()=>{
     setError("");if(!email.trim()||!pwd.trim())return;
     if(pwd.trim().length<6){setError(fr?"Mot de passe trop court (6 car. min.)":"Password too short");return;}
-    if(!db){setError(fr?"Service indisponible, réessayez.":"Service unavailable, please retry.");return;}
+    if(!db){setError(fr?"Service indisponible, réessayez.":"Service unavailable.");return;}
     setLoading(true);
     try {
       const em=email.trim().toLowerCase();
