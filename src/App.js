@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell } from "recharts";
 import { initializeApp } from "firebase/app";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -12,30 +11,43 @@ const firebaseConfig = {
   messagingSenderId: "704401956727",
   appId: "1:704401956727:web:0d08bffe7f55ef92a58b72"
 };
-let fbAuth=null, db=null;
+
+let db = null;
 try {
   const fbApp = initializeApp(firebaseConfig);
-  fbAuth = getAuth(fbApp);
   db = getFirestore(fbApp);
-} catch(e) { console.error("Firebase init error:",e); }
-const saveUserData = async (uid, data) => { if(!db)return; try { await setDoc(doc(db,"users",uid), data, {merge:true}); } catch(e) { console.error("Firestore save error:",e); } };
-const loadUserData = async uid => { if(!db)return null; try { const s=await getDoc(doc(db,"users",uid)); return s.exists()?s.data():null; } catch(e) { return null; } };
+} catch(e) { console.error("Firebase init error:", e); }
 
-const PRESET_ASSETS = ["XAU/USD","EUR/USD","GBP/USD","NAS100","BTC/USD","ETH/USD","US30","SPX500","GBP/JPY","USD/JPY"];
-const DEFAULT_CRITERIA = ["HA M5 claire (pas de doji)","MM20 bien orientée","BB approche sur M1","Bougie de rejet propre","Fenêtre horaire respectée","Pas de distraction","Contexte macro neutre"];
-const MONO = "'IBM Plex Mono','Courier New',monospace";
-const PNL_PRESETS = ["-1","-0.5","0","+1","+2","+3","+4","+5"];
-const NEON_COLORS = [{name:"Vert",value:"#00ff9d"},{name:"Bleu",value:"#00d4ff"},{name:"Violet",value:"#bf00ff"},{name:"Rose",value:"#ff00aa"},{name:"Or",value:"#f0b429"}];
-const HUMEUR_PILLS = {fr:["🎯 Focus","😐 Neutre","😤 Tendu","😴 Fatigué"],en:["🎯 Focus","😐 Neutral","😤 Tense","😴 Tired"]};
-const BIAIS_PILLS = {fr:["↑ Haussier","→ Range","↓ Baissier"],en:["↑ Bullish","→ Range","↓ Bearish"]};
-const NTR = {fr:["Pas de setup valide","Hors fenêtre","Marché difficile","Journée chargée","Jour de repos"],en:["No valid setup","Out of window","Difficult market","Busy day","Rest day"]};
-const today = () => new Date().toISOString().split("T")[0];
-const rc = (r, neon="#00ff9d") => r==="WIN"?neon:r==="LOSS"?"#ff4d4d":"#f0b429";
-const fmtPct = v => { if(v===""||v===null||v===undefined) return "—"; const n=Number(v),abs=Math.abs(n); const s=abs%1===0?abs.toFixed(0):abs*10%1===0?abs.toFixed(1):abs.toFixed(2); return `${n>=0?"+":""}${n<0?"-":""}${s}%`; };
-const calcDisc = list => { if(!list||!list.length) return null; return Math.round((list.filter(x=>x.conforming).length/list.length*0.6+list.filter(x=>!x.isRevenge).length/list.length*0.4)*10); };
-const emptyForm = (asset="XAU/USD") => ({date:today(),asset,direction:"BUY",checklist:[],result:"WIN",pnlPreset:"",pnlManual:"",notes:"",rejetScore:0,time:"",screenshot:"",isRevenge:false,slDirection:"",checkin:{humeur:"",biais:""}});
+const encEmail = e => e.replace(/\./g,"_DOT_").replace(/@/g,"_AT_");
+
+const saveUserData = async (id, data) => {
+  if(!db) return;
+  try { await setDoc(doc(db,"users",id), data, {merge:true}); }
+  catch(e) { console.error("saveUserData error:",e); }
+};
+
+const loadUserData = async id => {
+  if(!db) return null;
+  try { const s=await getDoc(doc(db,"users",id)); return s.exists()?s.data():null; }
+  catch(e) { return null; }
+};
+
+const authLogin = async (email, pwd) => {
+  const id = encEmail(email);
+  const data = await loadUserData(id);
+  if(!data || data.password !== pwd) return null;
+  return data;
+};
+
+const authRegister = async (email, pwd, lang) => {
+  const id = encEmail(email);
+  if(await loadUserData(id)) return false;
+  await saveUserData(id, { password: pwd, lang, setupDone: false });
+  return true;
+};
+
 const mkInput = neon => ({width:"100%",background:"#0d1a0d",border:`1px solid ${neon}33`,borderRadius:8,color:"#c8e6c8",padding:"12px 14px",fontSize:13,fontFamily:MONO,marginBottom:10,outline:"none"});
-// Auth handled by Firebase Auth
+// Auth handled by Firebase Firestore
 
 const T = {
   fr:{
@@ -626,25 +638,21 @@ function LoginScreen({onLogin,lang,setLang}) {
   const pwdPlaceholder=fr?"Mot de passe (6 car. min.)":"Password (6 chars min.)";
   const submit=async()=>{
     setError("");if(!email.trim()||!pwd.trim())return;
-    if(pwd.trim().length<6){setError(fr?"Mot de passe trop court (6 car. min.)":"Password too short (6 chars min.)");return;}
-    if(!fbAuth){setError(fr?"Service indisponible, réessayez.":"Service unavailable, please retry.");return;}
+    if(pwd.trim().length<6){setError(fr?"Mot de passe trop court (6 car. min.)":"Password too short");return;}
+    if(!db){setError(fr?"Service indisponible, réessayez.":"Service unavailable, please retry.");return;}
     setLoading(true);
     try {
+      const em=email.trim().toLowerCase();
       if(mode==="login"){
-        await signInWithEmailAndPassword(fbAuth,email.trim().toLowerCase(),pwd);
-        onLogin({lang});
+        const userData=await authLogin(em,pwd);
+        if(userData){onLogin({email:em,pwd,userData});}
+        else{setError(t.loginError);setLoading(false);}
       } else {
-        await createUserWithEmailAndPassword(fbAuth,email.trim().toLowerCase(),pwd);
-        setSignupDone(true);setLoading(false);
+        const ok=await authRegister(em,pwd,lang);
+        if(ok){setSignupDone(true);setLoading(false);}
+        else{setError(t.signupError);setLoading(false);}
       }
-    } catch(e) {
-      const code=e.code||"";
-      const msg=code==="auth/user-not-found"||code==="auth/wrong-password"||code==="auth/invalid-credential"
-        ?t.loginError:code==="auth/email-already-in-use"?t.signupError
-        :code==="auth/network-request-failed"?(fr?"Erreur réseau, vérifiez votre connexion.":"Network error, check your connection.")
-        :e.message||t.loginError;
-      setError(msg);setLoading(false);
-    }
+    } catch(e){setError(e.message||t.loginError);setLoading(false);}
   };
   // Signup confirmation screen
   if(signupDone) return (
@@ -656,7 +664,7 @@ function LoginScreen({onLogin,lang,setLang}) {
         </div>
         <div style={{fontSize:20,fontWeight:700,color:"#e8f5e8",fontFamily:MONO,marginBottom:10}}>{fr?"Compte créé !":"Account created!"}</div>
         <div style={{fontSize:13,color:"#5a7a5a",fontFamily:MONO,lineHeight:1.7,marginBottom:28}}>{fr?`Bienvenue sur TrackMyTrade.\nTon compte est prêt.`:`Welcome to TrackMyTrade.\nYour account is ready.`}</div>
-        <button onClick={()=>onLogin({lang})} className="btn"
+        <button onClick={()=>onLogin({email:email.trim().toLowerCase(),pwd,userData:null})} className="btn"
           style={{width:"100%",background:`${neon}22`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:16,fontSize:14,fontWeight:700,fontFamily:MONO,letterSpacing:2}}>
           {fr?"CONFIGURER MA STRATÉGIE →":"SET UP MY STRATEGY →"}
         </button>
@@ -895,34 +903,30 @@ export default function App() {
   const [confirmDeleteId,setConfirmDeleteId]=useState(null);
   const [detailTrade,setDetailTrade]=useState(null);
   const [config,setConfig]=useState({items:DEFAULT_CRITERIA,threshold:6,strategyName:"Ma Stratégie",defaultAsset:"XAU/USD",maxTrades:1,neonColor:"#00ff9d",calendarOn:true,notifOn:true,customAssets:[...PRESET_ASSETS]});
-  const fileRef=useRef();const pageRef=useRef();const weeklyShownRef=useRef(false);const fbUserRef=useRef(null);
+  const fileRef=useRef();const pageRef=useRef();const weeklyShownRef=useRef(false);const currentUserRef=useRef(null);
   const neon=config.neonColor||"#00ff9d";const t=T[lang];const inSt=mkInput(neon);
 
-  const sessionCheckedRef=useRef(false);
+  // Session restore from localStorage on page load
   useEffect(()=>{
-    if(!fbAuth) return;
-    let unsub;
     try {
-      unsub=onAuthStateChanged(fbAuth,async user=>{
-        if(sessionCheckedRef.current) return;
-        sessionCheckedRef.current=true;
-        if(user){
-          try {
-            fbUserRef.current=user;
-            const data=await loadUserData(user.uid);
-            if(data&&data.setupDone){
-              if(Array.isArray(data.trades))setTrades(data.trades);
-              if(Array.isArray(data.noTrades))setNoTrades(data.noTrades);
-              if(Array.isArray(data.phases))setPhases(data.phases);
-              if(data.config&&typeof data.config==="object")setConfig(c=>({...c,...data.config}));
-              if(data.lang)setLang(data.lang);
+      const saved=localStorage.getItem("tmt_user");
+      if(saved){
+        const {email,pwd}=JSON.parse(saved);
+        authLogin(email,pwd).then(userData=>{
+          if(userData){
+            currentUserRef.current={email,pwd};
+            if(userData.setupDone){
+              if(Array.isArray(userData.trades))setTrades(userData.trades);
+              if(Array.isArray(userData.noTrades))setNoTrades(userData.noTrades);
+              if(Array.isArray(userData.phases))setPhases(userData.phases);
+              if(userData.config&&typeof userData.config==="object")setConfig(c=>({...c,...userData.config}));
+              if(userData.lang)setLang(userData.lang);
               setPhase("app");
-            }
-          } catch(e){ console.error("Session restore error:",e); }
-        }
-      });
-    } catch(e){ console.error("onAuthStateChanged error:",e); }
-    return ()=>{ try{ if(unsub)unsub(); }catch(e){} };
+            } else { setPhase("setup"); }
+          }
+        }).catch(()=>{});
+      }
+    } catch(e){}
   },[]);
 
   useEffect(()=>{
@@ -942,7 +946,7 @@ export default function App() {
     const newPhases=[...phases,{id:Date.now(),date:today()}];
     setPhases(newPhases);setStatsMode("phase");
     setNotif({txt:lang==="fr"?`Phase ${num} démarrée.\nStats remises à zéro instantanément.`:`Phase ${num} started.\nStats reset instantly.`,color:neon,icon:"ok",lang});
-    if(fbUserRef.current) saveUserData(fbUserRef.current.uid,{phases:newPhases});
+    if(currentUserRef.current?.email) saveUserData(encEmail(currentUserRef.current?.email||""),{phases:newPhases});
   };
 
   const pf=statsMode==="phase"?trades.filter(x=>x.id>currentPhaseTs):trades;
@@ -966,7 +970,7 @@ export default function App() {
     if(editingId!==null){updated=trades.map(x=>x.id===editingId?{...x,...form,pnlPct:pnl,setupScore:score,conforming,isRevenge,checklistMax:config.items.length}:x);}
     else{const trade={...form,pnlPct:pnl,id:Date.now(),setupScore:score,conforming,isRevenge,checklistMax:config.items.length};ut=trade;updated=[trade,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);}
     setTrades(updated);
-    if(fbUserRef.current) saveUserData(fbUserRef.current.uid,{trades:updated});
+    if(currentUserRef.current?.email) saveUserData(encEmail(currentUserRef.current?.email||""),{trades:updated});
     setForm(emptyForm(config.defaultAsset||"XAU/USD"));setEditingId(null);setCheckinOpen(false);
     // Conseil biais/direction incohérents
     const biaisCheck=form.checkin?.biais||"";
@@ -985,11 +989,11 @@ export default function App() {
   const deleteTrade=id=>{
     const updated=trades.filter(x=>x.id!==id);
     setTrades(updated);setConfirmDeleteId(null);
-    if(fbUserRef.current) saveUserData(fbUserRef.current.uid,{trades:updated});
+    if(currentUserRef.current?.email) saveUserData(encEmail(currentUserRef.current?.email||""),{trades:updated});
   };
   const handleReset=()=>{
     setTrades([]);setNoTrades([]);setPhases([]);setShowReset(false);
-    if(fbUserRef.current) saveUserData(fbUserRef.current.uid,{trades:[],noTrades:[],phases:[]});
+    if(currentUserRef.current?.email) saveUserData(encEmail(currentUserRef.current?.email||""),{trades:[],noTrades:[],phases:[]});
   };
 
   const histFiltered=trades.filter(x=>(histFilter==="ALL"||x.result===histFilter)&&(histAsset==="ALL"||x.asset===histAsset));
@@ -1000,26 +1004,22 @@ export default function App() {
   const biaisPills=BIAIS_PILLS[lang]||BIAIS_PILLS.fr;
 
   // handleLogin must be defined before conditional returns (Rules of Hooks)
-  const handleLogin=async u=>{
-    sessionCheckedRef.current=true; // block onAuthStateChanged from racing
-    try {
-      const user=fbAuth?.currentUser;
-      if(user){
-        fbUserRef.current=user;
-        const data=await loadUserData(user.uid);
-        if(data&&data.setupDone){
-          if(Array.isArray(data.trades))setTrades(data.trades);
-          if(Array.isArray(data.noTrades))setNoTrades(data.noTrades);
-          if(Array.isArray(data.phases))setPhases(data.phases);
-          if(data.config&&typeof data.config==="object")setConfig(c=>({...c,...data.config}));
-          if(data.lang)setLang(data.lang);
-          setPhase("app");
-          return;
-        }
-      }
-    } catch(e){ console.error("handleLogin error:",e); }
-    if(u?.lang)setLang(u.lang);
-    setPhase("setup");
+  const handleLogin=u=>{
+    if(!u) return;
+    currentUserRef.current={email:u.email,pwd:u.pwd};
+    try { localStorage.setItem("tmt_user",JSON.stringify({email:u.email,pwd:u.pwd})); } catch(e){}
+    const userData=u.userData;
+    if(userData&&userData.setupDone){
+      if(Array.isArray(userData.trades))setTrades(userData.trades);
+      if(Array.isArray(userData.noTrades))setNoTrades(userData.noTrades);
+      if(Array.isArray(userData.phases))setPhases(userData.phases);
+      if(userData.config&&typeof userData.config==="object")setConfig(c=>({...c,...userData.config}));
+      if(userData.lang)setLang(userData.lang);
+      setPhase("app");
+    } else {
+      if(u.lang)setLang(u.lang);
+      setPhase("setup");
+    }
   };
 
   if(phase==="onboarding") return <><CSS neon={neon}/><Onboarding onDone={l=>{setLang(l);setPhase("login");}}/></>;
@@ -1027,7 +1027,7 @@ export default function App() {
   if(phase==="setup") return <><CSS neon={neon}/><GuidedSetup onDone={async cfg=>{
     const newCfg={...config,...cfg};
     setConfig(newCfg);setForm(emptyForm(cfg.defaultAsset||"XAU/USD"));setPhase("app");
-    if(fbUserRef.current) await saveUserData(fbUserRef.current.uid,{config:newCfg,setupDone:true,lang,trades:[],noTrades:[],phases:[]});
+    if(currentUserRef.current?.email) await saveUserData(encEmail(currentUserRef.current?.email||""),{config:newCfg,setupDone:true,lang,trades:[],noTrades:[],phases:[]});
   }} lang={lang}/></>;
 
   return (
@@ -1119,7 +1119,7 @@ export default function App() {
           <NoTradeButton onSave={e=>{
             const updated=[e,...noTrades];
             setNoTrades(updated);
-            if(fbUserRef.current) saveUserData(fbUserRef.current.uid,{noTrades:updated});
+            if(currentUserRef.current?.email) saveUserData(encEmail(currentUserRef.current?.email||""),{noTrades:updated});
           }} alreadyDone={noTrades.some(x=>x.date===today())} lang={lang} neon={neon}/>
           {total>0&&<>
             <AdvancedStats trades={pf} neon={neon} lang={lang}/>
@@ -1268,7 +1268,7 @@ export default function App() {
                 lastPk=pk;
               }
               if(x._type==="notrade"){
-                els.push(<div key={x.id} style={{background:"rgba(90,90,90,0.06)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"12px 14px",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:16,color:"#4a5a4a"}}>⊘</span><div><div style={{fontSize:12,color:"#5a7a5a",fontFamily:MONO,fontWeight:700}}>{t.noTradeToday}</div><div style={{fontSize:10,color:"#3a4a3a",marginTop:2}}>{x.date}{x.reason?" · "+x.reason:""}</div></div></div><button onClick={()=>{const upd=noTrades.filter(n=>n.id!==x.id);setNoTrades(upd);if(fbUserRef.current)saveUserData(fbUserRef.current.uid,{noTrades:upd});}} style={{background:"transparent",border:"none",color:"#2a3a2a",fontSize:12,cursor:"pointer"}}>✕</button></div>);
+                els.push(<div key={x.id} style={{background:"rgba(90,90,90,0.06)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"12px 14px",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:16,color:"#4a5a4a"}}>⊘</span><div><div style={{fontSize:12,color:"#5a7a5a",fontFamily:MONO,fontWeight:700}}>{t.noTradeToday}</div><div style={{fontSize:10,color:"#3a4a3a",marginTop:2}}>{x.date}{x.reason?" · "+x.reason:""}</div></div></div><button onClick={()=>{const upd=noTrades.filter(n=>n.id!==x.id);setNoTrades(upd);if(currentUserRef.current?.email)saveUserData(encEmail(currentUserRef.current?.email||""),{noTrades:upd});}} style={{background:"transparent",border:"none",color:"#2a3a2a",fontSize:12,cursor:"pointer"}}>✕</button></div>);
               } else {
                 els.push(
                   <div key={x.id} className="row" onClick={()=>setDetailTrade(x)} style={{background:`${rc(x.result,neon)}0a`,border:`1px solid ${neon}14`,borderRadius:10,padding:14,marginBottom:10,borderLeft:`3px solid ${rc(x.result,neon)}`}}>
@@ -1308,13 +1308,13 @@ export default function App() {
       {view==="settings"&&<SettingsView config={config} onSave={cfg=>{
         const newCfg={...config,...cfg};
         setConfig(newCfg);
-        if(fbUserRef.current) saveUserData(fbUserRef.current.uid,{config:newCfg});
+        if(currentUserRef.current?.email) saveUserData(encEmail(currentUserRef.current?.email||""),{config:newCfg});
       }} onLogout={async()=>{
-        try{if(fbAuth)await signOut(fbAuth);}catch(e){}fbUserRef.current=null;
+        currentUserRef.current=null;try{localStorage.removeItem("tmt_user");}catch(e){}
         setTrades([]);setNoTrades([]);setPhases([]);setPhase("onboarding");
       }} onReset={()=>setShowReset(true)} onNewPhase={handleNewPhase} lang={lang} onLangChange={l=>{
         setLang(l);
-        if(fbUserRef.current) saveUserData(fbUserRef.current.uid,{lang:l});
+        if(currentUserRef.current?.email) saveUserData(encEmail(currentUserRef.current?.email||""),{lang:l});
       }} neon={neon} phases={phases}/>}
 
       <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(8,15,8,0.95)",backdropFilter:"blur(10px)",borderTop:`1px solid ${neon}1a`,padding:"10px 20px",display:"flex",justifyContent:"space-between"}}>
