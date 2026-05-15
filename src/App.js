@@ -27,16 +27,21 @@ const loadUserData = async id => { if(!db)return null; try { const s=await getDo
 const authLogin = async (email, pwd) => {
   if(!auth) return null;
   try {
-    await signInWithEmailAndPassword(auth, email, pwd);
-    const d = await loadUserData(encEmail(email));
-    return d || { setupDone: false };
+    const cred = await signInWithEmailAndPassword(auth, email, pwd);
+    const uid = cred.user.uid;
+    // Essayer d'abord avec UID (nouveau système)
+    let d = await loadUserData(uid);
+    // Si pas trouvé, essayer avec email encodé (ancien système)
+    if(!d) d = await loadUserData(encEmail(email));
+    return { ...(d || { setupDone: false }), _uid: uid };
   } catch(e) { return null; }
 };
 const authRegister = async (email, pwd, lang) => {
   if(!auth) return false;
   try {
-    await createUserWithEmailAndPassword(auth, email, pwd);
-    await saveUserData(encEmail(email), {setupDone:false, lang, trades:[], noTrades:[], phases:[]});
+    const cred = await createUserWithEmailAndPassword(auth, email, pwd);
+    const uid = cred.user.uid;
+    await saveUserData(uid, {setupDone:false, lang, trades:[], noTrades:[], phases:[]});
     return true;
   } catch(e) { return false; }
 };
@@ -919,11 +924,12 @@ export default function App() {
     try {
       const saved=localStorage.getItem("tmt_user");
       if(saved){
-        const {email,pwd}=JSON.parse(saved);
+        const {email,pwd,uid}=JSON.parse(saved);
         const p = pwd||"";
         authLogin(email,p).then(userData=>{
           if(userData){
-            currentUserRef.current={email};
+            const resolvedUid = userData._uid || uid || encEmail(email);
+            currentUserRef.current={email, uid:resolvedUid};
             if(userData.setupDone){
               if(Array.isArray(userData.trades))setTrades(userData.trades);
               if(Array.isArray(userData.noTrades))setNoTrades(userData.noTrades);
@@ -955,7 +961,7 @@ export default function App() {
     const newPhases=[...phases,{id:Date.now(),date:today()}];
     setPhases(newPhases);setStatsMode("phase");
     setNotif({txt:lang==="fr"?`Phase ${num} démarrée.\nStats remises à zéro instantanément.`:`Phase ${num} started.\nStats reset instantly.`,color:neon,icon:"ok",lang});
-    if(currentUserRef.current?.email) saveUserData(encEmail(currentUserRef.current?.email||""),{phases:newPhases});
+    if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{phases:newPhases});
   };
 
   const pf=statsMode==="phase"?trades.filter(x=>x.id>currentPhaseTs):trades;
@@ -979,7 +985,7 @@ export default function App() {
     if(editingId!==null){updated=trades.map(x=>x.id===editingId?{...x,...form,pnlPct:pnl,setupScore:score,conforming,isRevenge,checklistMax:config.items.length}:x);}
     else{const trade={...form,pnlPct:pnl,id:Date.now(),setupScore:score,conforming,isRevenge,checklistMax:config.items.length};ut=trade;updated=[trade,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);}
     setTrades(updated);
-    if(currentUserRef.current?.email) saveUserData(encEmail(currentUserRef.current?.email||""),{trades:updated});
+    if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{trades:updated});
     setForm(emptyForm(config.defaultAsset||"XAU/USD"));setEditingId(null);setCheckinOpen(false);
     // Conseil biais/direction incohérents
     const biaisCheck=form.checkin?.biais||"";
@@ -998,11 +1004,11 @@ export default function App() {
   const deleteTrade=id=>{
     const updated=trades.filter(x=>x.id!==id);
     setTrades(updated);setConfirmDeleteId(null);
-    if(currentUserRef.current?.email) saveUserData(encEmail(currentUserRef.current?.email||""),{trades:updated});
+    if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{trades:updated});
   };
   const handleReset=()=>{
     setTrades([]);setNoTrades([]);setPhases([]);setShowReset(false);
-    if(currentUserRef.current?.email) saveUserData(encEmail(currentUserRef.current?.email||""),{trades:[],noTrades:[],phases:[]});
+    if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{trades:[],noTrades:[],phases:[]});
   };
 
   const histFiltered=trades.filter(x=>(histFilter==="ALL"||x.result===histFilter)&&(histAsset==="ALL"||x.asset===histAsset));
@@ -1015,8 +1021,9 @@ export default function App() {
   // handleLogin must be defined before conditional returns (Rules of Hooks)
   const handleLogin=u=>{
     if(!u) return;
-    currentUserRef.current={email:u.email};
-    try { localStorage.setItem("tmt_user",JSON.stringify({email:u.email})); } catch(e){}
+    const uid = u._uid || encEmail(u.email);
+    currentUserRef.current={email:u.email, uid};
+    try { localStorage.setItem("tmt_user",JSON.stringify({email:u.email, uid})); } catch(e){}
     const userData=u.userData;
     if(userData&&userData.setupDone){
       if(Array.isArray(userData.trades))setTrades(userData.trades);
@@ -1036,7 +1043,7 @@ export default function App() {
   if(phase==="setup") return <><CSS neon={neon}/><GuidedSetup onDone={async cfg=>{
     const newCfg={...config,...cfg};
     setConfig(newCfg);setForm(emptyForm(cfg.defaultAsset||"XAU/USD"));setPhase("app");
-    if(currentUserRef.current?.email) await saveUserData(encEmail(currentUserRef.current?.email||""),{config:newCfg,setupDone:true,lang,trades:[],noTrades:[],phases:[]});
+    if(currentUserRef.current?.email) await saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:newCfg,setupDone:true,lang,trades:[],noTrades:[],phases:[]});
   }} lang={lang}/></>;
 
   return (
@@ -1128,7 +1135,7 @@ export default function App() {
           <NoTradeButton onSave={e=>{
             const updated=[e,...noTrades];
             setNoTrades(updated);
-            if(currentUserRef.current?.email) saveUserData(encEmail(currentUserRef.current?.email||""),{noTrades:updated});
+            if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{noTrades:updated});
           }} alreadyDone={noTrades.some(x=>x.date===today())} lang={lang} neon={neon}/>
           {total>0&&<>
             <AdvancedStats trades={pf} neon={neon} lang={lang}/>
@@ -1277,7 +1284,7 @@ export default function App() {
                 lastPk=pk;
               }
               if(x._type==="notrade"){
-                els.push(<div key={x.id} style={{background:"rgba(90,90,90,0.06)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"12px 14px",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:16,color:"#4a5a4a"}}>⊘</span><div><div style={{fontSize:12,color:"#5a7a5a",fontFamily:MONO,fontWeight:700}}>{t.noTradeToday}</div><div style={{fontSize:10,color:"#3a4a3a",marginTop:2}}>{x.date}{x.reason?" · "+x.reason:""}</div></div></div><button onClick={()=>{const upd=noTrades.filter(n=>n.id!==x.id);setNoTrades(upd);if(currentUserRef.current?.email)saveUserData(encEmail(currentUserRef.current?.email||""),{noTrades:upd});}} style={{background:"transparent",border:"none",color:"#2a3a2a",fontSize:12,cursor:"pointer"}}>✕</button></div>);
+                els.push(<div key={x.id} style={{background:"rgba(90,90,90,0.06)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"12px 14px",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:16,color:"#4a5a4a"}}>⊘</span><div><div style={{fontSize:12,color:"#5a7a5a",fontFamily:MONO,fontWeight:700}}>{t.noTradeToday}</div><div style={{fontSize:10,color:"#3a4a3a",marginTop:2}}>{x.date}{x.reason?" · "+x.reason:""}</div></div></div><button onClick={()=>{const upd=noTrades.filter(n=>n.id!==x.id);setNoTrades(upd);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{noTrades:upd});}} style={{background:"transparent",border:"none",color:"#2a3a2a",fontSize:12,cursor:"pointer"}}>✕</button></div>);
               } else {
                 els.push(
                   <div key={x.id} className="row" onClick={()=>setDetailTrade(x)} style={{background:`${rc(x.result,neon)}0a`,border:`1px solid ${neon}14`,borderRadius:10,padding:14,marginBottom:10,borderLeft:`3px solid ${rc(x.result,neon)}`}}>
@@ -1317,7 +1324,7 @@ export default function App() {
       {view==="settings"&&<SettingsView config={config} onSave={cfg=>{
         const newCfg={...config,...cfg};
         setConfig(newCfg);
-        if(currentUserRef.current?.email) saveUserData(encEmail(currentUserRef.current?.email||""),{config:newCfg});
+        if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:newCfg});
       }} onLogout={async()=>{
         currentUserRef.current=null;
         try{localStorage.removeItem("tmt_user");}catch(e){}
@@ -1325,7 +1332,7 @@ export default function App() {
         setTrades([]);setNoTrades([]);setPhases([]);setPhase("onboarding");
       }} onReset={()=>setShowReset(true)} onNewPhase={handleNewPhase} lang={lang} onLangChange={l=>{
         setLang(l);
-        if(currentUserRef.current?.email) saveUserData(encEmail(currentUserRef.current?.email||""),{lang:l});
+        if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{lang:l});
       }} neon={neon} phases={phases}/>}
 
       <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(8,15,8,0.95)",backdropFilter:"blur(10px)",borderTop:`1px solid ${neon}1a`,padding:"10px 20px",display:"flex",justifyContent:"space-between"}}>
