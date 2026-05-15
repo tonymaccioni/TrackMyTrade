@@ -560,7 +560,7 @@ function TradingCalendar({trades,neon,lang}) {
           const data=byDay[d];const isToday=d===now.getDate();
           const bg=data?(data.l>data.w?"rgba(255,77,77,0.2)":`${neon}20`):"transparent";
           const tc=data?(data.l>data.w?"#ff4d4d":neon):"#3a5a3a";
-          return <div key={i} style={{background:bg,border:isToday?`1px solid ${neon}`:"1px solid transparent",borderRadius:4,padding:"4px 2px",textAlign:"center"}}><div style={{fontSize:10,color:tc,fontFamily:MONO}}>{d}</div>{data&&data.c<data.t&&<div style={{width:3,height:3,borderRadius:"50%",background:"#f0b429",margin:"1px auto 0"}}/>}</div>;
+          return <div key={i} style={{background:bg,border:isToday?`1px solid ${neon}`:"1px solid transparent",borderRadius:4,padding:"4px 2px",textAlign:"center"}}><div style={{fontSize:10,color:tc,fontFamily:MONO}}>{d}</div></div>;
         })}
       </div>
     </div>
@@ -713,6 +713,85 @@ function LoginScreen({onLogin,lang,setLang}) {
   );
 }
 
+function SplashScreen({onDone,neon}) {
+  useEffect(()=>{const t=setTimeout(onDone,1800);return()=>clearTimeout(t);},[]);
+  return (
+    <div style={{background:"#080f08",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'IBM Plex Mono','Courier New',monospace"}}>
+      <CSS neon={neon}/>
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:28}}>
+        <div style={{animation:"splashPulse 1.8s ease-out forwards"}}>
+          <style>{`@keyframes splashPulse{0%{opacity:0;transform:scale(0.8)}50%{opacity:1;transform:scale(1.05)}100%{opacity:1;transform:scale(1)}}`}</style>
+          <div style={{width:80,height:80,borderRadius:18,background:`${neon}18`,border:`2px solid ${neon}66`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 40px ${neon}44`}}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" className="glow">
+              <polygon points="12,2 22,12 12,22 2,12" fill={`${neon}22`} stroke={neon} strokeWidth="1.6" strokeLinejoin="round"/>
+              <polygon points="12,7 17,12 12,17 7,12" fill={neon} stroke={neon} strokeWidth="0.5"/>
+            </svg>
+          </div>
+        </div>
+        <div style={{textAlign:"center",animation:"fadeIn 0.8s ease 0.6s both"}}>
+          <div style={{fontSize:26,fontWeight:700,letterSpacing:-0.5}}>
+            <b style={{color:neon}}>Track</b><span style={{color:neon+"44",fontWeight:300}}>My</span><b style={{color:neon}}>Trade</b>
+          </div>
+          <div style={{fontSize:10,color:`${neon}44`,letterSpacing:4,marginTop:6}}>JOURNAL DE TRADING</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ShareModal({trade,trades,lang,neon,onClose}) {
+  const t=T[lang];
+  const fr=lang==="fr";
+  const [mode,setMode]=useState(trade?"trade":"week");
+  const cutoff=new Date(Date.now()-7*86400000).toISOString().split("T")[0];
+  const week=trades.filter(x=>x.date>=cutoff);
+  const wWins=week.filter(x=>x.result==="WIN").length;
+  const wPnl=week.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
+  const wWR=week.length?Math.round(wWins/week.length*100):0;
+  const fmtP=v=>{if(!v||v==="")return"—";const n=Number(v),a=Math.abs(n);return`${n>=0?"+":""}${n<0?"-":""}${a%1===0?a.toFixed(0):a.toFixed(1)}%`;};
+  const doShare=()=>{
+    let text="";
+    if(mode==="trade"&&trade){
+      text=`${trade.result} ${trade.asset} ${fmtP(trade.pnlPct)} — TrackMyTrade`;
+    } else {
+      text=`${fr?"Semaine":"Week"} : ${wWR}% WR · ${fmtP(wPnl)} P&L · ${week.length} ${t.trades} — TrackMyTrade`;
+    }
+    if(navigator.share){navigator.share({text,url:"https://trackmytrade.app"});}
+    else{navigator.clipboard&&navigator.clipboard.writeText(text);}
+  };
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",zIndex:400,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={onClose}>
+      <div className="slide-up" style={{background:"#0d1a0d",border:`1px solid ${neon}35`,borderRadius:16,width:"100%",maxWidth:380,padding:20}} onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <div style={{fontSize:13,fontWeight:700,color:neon,fontFamily:MONO}}>{fr?"PARTAGER":"SHARE"}</div>
+          <button onClick={onClose} style={{background:"transparent",border:"none",color:"#5a7a5a",fontSize:18,cursor:"pointer"}}>✕</button>
+        </div>
+        <div style={{display:"flex",gap:6,marginBottom:16}}>
+          {trade&&<button onClick={()=>setMode("trade")} className="btn" style={{flex:1,padding:"8px 0",borderRadius:8,fontSize:11,fontWeight:700,fontFamily:MONO,background:mode==="trade"?`${neon}1a`:"transparent",border:`1px solid ${mode==="trade"?neon:`${neon}26`}`,color:mode==="trade"?neon:"#5a7a5a"}}>{fr?"Ce trade":"This trade"}</button>}
+          <button onClick={()=>setMode("week")} className="btn" style={{flex:1,padding:"8px 0",borderRadius:8,fontSize:11,fontWeight:700,fontFamily:MONO,background:mode==="week"?`${neon}1a`:"transparent",border:`1px solid ${mode==="week"?neon:`${neon}26`}`,color:mode==="week"?neon:"#5a7a5a"}}>{fr?"Résumé semaine":"Weekly recap"}</button>
+        </div>
+        {mode==="week"&&<div style={{display:"flex",gap:8,marginBottom:16}}>
+          {[{l:"WR",v:`${wWR}%`,c:wWR>=50?neon:"#ff4d4d"},{l:"P&L",v:fmtP(wPnl),c:wPnl>=0?neon:"#ff4d4d"},{l:t.trades.toUpperCase(),v:week.length,c:neon}].map(({l,v,c})=>(
+            <div key={l} style={{flex:1,background:`${c}0a`,border:`1px solid ${c}22`,borderRadius:8,padding:"10px 0",textAlign:"center"}}>
+              <div style={{fontSize:18,fontWeight:800,color:c,fontFamily:MONO}}>{v}</div>
+              <div style={{fontSize:8,color:"#5a7a5a",marginTop:3,letterSpacing:1}}>{l}</div>
+            </div>
+          ))}
+        </div>}
+        {mode==="trade"&&trade&&<div style={{background:`${neon}08`,border:`1px solid ${neon}1a`,borderRadius:10,padding:14,marginBottom:16}}>
+          <div style={{fontSize:14,fontWeight:700,color:"#c8e6c8",fontFamily:MONO,marginBottom:8}}>{trade.asset} · {trade.direction}</div>
+          <div style={{display:"flex",gap:6}}>
+            <span style={{fontSize:13,fontWeight:700,color:trade.result==="WIN"?neon:"#ff4d4d"}}>{trade.result}</span>
+            {trade.pnlPct&&<span style={{fontSize:12,color:parseFloat(trade.pnlPct)>=0?neon:"#ff4d4d",fontWeight:600}}>{fmtP(trade.pnlPct)}</span>}
+          </div>
+        </div>}
+        <button onClick={doShare} className="btn" style={{width:"100%",background:`${neon}18`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:13,fontSize:12,fontWeight:700,fontFamily:MONO}}>↑ {fr?"Partager":"Share"}</button>
+      </div>
+    </div>
+  );
+}
+
+
 function Onboarding({onDone}) {
   const [step,setStep]=useState(0);const [lang,setLang]=useState("fr");
   const t=T[lang];const neon="#00ff9d";
@@ -796,8 +875,8 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
   const [neonColor,setNeonColor]=useState(neon);const [calendarOn,setCalendarOn]=useState(config.calendarOn!==false);
   const [notifOn,setNotifOn]=useState(config.notifOn!==false);const [customAsset,setCustomAsset]=useState("");
   const [assets,setAssets]=useState(config.customAssets||PRESET_ASSETS);
-  const [savedOk,setSavedOk]=useState(false);const [phaseConfirm,setPhaseConfirm]=useState(false);
-  const save=()=>{onSave({items,threshold,strategyName:stratName,maxTrades,neonColor,calendarOn,notifOn,customAssets:assets});setSavedOk(true);setTimeout(()=>setSavedOk(false),2000);};
+  const [savedOk,setSavedOk]=useState(false);const [phaseConfirm,setPhaseConfirm]=useState(false);const [eliminatoires,setEliminatoires]=useState(config.eliminatoires||[]);
+  const save=()=>{onSave({items,threshold,strategyName:stratName,maxTrades,neonColor,calendarOn,notifOn,customAssets:assets,eliminatoires});setSavedOk(true);setTimeout(()=>setSavedOk(false),2000);};
   const Toggle=({label,val,set})=>(
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${neonColor}0d`}}>
       <span style={{fontSize:12,color:"#c8e6c8",fontFamily:MONO}}>{label}</span>
@@ -841,7 +920,14 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
         {[4,5,6,7,8].map(n=><button key={n} onClick={()=>setThreshold(n)} className="btn" style={{flex:1,padding:8,borderRadius:8,fontSize:13,fontWeight:700,fontFamily:MONO,background:threshold===n?`${neonColor}33`:"#080f08",border:`1px solid ${threshold===n?neonColor:`${neonColor}22`}`,color:threshold===n?neonColor:"#3a5a3a"}}>{n}</button>)}
       </div>
       <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:10}}>{t.criteriaLabel} ({items.length})</div>
-      {items.map((item,i)=><div key={i} style={{display:"flex",gap:8,marginBottom:8}}><input value={item} onChange={e=>{const n=[...items];n[i]=e.target.value;setItems(n);}} style={{...inSt,marginBottom:0,flex:1}}/><button onClick={()=>setItems(items.filter((_,idx)=>idx!==i))} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d",borderRadius:6,padding:"8px 10px",cursor:"pointer"}}>✕</button></div>)}
+      {items.map((item,i)=>{
+          const isE=(eliminatoires||[]).includes(i);
+          return <div key={i} style={{display:"flex",gap:6,marginBottom:8,alignItems:"center"}}>
+            <input value={item} onChange={e=>{const n=[...items];n[i]=e.target.value;setItems(n);}} style={{...inSt,marginBottom:0,flex:1}}/>
+            <button onClick={()=>setEliminatoires(p=>isE?p.filter(x=>x!==i):[...p,i])} title={isE?"Retirer éliminatoire":"Marquer éliminatoire"} style={{background:isE?"rgba(255,77,77,0.15)":"transparent",border:`1px solid ${isE?"#ff4d4d":"rgba(255,77,77,0.25)"}`,color:isE?"#ff4d4d":"#5a3a3a",borderRadius:6,padding:"6px 8px",cursor:"pointer",fontSize:10,fontWeight:700,flexShrink:0}}>⚡</button>
+            <button onClick={()=>setItems(items.filter((_,idx)=>idx!==i))} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d",borderRadius:6,padding:"8px 10px",cursor:"pointer",flexShrink:0}}>✕</button>
+          </div>;
+        })}
       <button onClick={()=>setItems([...items,""])} style={{width:"100%",background:"transparent",border:`1px dashed ${neon}35`,color:"#3a5a3a",borderRadius:8,padding:10,fontSize:12,cursor:"pointer",fontFamily:MONO,marginBottom:16}}>{t.addCriteria}</button>
       <div style={{background:`${neon}04`,border:`1px solid ${neon}18`,borderRadius:10,padding:14,marginBottom:16}}>
         <Toggle label={t.calendarToggle} val={calendarOn} set={setCalendarOn}/>
@@ -895,7 +981,7 @@ function ExportModal({trades,onClose,lang,neon}) {
 }
 
 export default function App() {
-  const [phase,setPhase]=useState("onboarding");
+  const [phase,setPhase]=useState("splash");
   const [lang,setLang]=useState("fr");
   const [trades,setTrades]=useState([]);
   const [noTrades,setNoTrades]=useState([]);
@@ -906,6 +992,7 @@ export default function App() {
   const [showWeeklyRecap,setShowWeeklyRecap]=useState(false);
   const [showExport,setShowExport]=useState(false);
   const [showReset,setShowReset]=useState(false);
+  const [showShare,setShowShare]=useState(false);
   const [view,setView]=useState("dashboard");
   const [form,setForm]=useState(emptyForm());
   const [editingId,setEditingId]=useState(null);
@@ -980,7 +1067,9 @@ export default function App() {
   const saveTrade=()=>{
     const score=form.checklist.length,pnl=form.pnlManual!==""?form.pnlManual:form.pnlPreset;
     const isRevenge=form.isRevenge||checkRevenge(form.date);
-    const conforming=isRevenge?false:score>=config.threshold;
+    const elim=config.eliminatoires||[];
+      const elimFail=elim.some(ei=>!form.checklist.includes(ei));
+      const conforming=isRevenge?false:elimFail?false:score>=config.threshold;
     let updated,ut=null;
     if(editingId!==null){updated=trades.map(x=>x.id===editingId?{...x,...form,pnlPct:pnl,setupScore:score,conforming,isRevenge,checklistMax:config.items.length}:x);}
     else{const trade={...form,pnlPct:pnl,id:Date.now(),setupScore:score,conforming,isRevenge,checklistMax:config.items.length};ut=trade;updated=[trade,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);}
@@ -1049,10 +1138,12 @@ export default function App() {
       setPhase("app");
     } else {
       if(u.lang) setLang(u.lang);
-      setPhase("setup");
+      // Nouveau compte → onboarding puis setup
+      setPhase("onboarding");
     }
   };
 
+  if(phase==="splash") return <SplashScreen onDone={()=>setPhase("login")} neon={neon}/>;
   if(phase==="onboarding") return <><CSS neon={neon}/><Onboarding onDone={l=>{setLang(l);setPhase("login");}}/></>;
   if(phase==="login") return <LoginScreen onLogin={handleLogin} lang={lang} setLang={setLang}/>;
   if(phase==="setup") return <><CSS neon={neon}/><GuidedSetup onDone={async cfg=>{
@@ -1073,6 +1164,7 @@ export default function App() {
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
             {total>0&&<div style={{textAlign:"right"}}><div style={{fontSize:12,color:winRate>=50?neon:"#ff4d4d",fontWeight:700,fontFamily:MONO}}>{winRate}% WR</div><div style={{fontSize:11,color:totalPnl>=0?neon:"#ff4d4d",fontFamily:MONO}}>{fmtPct(totalPnl)}</div></div>}
             <button onClick={()=>setShowExport(true)} className="btn" style={{background:`${neon}0f`,border:`1px solid ${neon}26`,borderRadius:8,padding:"7px 11px",color:`${neon}99`,fontSize:13}}>↓</button>
+        <button onClick={()=>setShowShare(true)} className="btn" style={{background:`${neon}0f`,border:`1px solid ${neon}26`,borderRadius:8,padding:"7px 11px",color:`${neon}99`,fontSize:13}}>↑</button>
           </div>
         </div>
       </div>
@@ -1357,6 +1449,7 @@ export default function App() {
 
       {detailTrade&&<TradeDetailModal trade={detailTrade} config={config} onClose={()=>setDetailTrade(null)} onEdit={startEdit} lang={lang} neon={neon}/>}
       {showExport&&<ExportModal trades={trades} onClose={()=>setShowExport(false)} lang={lang} neon={neon}/>}
+      {showShare&&<ShareModal trade={trades[0]||null} trades={trades} lang={lang} neon={neon} onClose={()=>setShowShare(false)}/> }
       {showReset&&<ResetModal trades={trades} onReset={handleReset} onClose={()=>setShowReset(false)} lang={lang} neon={neon}/>}
     </div>
   );
