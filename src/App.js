@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceL
 import { initializeApp } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
- 
+
 const firebaseConfig = {
   apiKey: "AIzaSyA6SLYL7Ep451nu6edynUeBbPROtgRucv8",
   authDomain: "trackmytrade-389b0.firebaseapp.com",
@@ -20,7 +20,7 @@ try {
 } catch(e) { console.error("Firebase init error:",e); }
 const saveUserData = async (uid, data) => { if(!db)return; try { await setDoc(doc(db,"users",uid), data, {merge:true}); } catch(e) { console.error("Firestore save error:",e); } };
 const loadUserData = async uid => { if(!db)return null; try { const s=await getDoc(doc(db,"users",uid)); return s.exists()?s.data():null; } catch(e) { return null; } };
- 
+
 const PRESET_ASSETS = ["XAU/USD","EUR/USD","GBP/USD","NAS100","BTC/USD","ETH/USD","US30","SPX500","GBP/JPY","USD/JPY"];
 const DEFAULT_CRITERIA = ["HA M5 claire (pas de doji)","MM20 bien orientée","BB approche sur M1","Bougie de rejet propre","Fenêtre horaire respectée","Pas de distraction","Contexte macro neutre"];
 const MONO = "'IBM Plex Mono','Courier New',monospace";
@@ -36,7 +36,7 @@ const calcDisc = list => { if(!list||!list.length) return null; return Math.roun
 const emptyForm = (asset="XAU/USD") => ({date:today(),asset,direction:"BUY",checklist:[],result:"WIN",pnlPreset:"",pnlManual:"",notes:"",rejetScore:0,time:"",screenshot:"",isRevenge:false,slDirection:"",checkin:{humeur:"",biais:""}});
 const mkInput = neon => ({width:"100%",background:"#0d1a0d",border:`1px solid ${neon}33`,borderRadius:8,color:"#c8e6c8",padding:"12px 14px",fontSize:13,fontFamily:MONO,marginBottom:10,outline:"none"});
 // Auth handled by Firebase Auth
- 
+
 const T = {
   fr:{
     welcome:"Bienvenue sur\nTrackMyTrade",welcomeDesc:"Le journal de trading qui transforme ta discipline en données concrètes. Chaque trade enregistré est un pas vers la rentabilité.",
@@ -155,7 +155,7 @@ const T = {
     resetConfirmBtn:"Confirm reset",resetBtn:"⊘ Reset all data",
   }
 };
- 
+
 const CSS = ({neon="#00ff9d"}) => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&display=swap');
@@ -181,7 +181,7 @@ const CSS = ({neon="#00ff9d"}) => (
     @keyframes ring{0%,100%{transform:scale(1);opacity:0.12}50%{transform:scale(1.08);opacity:0.22}}
   `}</style>
 );
- 
+
 function Logo({size="sm",neon="#00ff9d"}) {
   const [box,fs]={sm:[28,18],md:[34,22],lg:[48,30]}[size]||[28,18];
   return (
@@ -198,7 +198,7 @@ function Logo({size="sm",neon="#00ff9d"}) {
     </div>
   );
 }
- 
+
 function ScoreRing({score,max=8,size=52,threshold=6,neon="#00ff9d"}) {
   const r=(size-8)/2,circ=2*Math.PI*r;
   const color=score>=threshold?neon:score>=threshold-1?"#f0b429":"#ff4d4d";
@@ -213,7 +213,7 @@ function ScoreRing({score,max=8,size=52,threshold=6,neon="#00ff9d"}) {
     </svg>
   );
 }
- 
+
 function Dots({total,current,neon="#00ff9d"}) {
   return (
     <div style={{display:"flex",gap:6,justifyContent:"center"}}>
@@ -223,7 +223,7 @@ function Dots({total,current,neon="#00ff9d"}) {
     </div>
   );
 }
- 
+
 function Stat({label,value,color="#00ff9d"}) {
   return (
     <div style={{background:`${color}0a`,border:`1px solid ${color}28`,borderRadius:12,padding:"14px 16px",flex:1,boxShadow:`0 4px 20px ${color}12, inset 0 1px 0 ${color}18`}}>
@@ -232,7 +232,7 @@ function Stat({label,value,color="#00ff9d"}) {
     </div>
   );
 }
- 
+
 function NotifCard({notif,onClose}) {
   const {txt,color,trade,lang:nl,icon}=notif;
   const neon=color||"#00ff9d";
@@ -268,7 +268,7 @@ function NotifCard({notif,onClose}) {
     </div>
   );
 }
- 
+
 function WeeklyRecapModal({trades,lang,neon,onClose}) {
   const t=T[lang];
   const cutoff=new Date(Date.now()-7*86400000).toISOString().split("T")[0];
@@ -333,7 +333,7 @@ function WeeklyRecapModal({trades,lang,neon,onClose}) {
     </div>
   );
 }
- 
+
 function TradeDetailModal({trade,config,onClose,onEdit,lang,neon}) {
   const t=T[lang];
   if(!trade) return null;
@@ -401,7 +401,7 @@ function TradeDetailModal({trade,config,onClose,onEdit,lang,neon}) {
     </div>
   );
 }
- 
+
 function ConformityBar({trades,threshold,maxItems,neon,lang}) {
   const t=T[lang];
   const conf=trades.filter(x=>x.setupScore>=threshold);
@@ -430,7 +430,7 @@ function ConformityBar({trades,threshold,maxItems,neon,lang}) {
     </div>
   );
 }
- 
+
 function PerformanceChart({trades,neon,lang}) {
   const t=T[lang];
   const [mode,setMode]=useState("cumul");
@@ -473,7 +473,7 @@ function PerformanceChart({trades,neon,lang}) {
     </div>
   );
 }
- 
+
 function StreakBadge({trades,neon,lang}) {
   const t=T[lang];
   if(trades.length<2) return null;
@@ -483,7 +483,7 @@ function StreakBadge({trades,neon,lang}) {
   const color=type==="WIN"?neon:"#ff4d4d";
   return <div style={{background:`${color}12`,border:`1px solid ${color}35`,borderRadius:10,padding:"8px 14px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between",boxShadow:`0 2px 12px ${color}18`}}><span style={{fontSize:12,color,fontWeight:700,fontFamily:MONO,textShadow:`0 0 10px ${color}88`}}>{streak} {type==="WIN"?t.streakWin:t.streakLoss}</span>{type==="LOSS"&&<span style={{fontSize:10,color:"#5a7a5a"}}>{t.checkRules}</span>}</div>;
 }
- 
+
 function AdvancedStats({trades,neon,lang}) {
   const t=T[lang];
   if(trades.length<3) return null;
@@ -511,7 +511,7 @@ function AdvancedStats({trades,neon,lang}) {
     </div>
   );
 }
- 
+
 function TradingCalendar({trades,neon,lang}) {
   const t=T[lang];
   const now=new Date();
@@ -541,7 +541,7 @@ function TradingCalendar({trades,neon,lang}) {
     </div>
   );
 }
- 
+
 function getAdvice(tr,all,lang,neon) {
   if(!tr||all.length<3) return null;
   const fr=lang==="fr";
@@ -554,7 +554,7 @@ function getAdvice(tr,all,lang,neon) {
   if(tr.result==="WIN"&&tr.conforming) return {txt:fr?"Setup propre, exécution propre.\nC'est exactement ça.":"Clean setup, clean execution.\nThat's exactly it.",icon:"fire",c:neon};
   return null;
 }
- 
+
 function NoTradeButton({onSave,alreadyDone,lang,neon}) {
   const t=T[lang];
   const ntr=NTR[lang]||NTR.fr;
@@ -575,7 +575,7 @@ function NoTradeButton({onSave,alreadyDone,lang,neon}) {
     </div>
   );
 }
- 
+
 function ResetModal({trades,onReset,onClose,lang,neon}) {
   const t=T[lang];
   const [step,setStep]=useState("confirm");
@@ -614,7 +614,7 @@ function ResetModal({trades,onReset,onClose,lang,neon}) {
     </div>
   );
 }
- 
+
 function LoginScreen({onLogin,lang,setLang}) {
   const t=T[lang];const neon="#00ff9d";
   const fr=lang==="fr";
@@ -691,7 +691,7 @@ function LoginScreen({onLogin,lang,setLang}) {
     </div>
   );
 }
- 
+
 function Onboarding({onDone}) {
   const [step,setStep]=useState(0);const [lang,setLang]=useState("fr");
   const t=T[lang];const neon="#00ff9d";
@@ -731,7 +731,7 @@ function Onboarding({onDone}) {
     </div>
   );
 }
- 
+
 function GuidedSetup({onDone,lang}) {
   const t=T[lang];const neon="#00ff9d";
   const [step,setStep]=useState(0);const [stratName,setStratName]=useState("");
@@ -767,7 +767,7 @@ function GuidedSetup({onDone,lang}) {
     </div>
   );
 }
- 
+
 function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChange,neon,phases}) {
   const t=T[lang];const inSt=mkInput(neon);
   const [items,setItems]=useState([...config.items]);const [threshold,setThreshold]=useState(config.threshold);
@@ -846,7 +846,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
     </div>
   );
 }
- 
+
 function ExportModal({trades,onClose,lang,neon}) {
   const t=T[lang];
   const dl=(c,n,tp)=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([c],{type:tp}));a.download=n;a.click();};
@@ -872,7 +872,7 @@ function ExportModal({trades,onClose,lang,neon}) {
     </div>
   );
 }
- 
+
 export default function App() {
   const [phase,setPhase]=useState("onboarding");
   const [lang,setLang]=useState("fr");
@@ -897,7 +897,7 @@ export default function App() {
   const [config,setConfig]=useState({items:DEFAULT_CRITERIA,threshold:6,strategyName:"Ma Stratégie",defaultAsset:"XAU/USD",maxTrades:1,neonColor:"#00ff9d",calendarOn:true,notifOn:true,customAssets:[...PRESET_ASSETS]});
   const fileRef=useRef();const pageRef=useRef();const weeklyShownRef=useRef(false);const fbUserRef=useRef(null);
   const neon=config.neonColor||"#00ff9d";const t=T[lang];const inSt=mkInput(neon);
- 
+
   const sessionCheckedRef=useRef(false);
   useEffect(()=>{
     if(!fbAuth) return;
@@ -911,10 +911,10 @@ export default function App() {
             fbUserRef.current=user;
             const data=await loadUserData(user.uid);
             if(data&&data.setupDone){
-              if(data.trades)setTrades(data.trades);
-              if(data.noTrades)setNoTrades(data.noTrades);
-              if(data.phases)setPhases(data.phases);
-              if(data.config)setConfig(c=>({...c,...data.config}));
+              if(Array.isArray(data.trades))setTrades(data.trades);
+              if(Array.isArray(data.noTrades))setNoTrades(data.noTrades);
+              if(Array.isArray(data.phases))setPhases(data.phases);
+              if(data.config&&typeof data.config==="object")setConfig(c=>({...c,...data.config}));
               if(data.lang)setLang(data.lang);
               setPhase("app");
             }
@@ -924,7 +924,7 @@ export default function App() {
     } catch(e){ console.error("onAuthStateChanged error:",e); }
     return ()=>{ try{ if(unsub)unsub(); }catch(e){} };
   },[]);
- 
+
   useEffect(()=>{
     const isMonday=new Date().getDay()===1;
     if(phase==="app"&&view==="dashboard"&&!weeklyShownRef.current&&trades.length>=2&&isMonday){
@@ -932,7 +932,7 @@ export default function App() {
       if(trades.some(x=>x.date>=cutoff)){weeklyShownRef.current=true;const id=setTimeout(()=>setShowWeeklyRecap(true),1000);return ()=>clearTimeout(id);}
     }
   },[phase,view,trades]);
- 
+
   const scrollToTop=()=>{if(pageRef.current)pageRef.current.scrollTo({top:0,behavior:"smooth"});};
   // Phase uses trade.id (timestamp) not date — trades before phase creation excluded even if date is today
   const currentPhaseTs=phases.length>0?phases[phases.length-1].id:0;
@@ -944,7 +944,7 @@ export default function App() {
     setNotif({txt:lang==="fr"?`Phase ${num} démarrée.\nStats remises à zéro instantanément.`:`Phase ${num} started.\nStats reset instantly.`,color:neon,icon:"ok",lang});
     if(fbUserRef.current) saveUserData(fbUserRef.current.uid,{phases:newPhases});
   };
- 
+
   const pf=statsMode==="phase"?trades.filter(x=>x.id>currentPhaseTs):trades;
   const total=pf.length,wins=pf.filter(x=>x.result==="WIN").length,losses=pf.filter(x=>x.result==="LOSS").length;
   const winRate=total?Math.round(wins/total*100):0;
@@ -952,12 +952,12 @@ export default function App() {
   const discScore=calcDisc(pf);
   const scoreColor=discScore===null?"#5a7a5a":discScore>=8?neon:discScore>=5?"#f0b429":"#ff4d4d";
   const usedAssets=[...new Set(trades.map(x=>x.asset))];
- 
+
   const checkRevenge=fd=>{if(!config.maxTrades||config.maxTrades===0)return false;return trades.filter(x=>x.date===fd&&x.id!==editingId).length>=config.maxTrades;};
   const isRevengeNow=editingId===null&&checkRevenge(form.date);
   const pnlVal=form.pnlManual!==""?form.pnlManual:form.pnlPreset;
   const pnlIncoherent=pnlVal!==""&&((form.result==="WIN"&&parseFloat(pnlVal)<0)||(form.result==="LOSS"&&parseFloat(pnlVal)>0));
- 
+
   const saveTrade=()=>{
     const score=form.checklist.length,pnl=form.pnlManual!==""?form.pnlManual:form.pnlPreset;
     const isRevenge=form.isRevenge||checkRevenge(form.date);
@@ -979,7 +979,7 @@ export default function App() {
     setSaved(true);setTimeout(()=>setSaved(false),2000);
     setView(editingId!==null?"history":"dashboard");scrollToTop();
   };
- 
+
   const startEdit=x=>{setForm({date:x.date,asset:x.asset,direction:x.direction,checklist:[...x.checklist],result:x.result,pnlPreset:PNL_PRESETS.includes(x.pnlPct)?x.pnlPct:"",pnlManual:PNL_PRESETS.includes(x.pnlPct)?"":x.pnlPct,notes:x.notes||"",rejetScore:x.rejetScore||0,time:x.time||"",screenshot:x.screenshot||"",isRevenge:x.isRevenge||false,slDirection:x.slDirection||"",checkin:x.checkin||{humeur:"",biais:""}});setEditingId(x.id);setView("log");};
   const cancelEdit=()=>{setForm(emptyForm(config.defaultAsset||"XAU/USD"));setEditingId(null);setView("history");scrollToTop();};
   const deleteTrade=id=>{
@@ -991,28 +991,29 @@ export default function App() {
     setTrades([]);setNoTrades([]);setPhases([]);setShowReset(false);
     if(fbUserRef.current) saveUserData(fbUserRef.current.uid,{trades:[],noTrades:[],phases:[]});
   };
- 
+
   const histFiltered=trades.filter(x=>(histFilter==="ALL"||x.result===histFilter)&&(histAsset==="ALL"||x.asset===histAsset));
   const mergedHistory=[...histFiltered.map(x=>({...x,_type:"trade"})),...(showNoTrades?noTrades.map(x=>({...x,_type:"notrade"})):[])].sort((a,b)=>new Date(b.date)-new Date(a.date)||b.id-a.id);
   const editingTrade=editingId!==null?trades.find(x=>x.id===editingId):null;
   const allAssets=config.customAssets||PRESET_ASSETS;
   const humeurPills=HUMEUR_PILLS[lang]||HUMEUR_PILLS.fr;
   const biaisPills=BIAIS_PILLS[lang]||BIAIS_PILLS.fr;
- 
+
   // handleLogin must be defined before conditional returns (Rules of Hooks)
   const handleLogin=async u=>{
+    sessionCheckedRef.current=true; // block onAuthStateChanged from racing
     try {
       const user=fbAuth?.currentUser;
       if(user){
         fbUserRef.current=user;
         const data=await loadUserData(user.uid);
-        if(data){
-          if(data.trades)setTrades(data.trades);
-          if(data.noTrades)setNoTrades(data.noTrades);
-          if(data.phases)setPhases(data.phases);
-          if(data.config)setConfig(c=>({...c,...data.config}));
+        if(data&&data.setupDone){
+          if(Array.isArray(data.trades))setTrades(data.trades);
+          if(Array.isArray(data.noTrades))setNoTrades(data.noTrades);
+          if(Array.isArray(data.phases))setPhases(data.phases);
+          if(data.config&&typeof data.config==="object")setConfig(c=>({...c,...data.config}));
           if(data.lang)setLang(data.lang);
-          setPhase(data.setupDone?"app":"setup");
+          setPhase("app");
           return;
         }
       }
@@ -1020,7 +1021,7 @@ export default function App() {
     if(u?.lang)setLang(u.lang);
     setPhase("setup");
   };
- 
+
   if(phase==="onboarding") return <><CSS neon={neon}/><Onboarding onDone={l=>{setLang(l);setPhase("login");}}/></>;
   if(phase==="login") return <LoginScreen onLogin={handleLogin} lang={lang} setLang={setLang}/>;
   if(phase==="setup") return <><CSS neon={neon}/><GuidedSetup onDone={async cfg=>{
@@ -1028,13 +1029,13 @@ export default function App() {
     setConfig(newCfg);setForm(emptyForm(cfg.defaultAsset||"XAU/USD"));setPhase("app");
     if(fbUserRef.current) await saveUserData(fbUserRef.current.uid,{config:newCfg,setupDone:true,lang,trades:[],noTrades:[],phases:[]});
   }} lang={lang}/></>;
- 
+
   return (
     <div ref={pageRef} className="grid-bg" style={{background:"#080f08",minHeight:"100vh",color:"#c8e6c8",fontFamily:MONO,maxWidth:480,margin:"0 auto",paddingBottom:80,overflowY:"auto",height:"100vh"}}>
       <CSS neon={neon}/>
       {notif&&<NotifCard notif={notif} onClose={()=>setNotif(null)}/>}
       {showWeeklyRecap&&<WeeklyRecapModal trades={trades} lang={lang} neon={neon} onClose={()=>setShowWeeklyRecap(false)}/>}
- 
+
       <div style={{padding:"16px 20px 10px",borderBottom:`1px solid ${neon}1a`,background:"rgba(8,15,8,0.7)",backdropFilter:"blur(8px)"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div><Logo size="sm" neon={neon}/><div style={{fontSize:10,color:"#3a5a3a",marginTop:4}}>{config.strategyName}</div></div>
@@ -1044,14 +1045,14 @@ export default function App() {
           </div>
         </div>
       </div>
- 
+
       <div style={{display:"flex",gap:6,padding:"10px 20px",borderBottom:`1px solid ${neon}14`}}>
         {[["dashboard",t.stats],["log",editingId?t.editLabel:`+ ${t.addTrade.replace("+ ","")}`],["history",t.history],["settings",t.settings]].map(([v,l])=>(
           <button key={v} className="btn" onClick={()=>{if(editingId&&v!=="log")cancelEdit();else{setView(v);scrollToTop();}}}
             style={{background:view===v?(editingId&&v==="log"?"rgba(240,180,41,0.15)":`${neon}1a`):"transparent",border:`1px solid ${view===v?(editingId&&v==="log"?"#f0b429":neon):`${neon}26`}`,color:view===v?(editingId&&v==="log"?"#f0b429":neon):"#3a5a3a",borderRadius:6,padding:v==="settings"?"7px 12px":"7px 0",fontSize:11,fontWeight:700,letterSpacing:1,fontFamily:MONO,flex:v==="settings"?0:1}}>{l}</button>
         ))}
       </div>
- 
+
       {view==="dashboard"&&(
         <div className="fi" style={{padding:20}}>
           <StreakBadge trades={pf} neon={neon} lang={lang}/>
@@ -1129,13 +1130,13 @@ export default function App() {
           {total===0&&<div style={{textAlign:"center",padding:"40px 20px"}}><div style={{display:"inline-block",marginBottom:20}}><Logo size="lg" neon={neon}/></div><div style={{fontSize:13,color:"#3a5a3a",marginBottom:8,fontWeight:700}}>{t.journalEmpty}</div><div style={{fontSize:11,color:"#2a3a2a",marginBottom:24,lineHeight:1.6}}>{t.journalEmptyDesc}</div><button onClick={()=>setView("log")} className="btn" style={{background:`${neon}1a`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:"12px 28px",fontSize:12,fontFamily:MONO,fontWeight:700}}>{t.firstTrade}</button></div>}
         </div>
       )}
- 
+
       {view==="log"&&(
         <div className="fi" style={{padding:20}}>
           {isRevengeNow&&<div style={{background:"rgba(255,77,77,0.1)",border:"1px solid rgba(255,77,77,0.4)",borderRadius:10,padding:"12px 14px",marginBottom:16}}><div style={{fontSize:12,color:"#ff4d4d",fontFamily:MONO,fontWeight:700}}>{t.revengeWarning}</div></div>}
           {editingId!==null&&editingTrade&&<div style={{background:"rgba(240,180,41,0.08)",border:"1px solid rgba(240,180,41,0.3)",borderRadius:10,padding:"12px 14px",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style={{fontSize:11,color:"#f0b429",fontWeight:700,marginBottom:2}}>{t.modifyTrade}</div><div style={{fontSize:10,color:"#5a7a5a"}}>{editingTrade.asset} · {editingTrade.date}</div></div><button onClick={cancelEdit} className="btn" style={{background:"transparent",border:"1px solid rgba(240,180,41,0.4)",color:"#f0b429",borderRadius:6,padding:"5px 10px",fontSize:10,fontFamily:MONO,fontWeight:700}}>{t.cancelEdit}</button></div>}
           {editingId===null&&<div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:16,textTransform:"uppercase"}}>{t.newTrade}</div>}
- 
+
           <div style={{marginBottom:14}}>
             <button onClick={()=>setCheckinOpen(!checkinOpen)} className="btn" style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",background:checkinOpen?`${neon}0d`:"transparent",border:`1px solid ${checkinOpen?neon:`${neon}26`}`,borderRadius:checkinOpen?"10px 10px 0 0":10,color:checkinOpen?neon:"#5a7a5a",fontFamily:MONO,fontSize:12}}>
               <span>{checkinOpen?"▼":"▶"} {t.checkinToggle}{(form.checkin.humeur||form.checkin.biais)?" ✓":""}</span>
@@ -1161,7 +1162,7 @@ export default function App() {
               </div>
             )}
           </div>
- 
+
           <div style={{marginBottom:14}}>
             <div style={{display:"flex",gap:8}}><input type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} style={{...inSt,marginBottom:0,flex:2}}/><input type="time" value={form.time} onChange={e=>setForm({...form,time:e.target.value})} style={{...inSt,marginBottom:0,flex:1,color:form.time?"#c8e6c8":"#3a5a3a"}}/></div>
             <div style={{fontSize:9,color:"#2a4a2a",marginTop:5}}>{t.entryTime}</div>
@@ -1233,7 +1234,7 @@ export default function App() {
           {saved&&<div style={{textAlign:"center",marginTop:10,color:neon,fontSize:12}}>{editingId!==null?t.tradeUpdated:t.tradeSaved}</div>}
         </div>
       )}
- 
+
       {view==="history"&&(
         <div className="fi" style={{padding:20}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
@@ -1303,7 +1304,7 @@ export default function App() {
           })()}
         </div>
       )}
- 
+
       {view==="settings"&&<SettingsView config={config} onSave={cfg=>{
         const newCfg={...config,...cfg};
         setConfig(newCfg);
@@ -1315,12 +1316,12 @@ export default function App() {
         setLang(l);
         if(fbUserRef.current) saveUserData(fbUserRef.current.uid,{lang:l});
       }} neon={neon} phases={phases}/>}
- 
+
       <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(8,15,8,0.95)",backdropFilter:"blur(10px)",borderTop:`1px solid ${neon}1a`,padding:"10px 20px",display:"flex",justifyContent:"space-between"}}>
         <div style={{fontSize:9,color:"#1e3a1e"}}>◈ TrackMyTrade v5</div>
         <div style={{fontSize:9,color:"#1e3a1e"}}>{lang==="fr"?"MODE DÉMO":"DEMO MODE"}</div>
       </div>
- 
+
       {detailTrade&&<TradeDetailModal trade={detailTrade} config={config} onClose={()=>setDetailTrade(null)} onEdit={startEdit} lang={lang} neon={neon}/>}
       {showExport&&<ExportModal trades={trades} onClose={()=>setShowExport(false)} lang={lang} neon={neon}/>}
       {showReset&&<ResetModal trades={trades} onReset={handleReset} onClose={()=>setShowReset(false)} lang={lang} neon={neon}/>}
