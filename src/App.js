@@ -205,10 +205,9 @@ const CSS = ({neon="#00ff9d"}) => (
     .grid-bg{background-image:linear-gradient(${neon}06 1px,transparent 1px),linear-gradient(90deg,${neon}06 1px,transparent 1px);background-size:32px 32px}
     .slide-up{animation:slideUp 0.3s ease both}
     .view-in{animation:fadeIn 0.22s ease both}
-    @keyframes ellipseIn1{0%{transform:rotate(-180deg) scale(2.5);opacity:0}15%{opacity:1}70%{transform:rotate(20deg) scale(1.06)}85%{transform:rotate(-5deg) scale(0.97)}100%{transform:rotate(0deg) scale(1)}}
-    @keyframes ellipseIn2{0%{transform:rotate(180deg) scale(2.5);opacity:0}15%{opacity:1}70%{transform:rotate(-20deg) scale(1.06)}85%{transform:rotate(5deg) scale(0.97)}100%{transform:rotate(0deg) scale(1)}}
-    @keyframes logoBox{0%,50%{opacity:0;transform:scale(0) rotate(-45deg)}70%{opacity:1;transform:scale(1.15) rotate(3deg)}85%{transform:scale(0.95) rotate(-1deg)}100%{transform:scale(1) rotate(0deg)}}
-    @keyframes ringPulse{0%,100%{opacity:0.12}50%{opacity:0.28}}
+    @keyframes pulse1{0%,100%{opacity:0.1;transform:scale(1)}50%{opacity:0.28;transform:scale(1.04)}}
+    @keyframes pulse2{0%,100%{opacity:0.18;transform:scale(1)}50%{opacity:0.35;transform:scale(1.03)}}
+    @keyframes logoIn{0%{opacity:0;transform:scale(0.75)}60%{transform:scale(1.05)}80%{transform:scale(0.97)}100%{opacity:1;transform:scale(1)}}
     @keyframes fadeInSlow{0%{opacity:0}100%{opacity:1}}
     @keyframes ring{0%,100%{transform:scale(1);opacity:0.12}50%{transform:scale(1.08);opacity:0.22}}
   `}</style>
@@ -560,14 +559,46 @@ function EcoCalendar({neon, lang}) {
   const [error, setError] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
 
-  const impactColor = imp => {
-    if(imp==="high") return "#ff4d4d";
-    if(imp==="medium") return "#f0b429";
-    return neon;
+  // Traductions des noms d'événements courants
+  const translateEvent = name => {
+    if(!fr||!name) return name;
+    const t = {
+      "Non-Farm Payrolls":"NFP — Emplois non-agricoles",
+      "Unemployment Rate":"Taux de chômage",
+      "CPI":"IPC — Inflation",
+      "Core CPI":"IPC sous-jacent",
+      "GDP":"PIB",
+      "Retail Sales":"Ventes au détail",
+      "Fed Interest Rate Decision":"Décision de taux — Fed",
+      "ECB Interest Rate Decision":"Décision de taux — BCE",
+      "BOE Interest Rate Decision":"Décision de taux — BoE",
+      "FOMC Statement":"Communiqué FOMC",
+      "Initial Jobless Claims":"Inscriptions chômage",
+      "Trade Balance":"Balance commerciale",
+      "Manufacturing PMI":"PMI Manufacturier",
+      "Services PMI":"PMI Services",
+      "Consumer Confidence":"Confiance consommateurs",
+      "PPI":"IPP — Prix producteurs",
+      "Housing Starts":"Mises en chantier",
+      "ISM Manufacturing":"ISM Manufacturier",
+      "ISM Services":"ISM Services",
+      "Durable Goods Orders":"Commandes biens durables",
+      "Jerome Powell Speaks":"Discours de Jerome Powell",
+      "Christine Lagarde Speaks":"Discours de Christine Lagarde",
+      "Andrew Bailey Speaks":"Discours de Andrew Bailey",
+    };
+    for(const [en,fr_] of Object.entries(t)){
+      if(name.includes(en)) return name.replace(en,fr_);
+    }
+    return name;
   };
-  const impactLabel = imp => {
-    if(fr) return imp==="high"?"FORT":imp==="medium"?"MOYEN":"FAIBLE";
-    return imp==="high"?"HIGH":imp==="medium"?"MEDIUM":"LOW";
+
+  const impactColor = imp => imp==="high"?"#ff4d4d":imp==="medium"?"#f0b429":neon;
+  const impactLabel = imp => fr?(imp==="high"?"FORT":"MOYEN"):(imp==="high"?"HIGH":"MEDIUM");
+
+  const countryFlag = c => {
+    const flags = {US:"🇺🇸",EU:"🇪🇺",GB:"🇬🇧",JP:"🇯🇵",CH:"🇨🇭",AU:"🇦🇺",CA:"🇨🇦",NZ:"🇳🇿",CN:"🇨🇳",DE:"🇩🇪",FR:"🇫🇷",IT:"🇮🇹",ES:"🇪🇸"};
+    return flags[c]||c||"";
   };
 
   const fetchEvents = async () => {
@@ -575,98 +606,155 @@ function EcoCalendar({neon, lang}) {
     try {
       const now = new Date();
       const from = new Date(now);
-      from.setDate(now.getDate() - now.getDay() + 1);
-      const to = new Date(from);
-      to.setDate(from.getDate() + 6);
+      const day = now.getDay();
+      from.setDate(now.getDate() - (day===0?6:day-1));
+      const to = new Date(from); to.setDate(from.getDate()+6);
       const fmt = d => d.toISOString().split("T")[0];
       const url = `https://finnhub.io/api/v1/calendar/economic?from=${fmt(from)}&to=${fmt(to)}&token=${FINN_KEY}`;
       const res = await fetch(url);
       if(!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      // Codes pays Finnhub : US, EU/euro zone, GB, JP, CH, AU, CA, NZ, CN
-      const relCountry = ["US","EU","GB","JP","CH","AU","CA","NZ","CN","DE","FR","IT","ES"];
-      const relCurrency = ["USD","EUR","GBP","JPY","CHF","AUD","CAD","NZD","CNY"];
+      const relC = ["US","EU","GB","JP","CH","AU","CA","NZ","CN","DE","FR","IT","ES"];
       const evts = (data.economicCalendar||[])
-        .filter(e => ["high","medium"].includes(e.impact))
-        .filter(e => {
-          const country = (e.country||"").toUpperCase();
-          const currency = (e.currency||"").toUpperCase();
-          return relCountry.some(c=>country.includes(c)) || relCurrency.some(c=>currency.includes(c));
-        })
-        .sort((a,b) => {
-          const o={high:0,medium:1,low:2};
+        .filter(e=>["high","medium"].includes(e.impact))
+        .filter(e=>relC.some(c=>(e.country||"").toUpperCase().startsWith(c)))
+        .sort((a,b)=>{
+          const o={high:0,medium:1};
           if(o[a.impact]!==o[b.impact]) return o[a.impact]-o[b.impact];
           return (a.time||"").localeCompare(b.time||"");
         });
       setEvents(evts);
       setLastUpdate(new Date().toLocaleTimeString(fr?"fr-FR":"en-US",{hour:"2-digit",minute:"2-digit"}));
-    } catch(e) {
-      setError(fr?`Erreur: ${e.message}`:`Error: ${e.message}`);
-    } finally {
-      setLoading(false);
-    }
+    } catch(e) { setError(e.message); }
+    finally { setLoading(false); }
   };
 
   useEffect(()=>{fetchEvents();},[]);
 
-  const byDate = {};
+  const byDate={};
   events.forEach(e=>{
-    const d=e.time?e.time.split(" ")[0]:(e.date||"");
+    const d=(e.time||e.date||"").split(" ")[0];
     if(!byDate[d]) byDate[d]=[];
     byDate[d].push(e);
   });
 
-  const dayNames = fr?["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"]:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-  const fmtDate = d => { if(!d) return ""; const dt=new Date(d+"T12:00:00"); return `${dayNames[dt.getDay()]} ${dt.getDate()}`; };
-  const fmtTime = t => { if(!t) return "—"; const p=t.split(" "); return p[1]?p[1].slice(0,5):"—"; };
-  const highCount = events.filter(e=>e.impact==="high").length;
+  const dayFr=["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"];
+  const dayEn=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const fmtDate=d=>{if(!d)return"";const dt=new Date(d+"T12:00:00");const n=(fr?dayFr:dayEn)[dt.getDay()];return `${n} ${dt.getDate()}`;};
+  const fmtTime=t=>{if(!t)return"";const p=t.split(" ");return p[1]?p[1].slice(0,5):"";};
+  const highCount=events.filter(e=>e.impact==="high").length;
 
   return (
     <div style={{background:`${neon}04`,border:`1px solid ${neon}18`,borderRadius:10,padding:16,marginBottom:12}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
         <div>
-          <div style={{fontSize:9,color:`${neon}55`,letterSpacing:2,textTransform:"uppercase",fontFamily:MONO2}}>{fr?"CALENDRIER ÉCONOMIQUE":"ECONOMIC CALENDAR"}</div>
-          {lastUpdate&&<div style={{fontSize:8,color:`${neon}33`,marginTop:2,fontFamily:MONO2}}>{fr?"Mis à jour à ":"Updated at "}{lastUpdate}</div>}
+          <div style={{fontSize:9,color:`${neon}55`,letterSpacing:2,textTransform:"uppercase",fontFamily:MONO2}}>
+            {fr?"ACTUALITÉS ÉCONOMIQUES":"ECONOMIC NEWS"}
+          </div>
+          {lastUpdate&&<div style={{fontSize:8,color:`${neon}33`,marginTop:2,fontFamily:MONO2}}>
+            {fr?"Mis à jour ":"Updated "}{lastUpdate}
+          </div>}
         </div>
         <button onClick={fetchEvents} disabled={loading} className="btn"
           style={{background:`${neon}0d`,border:`1px solid ${neon}28`,borderRadius:6,padding:"5px 10px",color:loading?`${neon}44`:neon,fontSize:10,fontFamily:MONO2,cursor:"pointer"}}>
-          {loading?(fr?"…":"…"):"↺"}
+          {loading?"…":"↺"}
         </button>
       </div>
+
       {highCount>0&&(
-        <div style={{background:"rgba(255,77,77,0.07)",border:"1px solid rgba(255,77,77,0.2)",borderRadius:8,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
-          <div style={{width:6,height:6,borderRadius:"50%",background:"#ff4d4d",flexShrink:0}}/>
-          <span style={{fontSize:11,color:"#ff4d4d",fontFamily:MONO2}}>{fr?`${highCount} événement${highCount>1?"s":""} à fort impact cette semaine`:`${highCount} high-impact event${highCount>1?"s":""} this week`}</span>
+        <div style={{background:"rgba(255,77,77,0.07)",border:"1px solid rgba(255,77,77,0.22)",borderRadius:8,padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:16}}>⚠️</span>
+          <span style={{fontSize:11,color:"#ff4d4d",fontFamily:MONO2,lineHeight:1.5}}>
+            {fr?`${highCount} événement${highCount>1?"s":""} à fort impact cette semaine — sois vigilant.`
+               :`${highCount} high-impact event${highCount>1?"s":""} this week — stay alert.`}
+          </span>
         </div>
       )}
-      {error&&<div style={{background:"rgba(255,77,77,0.07)",border:"1px solid rgba(255,77,77,0.2)",borderRadius:8,padding:"10px 12px",marginBottom:8,fontSize:11,color:"#ff4d4d",fontFamily:MONO2}}>{error}</div>}
-      {loading&&!events.length&&<div style={{textAlign:"center",padding:"20px 0",fontSize:11,color:`${neon}44`,fontFamily:MONO2}}>{fr?"Chargement…":"Loading…"}</div>}
-      {!loading&&!error&&events.length===0&&<div style={{textAlign:"center",padding:"20px 0",fontSize:11,color:`${neon}33`,fontFamily:MONO2}}>{fr?"Aucun événement majeur":"No major events"}</div>}
-      {Object.entries(byDate).map(([date,dayEvts])=>(
-        <div key={date} style={{marginBottom:12}}>
-          <div style={{fontSize:9,color:`${neon}44`,letterSpacing:2,fontFamily:MONO2,marginBottom:6,textTransform:"uppercase"}}>{fmtDate(date)}</div>
+
+      {error&&(
+        <div style={{background:"rgba(255,77,77,0.07)",border:"1px solid rgba(255,77,77,0.2)",borderRadius:8,padding:"10px 12px",marginBottom:8,fontSize:11,color:"#ff4d4d",fontFamily:MONO2}}>
+          {fr?"Erreur de connexion. Vérifie ta connexion internet.":"Connection error. Check your internet."}
+        </div>
+      )}
+
+      {loading&&!events.length&&(
+        <div style={{textAlign:"center",padding:"24px 0",fontSize:11,color:`${neon}44`,fontFamily:MONO2}}>
+          {fr?"Chargement des actualités…":"Loading news…"}
+        </div>
+      )}
+
+      {!loading&&!error&&events.length===0&&(
+        <div style={{textAlign:"center",padding:"24px 0"}}>
+          <div style={{fontSize:24,marginBottom:8}}>✅</div>
+          <div style={{fontSize:12,color:`${neon}55`,fontFamily:MONO2}}>
+            {fr?"Aucun événement majeur cette semaine":"No major events this week"}
+          </div>
+          <div style={{fontSize:10,color:`${neon}33`,fontFamily:MONO2,marginTop:4}}>
+            {fr?"Tu peux trader sereinement":"You can trade with peace of mind"}
+          </div>
+        </div>
+      )}
+
+      {Object.entries(byDate).map(([date, dayEvts])=>(
+        <div key={date} style={{marginBottom:16}}>
+          <div style={{fontSize:9,color:`${neon}66`,letterSpacing:2,fontFamily:MONO2,marginBottom:8,
+            textTransform:"uppercase",display:"flex",alignItems:"center",gap:8}}>
+            <div style={{flex:1,height:1,background:`${neon}14`}}/>
+            {fmtDate(date)}
+            <div style={{flex:1,height:1,background:`${neon}14`}}/>
+          </div>
           {dayEvts.map((ev,i)=>{
             const ic=impactColor(ev.impact);
+            const name=translateEvent(ev.event||ev.description||"—");
+            const time=fmtTime(ev.time);
+            const flag=countryFlag(ev.country);
             return (
-              <div key={i} style={{background:`${ic}07`,border:`1px solid ${ic}20`,borderRadius:8,padding:"10px 12px",marginBottom:6,borderLeft:`3px solid ${ic}`}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+              <div key={i} style={{background:`${ic}08`,border:`1px solid ${ic}22`,
+                borderRadius:10,padding:"12px 14px",marginBottom:8,
+                borderLeft:`3px solid ${ic}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
                   <div style={{flex:1}}>
-                    <div style={{fontSize:12,fontWeight:700,color:"#c8e6c8",fontFamily:MONO2,marginBottom:3}}>{ev.event||ev.description||"—"}</div>
-                    <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                      <span style={{fontSize:9,color:`${neon}55`,fontFamily:MONO2}}>{fmtTime(ev.time)}</span>
-                      {ev.country&&<span style={{fontSize:9,color:`${ic}99`,fontFamily:MONO2,fontWeight:700}}>{ev.country}</span>}
-                      {ev.prev!==undefined&&ev.prev!==null&&ev.prev!==""&&<span style={{fontSize:9,color:`${neon}44`,fontFamily:MONO2}}>Préc. {ev.prev}{ev.unit||""}</span>}
-                      {ev.estimate!==undefined&&ev.estimate!==null&&ev.estimate!==""&&<span style={{fontSize:9,color:`${neon}55`,fontFamily:MONO2}}>Est. {ev.estimate}{ev.unit||""}</span>}
+                    <div style={{fontSize:12,fontWeight:700,color:"#c8e6c8",fontFamily:MONO2,marginBottom:6,lineHeight:1.4}}>
+                      {flag&&<span style={{marginRight:6}}>{flag}</span>}{name}
+                    </div>
+                    <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+                      {time&&<div style={{display:"flex",alignItems:"center",gap:4}}>
+                        <span style={{fontSize:10,color:`${neon}55`}}>🕐</span>
+                        <span style={{fontSize:10,color:`${neon}66`,fontFamily:MONO2}}>{time} CET</span>
+                      </div>}
+                      {ev.prev!==undefined&&ev.prev!==null&&ev.prev!==""&&(
+                        <div style={{fontSize:10,color:`${neon}44`,fontFamily:MONO2}}>
+                          {fr?"Préc.":"Prev."} <b style={{color:`${neon}77`}}>{ev.prev}{ev.unit||""}</b>
+                        </div>
+                      )}
+                      {ev.estimate!==undefined&&ev.estimate!==null&&ev.estimate!==""&&(
+                        <div style={{fontSize:10,color:`${neon}44`,fontFamily:MONO2}}>
+                          {fr?"Prévu":"Est."} <b style={{color:`${neon}77`}}>{ev.estimate}{ev.unit||""}</b>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <span style={{fontSize:8,padding:"2px 6px",borderRadius:4,background:`${ic}14`,color:ic,fontFamily:MONO2,fontWeight:700,letterSpacing:1,flexShrink:0,marginLeft:8}}>{impactLabel(ev.impact)}</span>
+                  <div style={{flexShrink:0}}>
+                    <span style={{fontSize:9,padding:"3px 8px",borderRadius:5,
+                      background:`${ic}18`,color:ic,fontFamily:MONO2,fontWeight:700,letterSpacing:1}}>
+                      {impactLabel(ev.impact)}
+                    </span>
+                  </div>
                 </div>
+                {ev.impact==="high"&&(
+                  <div style={{marginTop:8,fontSize:10,color:"#ff4d4d",fontFamily:MONO2,opacity:0.7}}>
+                    {fr?"⚠ Évite de trader 15min avant et après cette annonce"
+                       :"⚠ Avoid trading 15min before and after this release"}
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
       ))}
-      <div style={{textAlign:"center",marginTop:8}}><span style={{fontSize:8,color:`${neon}22`,fontFamily:MONO2,letterSpacing:1}}>Source: Finnhub.io</span></div>
+      <div style={{textAlign:"center",marginTop:4}}>
+        <span style={{fontSize:8,color:`${neon}22`,fontFamily:MONO2,letterSpacing:1}}>Finnhub.io</span>
+      </div>
     </div>
   );
 }
@@ -809,10 +897,12 @@ function LoginScreen({onLogin,lang,setLang}) {
       <CSS neon={neon}/>
       <div style={{position:"relative",width:160,height:160,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8}}>
         <svg style={{position:"absolute",top:0,left:0,width:"100%",height:"100%"}} viewBox="0 0 160 160">
-          <ellipse cx="80" cy="80" rx="76" ry="60" fill="none" stroke={neon} strokeWidth="0.8" opacity="0.15" style={{animation:"ringPulse 3s ease-in-out infinite"}}/>
-          <ellipse cx="80" cy="80" rx="48" ry="64" fill="none" stroke={neon} strokeWidth="0.8" opacity="0.2" style={{animation:"ringPulse 2.5s ease-in-out infinite",animationDelay:"0.5s"}}/>
+          <ellipse cx="80" cy="80" rx="74" ry="58" fill="none" stroke={neon} strokeWidth="0.8"
+            style={{animation:"pulse1 3.2s ease-in-out infinite",transformOrigin:"80px 80px"}}/>
+          <ellipse cx="80" cy="80" rx="50" ry="66" fill="none" stroke={neon} strokeWidth="0.8"
+            style={{animation:"pulse2 2.4s ease-in-out infinite 0.8s",transformOrigin:"80px 80px"}}/>
         </svg>
-        <div style={{position:"absolute",width:60,height:60,borderRadius:"50%",background:`radial-gradient(circle,${neon}14 0%,transparent 70%)`}}/>
+        <div style={{position:"absolute",width:55,height:55,borderRadius:"50%",background:`radial-gradient(circle,${neon}12 0%,transparent 70%)`}}/>
         <div style={{position:"relative",zIndex:1}}><Logo size="lg" neon={neon}/></div>
       </div>
       <div className="slide-up" style={{width:"100%",maxWidth:360,textAlign:"center"}}>
@@ -864,80 +954,55 @@ function LoginScreen({onLogin,lang,setLang}) {
 }
 
 function SplashScreen({onDone,neon}) {
-  useEffect(()=>{const t=setTimeout(onDone,2800);return()=>clearTimeout(t);},[]);
-  const FONT = "'IBM Plex Mono','Courier New',monospace";
+  useEffect(()=>{const t=setTimeout(onDone,2200);return()=>clearTimeout(t);},[]);
   return (
-    <div style={{background:"#080f08",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:FONT}}>
+    <div style={{background:"#080f08",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'IBM Plex Mono','Courier New',monospace"}}>
       <CSS neon={neon}/>
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:32}}>
-
-        {/* Zone logo avec ellipses animées */}
-        <div style={{position:"relative",width:220,height:220,display:"flex",alignItems:"center",justifyContent:"center"}}>
-
-          {/* Ellipse 1 — arrive en tournant dans le sens horaire depuis l'extérieur */}
-          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",
-            animation:"ellipseIn1 2.2s cubic-bezier(0.34,1.2,0.64,1) forwards"}}>
-            <svg width="220" height="220" viewBox="0 0 220 220">
-              <ellipse cx="110" cy="110" rx="100" ry="78"
-                fill="none" stroke={neon} strokeWidth="1.2" opacity="0.5"
-                strokeDasharray="260 380"/>
+        {/* Logo avec 2 ellipses pulsantes désynchronisées */}
+        <div style={{position:"relative",width:200,height:200,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          {/* Ellipse externe — pulse lent */}
+          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <svg width="200" height="200" viewBox="0 0 200 200">
+              <ellipse cx="100" cy="100" rx="92" ry="72"
+                fill="none" stroke={neon} strokeWidth="1"
+                style={{animation:"pulse1 3.2s ease-in-out infinite",transformOrigin:"100px 100px"}}/>
             </svg>
           </div>
-
-          {/* Ellipse 2 — arrive en sens antihoraire */}
-          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",
-            animation:"ellipseIn2 2.2s cubic-bezier(0.34,1.2,0.64,1) forwards"}}>
-            <svg width="220" height="220" viewBox="0 0 220 220">
-              <ellipse cx="110" cy="110" rx="72" ry="98"
-                fill="none" stroke={neon} strokeWidth="1.2" opacity="0.35"
-                strokeDasharray="200 380"/>
+          {/* Ellipse interne — pulse plus rapide, décalé */}
+          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <svg width="200" height="200" viewBox="0 0 200 200">
+              <ellipse cx="100" cy="100" rx="64" ry="86"
+                fill="none" stroke={neon} strokeWidth="1"
+                style={{animation:"pulse2 2.4s ease-in-out infinite 0.8s",transformOrigin:"100px 100px"}}/>
             </svg>
           </div>
-
-          {/* Halo central */}
-          <div style={{position:"absolute",width:90,height:90,borderRadius:"50%",
-            background:`radial-gradient(circle,${neon}12 0%,transparent 70%)`,
-            animation:"fadeInSlow 1s ease 1s both"}}/>
-
-          {/* Logo — carré arrondi + losange — apparaît après les ellipses */}
-          <div style={{position:"relative",zIndex:2,animation:"logoBox 2.6s cubic-bezier(0.34,1.4,0.64,1) forwards"}}>
-            <div style={{width:72,height:72,borderRadius:16,
+          {/* Halo */}
+          <div style={{position:"absolute",width:80,height:80,borderRadius:"50%",
+            background:`radial-gradient(circle,${neon}14 0%,transparent 70%)`}}/>
+          {/* Logo carré + losange — apparaît avec animation */}
+          <div style={{position:"relative",zIndex:2,animation:"logoIn 0.9s cubic-bezier(0.34,1.56,0.64,1) 0.3s both"}}>
+            <div style={{width:76,height:76,borderRadius:17,
               background:`linear-gradient(135deg,${neon}18 0%,${neon}08 100%)`,
-              border:`1.5px solid ${neon}70`,
+              border:`1.5px solid ${neon}65`,
               display:"flex",alignItems:"center",justifyContent:"center",
-              boxShadow:`0 0 40px ${neon}30, inset 0 0 20px ${neon}08`}}>
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+              boxShadow:`0 0 32px ${neon}28, inset 0 0 16px ${neon}06`}}>
+              <svg width="42" height="42" viewBox="0 0 24 24" fill="none">
                 <polygon points="12,2 22,12 12,22 2,12"
-                  fill={`${neon}25`} stroke={neon} strokeWidth="1.6" strokeLinejoin="round"/>
-                <polygon points="12,7 17,12 12,17 7,12"
-                  fill={neon} stroke={neon} strokeWidth="0.5"/>
+                  fill={`${neon}22`} stroke={neon} strokeWidth="1.5" strokeLinejoin="round"/>
+                <polygon points="12,7 17,12 12,17 7,12" fill={neon}/>
               </svg>
             </div>
           </div>
-
-          {/* Ellipses statiques pulsantes après stabilisation */}
-          <svg style={{position:"absolute",top:0,left:0,pointerEvents:"none",
-            animation:"fadeInSlow 0.6s ease 2.2s both"}}
-            width="220" height="220" viewBox="0 0 220 220">
-            <ellipse cx="110" cy="110" rx="100" ry="78"
-              fill="none" stroke={neon} strokeWidth="0.8" opacity="0.15"
-              style={{animation:"ringPulse 3s ease-in-out infinite"}}/>
-            <ellipse cx="110" cy="110" rx="72" ry="98"
-              fill="none" stroke={neon} strokeWidth="0.8" opacity="0.2"
-              style={{animation:"ringPulse 2.5s ease-in-out infinite",animationDelay:"0.5s"}}/>
-          </svg>
         </div>
-
-        {/* Nom de l'app */}
-        <div style={{textAlign:"center",animation:"fadeInSlow 0.8s ease 1.2s both"}}>
-          <div style={{fontSize:28,fontWeight:700,letterSpacing:-0.5,lineHeight:1}}>
+        {/* Nom */}
+        <div style={{textAlign:"center",animation:"fadeInSlow 0.8s ease 0.5s both"}}>
+          <div style={{fontSize:28,fontWeight:700,letterSpacing:-0.5}}>
             <b style={{color:neon}}>Track</b>
             <span style={{color:neon+"40",fontWeight:300}}>My</span>
             <b style={{color:neon}}>Trade</b>
           </div>
-          <div style={{fontSize:10,color:`${neon}44`,letterSpacing:5,marginTop:8,fontWeight:400}}>
-            JOURNAL DE TRADING
-          </div>
+          <div style={{fontSize:10,color:`${neon}44`,letterSpacing:5,marginTop:8}}>JOURNAL DE TRADING</div>
         </div>
       </div>
     </div>
