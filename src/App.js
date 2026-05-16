@@ -980,10 +980,10 @@ function SplashScreen({onDone,neon}) {
       <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center",width:"100%",padding:"0 40px"}}>
         {/* Cercles concentriques — apparaissent avec fadeIn */}
         <div style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",pointerEvents:"none",animation:"fadeInSlow 0.5s ease 0.5s both"}}>
-          <svg width="340" height="200" viewBox="0 0 340 200">
-            <circle cx="170" cy="100" r="92" fill="none" stroke={neon} strokeWidth="0.7" style={{animation:"p1 3.5s ease-in-out infinite"}}/>
-            <circle cx="170" cy="100" r="66" fill="none" stroke={neon} strokeWidth="0.7" style={{animation:"p2 2.6s ease-in-out infinite 1.1s"}}/>
-            <circle cx="170" cy="100" r="42" fill="none" stroke={neon} strokeWidth="0.5" style={{animation:"p1 4s ease-in-out infinite 0.5s"}}/>
+          <svg width="360" height="180" viewBox="0 0 360 180">
+            <ellipse cx="180" cy="90" rx="168" ry="82" fill="none" stroke={neon} strokeWidth="0.7" style={{animation:"p1 3.5s ease-in-out infinite"}}/>
+            <ellipse cx="180" cy="90" rx="124" ry="60" fill="none" stroke={neon} strokeWidth="0.7" style={{animation:"p2 2.6s ease-in-out infinite 1.1s"}}/>
+            <ellipse cx="180" cy="90" rx="82" ry="40" fill="none" stroke={neon} strokeWidth="0.5" style={{animation:"p1 4s ease-in-out infinite 0.5s"}}/>
           </svg>
         </div>
 
@@ -1772,29 +1772,19 @@ export default function App() {
         const target=parseFloat(objectif.pnl)||1;
         const pct=Math.min(100,Math.max(0,cur/target*100));
         const pctRound=Math.round(pct);
-        const c=pct>=100?neon:pct>=60?"#f0b429":"#ff4d4d";
         return (
           <div style={{borderBottom:`1px solid ${neon}0a`,background:"rgba(8,15,8,0.6)"}}>
-            {/* Labels */}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 20px 3px"}}>
               <span style={{fontSize:9,color:`${neon}44`,fontFamily:MONO,letterSpacing:1}}>
                 {lang==="fr"?"OBJECTIF P&L":"P&L TARGET"} +{objectif.pnl}%
               </span>
-              <span style={{fontSize:10,fontWeight:700,color:c,fontFamily:MONO}}>
+              <span style={{fontSize:10,fontWeight:700,color:neon,fontFamily:MONO}}>
                 {pctRound}%
               </span>
             </div>
-            {/* Barre pleine largeur */}
             <div style={{height:3,background:`${neon}10`,width:"100%",position:"relative"}}>
-              <div style={{
-                height:"100%",
-                width:`${pct}%`,
-                background:c,
-                transition:"width 0.6s ease",
-                boxShadow:pct>0?`0 0 6px ${c}88`:"none"
-              }}/>
-              {/* Marqueur objectif (100%) */}
-              <div style={{position:"absolute",right:0,top:-2,width:1,height:7,background:`${neon}44`}}/>
+              <div style={{height:"100%",width:`${pct}%`,background:neon,transition:"width 0.6s ease",boxShadow:pct>0?`0 0 6px ${neon}66`:"none"}}/>
+              <div style={{position:"absolute",right:0,top:-2,width:1,height:7,background:`${neon}33`}}/>
             </div>
           </div>
         );
