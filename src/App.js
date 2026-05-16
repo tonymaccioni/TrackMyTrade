@@ -427,8 +427,8 @@ function TradeDetailModal({trade,config,onClose,onEdit,onShare,lang,neon}) {
           <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:10}}>{t.checklistDetail}</div>
           {config.items.map((item,i)=>(
             <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:`1px solid ${neon}06`}}>
-              <span style={{fontSize:13,color:trade.checklist.includes(i)?neon:"#2a3a2a"}}>{trade.checklist.includes(i)?"✓":"✗"}</span>
-              <span style={{fontSize:11,color:trade.checklist.includes(i)?"#c8e6c8":"#3a5a3a"}}>{item}</span>
+              <span style={{fontSize:13,color:(trade.checklist||[]).includes(i)?neon:"#2a3a2a"}}>{(trade.checklist||[]).includes(i)?"✓":"✗"}</span>
+              <span style={{fontSize:11,color:(trade.checklist||[]).includes(i)?"#c8e6c8":"#3a5a3a"}}>{item}</span>
             </div>
           ))}
         </div>
@@ -901,15 +901,28 @@ function LoginScreen({onLogin,lang,setLang}) {
   if(signupDone) return (
     <div style={{background:"#080f08",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:28,fontFamily:MONO,maxWidth:480,margin:"0 auto"}}>
       <CSS neon={neon}/>
-      <div style={{position:"relative",width:160,height:160,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8}}>
-        <svg style={{position:"absolute",top:0,left:0,width:"100%",height:"100%"}} viewBox="0 0 160 160">
-          <circle cx="80" cy="80" r="76" fill="none" stroke={neon} strokeWidth="0.8"
-            style={{animation:"p1 3.5s ease-in-out infinite"}}/>
-          <circle cx="80" cy="80" r="58" fill="none" stroke={neon} strokeWidth="0.8"
-            style={{animation:"p2 2.4s ease-in-out infinite 1.1s"}}/>
-        </svg>
-        <div style={{position:"absolute",width:55,height:55,borderRadius:"50%",background:`radial-gradient(circle,${neon}10 0%,transparent 70%)`}}/>
-        <div style={{position:"relative",zIndex:1}}><Logo size="lg" neon={neon}/></div>
+      <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20,width:"100%"}}>
+        {/* Cercles derrière */}
+        <div style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",pointerEvents:"none"}}>
+          <svg width="280" height="140" viewBox="0 0 280 140">
+            <circle cx="140" cy="70" r="65" fill="none" stroke={neon} strokeWidth="0.7" style={{animation:"p1 3.5s ease-in-out infinite"}}/>
+            <circle cx="140" cy="70" r="46" fill="none" stroke={neon} strokeWidth="0.7" style={{animation:"p2 2.4s ease-in-out infinite 1.1s"}}/>
+          </svg>
+        </div>
+        {/* Logo horizontal */}
+        <div style={{position:"relative",zIndex:2,display:"flex",alignItems:"center",gap:14}}>
+          <div style={{width:58,height:58,borderRadius:13,background:`${neon}14`,border:`1.5px solid ${neon}55`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 20px ${neon}18`,flexShrink:0}}>
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+              <polygon points="12,2 22,12 12,22 2,12" fill={`${neon}20`} stroke={neon} strokeWidth="1.5" strokeLinejoin="round"/>
+              <polygon points="12,7 17,12 12,17 7,12" fill={neon}/>
+            </svg>
+          </div>
+          <div>
+            <div style={{fontSize:26,fontWeight:700,letterSpacing:-0.5,lineHeight:1,whiteSpace:"nowrap"}}>
+              <b style={{color:neon}}>Track</b><span style={{color:neon+"40",fontWeight:300}}>My</span><b style={{color:neon}}>Trade</b>
+            </div>
+          </div>
+        </div>
       </div>
       <div className="slide-up" style={{width:"100%",maxWidth:360,textAlign:"center"}}>
         <div style={{display:"flex",justifyContent:"center",marginBottom:24}}>
@@ -960,41 +973,38 @@ function LoginScreen({onLogin,lang,setLang}) {
 }
 
 function SplashScreen({onDone,neon}) {
-  useEffect(()=>{const t=setTimeout(onDone,2000);return()=>clearTimeout(t);},[]);
+  useEffect(()=>{const t=setTimeout(onDone,2200);return()=>clearTimeout(t);},[]);
   return (
-    <div style={{background:"#080f08",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'IBM Plex Mono','Courier New',monospace"}}>
+    <div style={{background:"#080f08",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'IBM Plex Mono','Courier New',monospace"}}>
       <CSS neon={neon}/>
-      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:32}}>
-        <div style={{position:"relative",width:200,height:200,display:"flex",alignItems:"center",justifyContent:"center"}}>
-          {/* Cercle externe — pulse lent 3.5s */}
-          <div style={{position:"absolute",width:190,height:190,borderRadius:"50%",border:`1px solid ${neon}`,
-            animation:"p1 3.5s ease-in-out infinite",willChange:"opacity"}}/>
-          {/* Cercle interne — pulse rapide 2.4s décalé de 1.1s */}
-          <div style={{position:"absolute",width:148,height:148,borderRadius:"50%",border:`1px solid ${neon}`,
-            animation:"p2 2.4s ease-in-out infinite 1.1s",willChange:"opacity"}}/>
-          {/* Halo centre */}
-          <div style={{position:"absolute",width:88,height:88,borderRadius:"50%",
-            background:`radial-gradient(circle,${neon}10 0%,transparent 70%)`}}/>
-          {/* Logo carré + losange */}
-          <div style={{position:"relative",zIndex:2,animation:"logoIn 0.7s ease 0.2s both"}}>
-            <div style={{width:74,height:74,borderRadius:16,
-              background:`${neon}14`,
-              border:`1.5px solid ${neon}60`,
-              display:"flex",alignItems:"center",justifyContent:"center",
-              boxShadow:`0 0 28px ${neon}22`}}>
-              <svg width="44" height="44" viewBox="0 0 24 24" fill="none">
-                <polygon points="12,2 22,12 12,22 2,12"
-                  fill={`${neon}20`} stroke={neon} strokeWidth="1.5" strokeLinejoin="round"/>
-                <polygon points="12,7 17,12 12,17 7,12" fill={neon}/>
-              </svg>
-            </div>
-          </div>
+      <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center",width:"100%",padding:"0 32px"}}>
+        {/* Cercles concentriques centrés derrière le texte */}
+        <div style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",pointerEvents:"none"}}>
+          <svg width="320" height="200" viewBox="0 0 320 200">
+            <circle cx="160" cy="100" r="95" fill="none" stroke={neon} strokeWidth="0.8"
+              style={{animation:"p1 3.5s ease-in-out infinite"}}/>
+            <circle cx="160" cy="100" r="68" fill="none" stroke={neon} strokeWidth="0.8"
+              style={{animation:"p2 2.4s ease-in-out infinite 1.1s"}}/>
+            <circle cx="160" cy="100" r="44" fill="none" stroke={neon} strokeWidth="0.6"
+              style={{animation:"p1 4s ease-in-out infinite 0.6s"}}/>
+          </svg>
         </div>
-        <div style={{textAlign:"center",animation:"fadeInSlow 0.8s ease 0.4s both"}}>
-          <div style={{fontSize:28,fontWeight:700,letterSpacing:-0.5}}>
-            <b style={{color:neon}}>Track</b><span style={{color:neon+"40",fontWeight:300}}>My</span><b style={{color:neon}}>Trade</b>
+        {/* Logo horizontal : carré + texte */}
+        <div style={{position:"relative",zIndex:2,display:"flex",alignItems:"center",gap:18,animation:"logoIn 0.8s ease 0.3s both"}}>
+          {/* Carré arrondi + losange */}
+          <div style={{width:72,height:72,borderRadius:16,background:`${neon}14`,border:`1.5px solid ${neon}55`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 24px ${neon}20`,flexShrink:0}}>
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none">
+              <polygon points="12,2 22,12 12,22 2,12" fill={`${neon}20`} stroke={neon} strokeWidth="1.5" strokeLinejoin="round"/>
+              <polygon points="12,7 17,12 12,17 7,12" fill={neon}/>
+            </svg>
           </div>
-          <div style={{fontSize:10,color:`${neon}44`,letterSpacing:5,marginTop:8}}>JOURNAL DE TRADING</div>
+          {/* Texte TrackMyTrade */}
+          <div>
+            <div style={{fontSize:34,fontWeight:700,letterSpacing:-1,lineHeight:1,whiteSpace:"nowrap"}}>
+              <b style={{color:neon}}>Track</b><span style={{color:neon+"40",fontWeight:300}}>My</span><b style={{color:neon}}>Trade</b>
+            </div>
+            <div style={{fontSize:9,color:`${neon}44`,letterSpacing:4,marginTop:6}}>JOURNAL DE TRADING</div>
+          </div>
         </div>
       </div>
     </div>
@@ -1248,7 +1258,7 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
               {(config.items||[]).slice(0,7).map((item,i)=>(
                 <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0",borderBottom:i<Math.min((config.items||[]).length,7)-1?`1px solid ${neon}08`:"none"}}>
                   <span style={{fontSize:12,color:trade.checklist.includes(i)?neon:"#2a3a2a",flexShrink:0}}>{trade.checklist.includes(i)?"✓":"✗"}</span>
-                  <span style={{fontSize:10,color:trade.checklist.includes(i)?"#c8e6c8":"#3a5a3a",fontFamily:M}}>{item}</span>
+                  <span style={{fontSize:10,color:(trade.checklist||[]).includes(i)?"#c8e6c8":"#3a5a3a",fontFamily:M}}>{item}</span>
                 </div>
               ))}
             </div>
@@ -1996,7 +2006,7 @@ export default function App() {
       {detailTrade&&<TradeDetailModal trade={detailTrade} config={config} onClose={()=>setDetailTrade(null)} onEdit={startEdit} onShare={t=>{setShareTarget(t);setShowShare(true);}} lang={lang} neon={neon}/>}
       {showExport&&<ExportModal trades={trades} onClose={()=>setShowExport(false)} lang={lang} neon={neon}/>}
       {showStats&&<StatsInsightsModal trades={trades} lang={lang} neon={neon} onClose={()=>setShowStats(false)}/>}
-      {showShare&&<ShareModal trade={trades[0]||null} trades={trades} lang={lang} neon={neon} onClose={()=>setShowShare(false)}/> }
+      {showShare&&<ShareModal trade={shareTarget} trades={trades} lang={lang} neon={neon} config={config} onClose={()=>{setShowShare(false);setShareTarget(null);}}/> }
       {showReset&&<ResetModal trades={trades} onReset={handleReset} onClose={()=>setShowReset(false)} lang={lang} neon={neon}/>}
     </div>
   );
