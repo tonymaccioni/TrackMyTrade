@@ -966,9 +966,9 @@ function LoginScreen({onLogin,lang,setLang}) {
 }
 
 function SplashScreen({onDone,neon}) {
-  useEffect(()=>{const t=setTimeout(onDone,2400);return()=>clearTimeout(t);},[]);
+  useEffect(()=>{const t=setTimeout(onDone,2700);return()=>clearTimeout(t);},[]);
   const [showParticles,setShowParticles]=useState(false);
-  useEffect(()=>{const t=setTimeout(()=>setShowParticles(true),680);return()=>clearTimeout(t);},[]);
+  useEffect(()=>{const t=setTimeout(()=>setShowParticles(true),850);return()=>clearTimeout(t);},[]);
   const particles=[
     {tx:"-38px",ty:"-32px"},{tx:"36px",ty:"-40px"},{tx:"44px",ty:"10px"},
     {tx:"30px",ty:"38px"},{tx:"-44px",ty:"20px"},{tx:"-30px",ty:"42px"},
@@ -988,7 +988,7 @@ function SplashScreen({onDone,neon}) {
         </div>
 
         {/* Carré + losange — arrive depuis la gauche */}
-        <div style={{position:"relative",zIndex:2,display:"flex",alignItems:"center",gap:18,animation:"slideFromLeft 0.7s cubic-bezier(0.34,1.4,0.64,1) 0.1s both"}}>
+        <div style={{position:"relative",zIndex:2,display:"flex",alignItems:"center",gap:18,animation:"slideFromLeft 0.95s cubic-bezier(0.34,1.3,0.64,1) 0.15s both"}}>
           <div style={{position:"relative"}}>
             {/* Particules au moment de la collision */}
             {showParticles&&particles.map((p,i)=>(
@@ -1012,7 +1012,7 @@ function SplashScreen({onDone,neon}) {
           </div>
 
           {/* Texte — arrive depuis la droite */}
-          <div style={{animation:"slideFromRight 0.7s cubic-bezier(0.34,1.4,0.64,1) 0.1s both"}}>
+          <div style={{animation:"slideFromRight 0.95s cubic-bezier(0.34,1.3,0.64,1) 0.15s both"}}>
             <div style={{fontSize:36,fontWeight:700,letterSpacing:-1,lineHeight:1,whiteSpace:"nowrap"}}>
               <b style={{color:neon}}>Track</b>
               <span style={{color:neon+"3a",fontWeight:300}}>My</span>
@@ -2096,7 +2096,7 @@ export default function App() {
       }} onReset={()=>setShowReset(true)} onNewPhase={handleNewPhase} lang={lang} onLangChange={l=>{
         setLang(l);
         if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{lang:l});
-      }} neon={neon} phases={phases}/>}
+      }} neon={neon} phases={phases} onObjectifChange={obj=>setObjectif(obj)}/>}
 
       <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(8,15,8,0.97)",backdropFilter:"blur(12px)",borderTop:`1px solid ${neon}18`,padding:"10px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div style={{fontSize:9,color:`${neon}22`,fontFamily:"'IBM Plex Mono',monospace"}}>◈ TrackMyTrade</div>
