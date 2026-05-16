@@ -205,9 +205,9 @@ const CSS = ({neon="#00ff9d"}) => (
     .grid-bg{background-image:linear-gradient(${neon}06 1px,transparent 1px),linear-gradient(90deg,${neon}06 1px,transparent 1px);background-size:32px 32px}
     .slide-up{animation:slideUp 0.3s ease both}
     .view-in{animation:fadeIn 0.22s ease both}
-    @keyframes pulse1{0%,100%{opacity:0.1;transform:scale(1)}50%{opacity:0.28;transform:scale(1.04)}}
-    @keyframes pulse2{0%,100%{opacity:0.18;transform:scale(1)}50%{opacity:0.35;transform:scale(1.03)}}
-    @keyframes logoIn{0%{opacity:0;transform:scale(0.75)}60%{transform:scale(1.05)}80%{transform:scale(0.97)}100%{opacity:1;transform:scale(1)}}
+    @keyframes p1{0%,100%{opacity:0.08}50%{opacity:0.22}}
+    @keyframes p2{0%,100%{opacity:0.14}50%{opacity:0.3}}
+    @keyframes logoIn{0%{opacity:0;transform:scale(0.8)}70%{transform:scale(1.04)}100%{opacity:1;transform:scale(1)}}
     @keyframes fadeInSlow{0%{opacity:0}100%{opacity:1}}
     @keyframes ring{0%,100%{transform:scale(1);opacity:0.12}50%{transform:scale(1.08);opacity:0.22}}
   `}</style>
@@ -552,26 +552,28 @@ function AdvancedStats({trades,neon,lang}) {
 
 function EcoCalendar({neon, lang}) {
   const fr = lang === "fr";
-  const MONO2 = "'IBM Plex Mono','Courier New',monospace";
+  const M = "'IBM Plex Mono','Courier New',monospace";
   const FINN_KEY = "d83q1d1r01qkm5c95nb0d83q1d1r01qkm5c95nbg";
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [weekOffset, setWeekOffset] = useState(0); // 0=cette semaine, 1=semaine prochaine
+  const [showHigh, setShowHigh] = useState(true);
+  const [showMedium, setShowMedium] = useState(true);
 
-  // Traductions des noms d'événements courants
   const translateEvent = name => {
     if(!fr||!name) return name;
-    const t = {
+    const map = {
       "Non-Farm Payrolls":"NFP — Emplois non-agricoles",
       "Unemployment Rate":"Taux de chômage",
       "CPI":"IPC — Inflation",
       "Core CPI":"IPC sous-jacent",
       "GDP":"PIB",
       "Retail Sales":"Ventes au détail",
-      "Fed Interest Rate Decision":"Décision de taux — Fed",
-      "ECB Interest Rate Decision":"Décision de taux — BCE",
-      "BOE Interest Rate Decision":"Décision de taux — BoE",
+      "Fed Interest Rate Decision":"Décision taux — Fed",
+      "ECB Interest Rate Decision":"Décision taux — BCE",
+      "BOE Interest Rate Decision":"Décision taux — BoE",
       "FOMC Statement":"Communiqué FOMC",
       "Initial Jobless Claims":"Inscriptions chômage",
       "Trade Balance":"Balance commerciale",
@@ -579,38 +581,33 @@ function EcoCalendar({neon, lang}) {
       "Services PMI":"PMI Services",
       "Consumer Confidence":"Confiance consommateurs",
       "PPI":"IPP — Prix producteurs",
-      "Housing Starts":"Mises en chantier",
       "ISM Manufacturing":"ISM Manufacturier",
       "ISM Services":"ISM Services",
       "Durable Goods Orders":"Commandes biens durables",
-      "Jerome Powell Speaks":"Discours de Jerome Powell",
-      "Christine Lagarde Speaks":"Discours de Christine Lagarde",
-      "Andrew Bailey Speaks":"Discours de Andrew Bailey",
+      "Jerome Powell Speaks":"Discours Powell",
+      "Christine Lagarde Speaks":"Discours Lagarde",
+      "Andrew Bailey Speaks":"Discours Bailey",
     };
-    for(const [en,fr_] of Object.entries(t)){
-      if(name.includes(en)) return name.replace(en,fr_);
-    }
+    for(const [en,fr_] of Object.entries(map)){if(name.includes(en))return name.replace(en,fr_);}
     return name;
   };
 
-  const impactColor = imp => imp==="high"?"#ff4d4d":imp==="medium"?"#f0b429":neon;
+  const impactColor = imp => imp==="high"?"#ff4d4d":"#f0b429";
   const impactLabel = imp => fr?(imp==="high"?"FORT":"MOYEN"):(imp==="high"?"HIGH":"MEDIUM");
+  const flags = {US:"🇺🇸",EU:"🇪🇺",GB:"🇬🇧",JP:"🇯🇵",CH:"🇨🇭",AU:"🇦🇺",CA:"🇨🇦",NZ:"🇳🇿",CN:"🇨🇳",DE:"🇩🇪",FR:"🇫🇷"};
 
-  const countryFlag = c => {
-    const flags = {US:"🇺🇸",EU:"🇪🇺",GB:"🇬🇧",JP:"🇯🇵",CH:"🇨🇭",AU:"🇦🇺",CA:"🇨🇦",NZ:"🇳🇿",CN:"🇨🇳",DE:"🇩🇪",FR:"🇫🇷",IT:"🇮🇹",ES:"🇪🇸"};
-    return flags[c]||c||"";
-  };
-
-  const fetchEvents = async () => {
+  const fetchEvents = async (offset=0) => {
     setLoading(true); setError(null);
     try {
       const now = new Date();
-      const from = new Date(now);
       const day = now.getDay();
-      from.setDate(now.getDate() - (day===0?6:day-1));
-      const to = new Date(from); to.setDate(from.getDate()+6);
+      const monday = new Date(now);
+      monday.setDate(now.getDate() - (day===0?6:day-1) + offset*7);
+      monday.setHours(0,0,0,0);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate()+6);
       const fmt = d => d.toISOString().split("T")[0];
-      const url = `https://finnhub.io/api/v1/calendar/economic?from=${fmt(from)}&to=${fmt(to)}&token=${FINN_KEY}`;
+      const url = `https://finnhub.io/api/v1/calendar/economic?from=${fmt(monday)}&to=${fmt(sunday)}&token=${FINN_KEY}`;
       const res = await fetch(url);
       if(!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
@@ -629,10 +626,14 @@ function EcoCalendar({neon, lang}) {
     finally { setLoading(false); }
   };
 
-  useEffect(()=>{fetchEvents();},[]);
+  useEffect(()=>{fetchEvents(weekOffset);},[weekOffset]);
+
+  const visibleEvents = events.filter(e=>
+    (e.impact==="high"&&showHigh)||(e.impact==="medium"&&showMedium)
+  );
 
   const byDate={};
-  events.forEach(e=>{
+  visibleEvents.forEach(e=>{
     const d=(e.time||e.date||"").split(" ")[0];
     if(!byDate[d]) byDate[d]=[];
     byDate[d].push(e);
@@ -640,120 +641,125 @@ function EcoCalendar({neon, lang}) {
 
   const dayFr=["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"];
   const dayEn=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-  const fmtDate=d=>{if(!d)return"";const dt=new Date(d+"T12:00:00");const n=(fr?dayFr:dayEn)[dt.getDay()];return `${n} ${dt.getDate()}`;};
+  const fmtDate=d=>{if(!d)return"";const dt=new Date(d+"T12:00:00");return `${(fr?dayFr:dayEn)[dt.getDay()]} ${dt.getDate()}`};
   const fmtTime=t=>{if(!t)return"";const p=t.split(" ");return p[1]?p[1].slice(0,5):"";};
   const highCount=events.filter(e=>e.impact==="high").length;
 
   return (
     <div style={{background:`${neon}04`,border:`1px solid ${neon}18`,borderRadius:10,padding:16,marginBottom:12}}>
+
+      {/* Header */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
         <div>
-          <div style={{fontSize:9,color:`${neon}55`,letterSpacing:2,textTransform:"uppercase",fontFamily:MONO2}}>
+          <div style={{fontSize:9,color:`${neon}55`,letterSpacing:2,textTransform:"uppercase",fontFamily:M}}>
             {fr?"ACTUALITÉS ÉCONOMIQUES":"ECONOMIC NEWS"}
           </div>
-          {lastUpdate&&<div style={{fontSize:8,color:`${neon}33`,marginTop:2,fontFamily:MONO2}}>
+          {lastUpdate&&<div style={{fontSize:8,color:`${neon}33`,marginTop:2,fontFamily:M}}>
             {fr?"Mis à jour ":"Updated "}{lastUpdate}
           </div>}
         </div>
-        <button onClick={fetchEvents} disabled={loading} className="btn"
-          style={{background:`${neon}0d`,border:`1px solid ${neon}28`,borderRadius:6,padding:"5px 10px",color:loading?`${neon}44`:neon,fontSize:10,fontFamily:MONO2,cursor:"pointer"}}>
+        <button onClick={()=>fetchEvents(weekOffset)} disabled={loading} className="btn"
+          style={{background:`${neon}0d`,border:`1px solid ${neon}28`,borderRadius:6,padding:"5px 10px",color:loading?`${neon}44`:neon,fontSize:10,fontFamily:M}}>
           {loading?"…":"↺"}
         </button>
       </div>
 
-      {highCount>0&&(
-        <div style={{background:"rgba(255,77,77,0.07)",border:"1px solid rgba(255,77,77,0.22)",borderRadius:8,padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:10}}>
+      {/* Switch semaine */}
+      <div style={{display:"flex",gap:4,background:"#0a120a",borderRadius:8,padding:3,marginBottom:10}}>
+        {[[0,fr?"Cette semaine":"This week"],[1,fr?"Semaine prochaine":"Next week"]].map(([offset,label])=>(
+          <button key={offset} onClick={()=>setWeekOffset(offset)} className="btn"
+            style={{flex:1,padding:"7px 0",borderRadius:6,fontSize:10,fontWeight:700,fontFamily:M,
+              background:weekOffset===offset?neon:"transparent",
+              color:weekOffset===offset?"#080f08":`${neon}44`,border:"none",transition:"all 0.2s"}}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Filtres impact */}
+      <div style={{display:"flex",gap:6,marginBottom:12}}>
+        <button onClick={()=>setShowHigh(v=>!v)} className="btn"
+          style={{flex:1,padding:"7px 0",borderRadius:7,fontSize:10,fontWeight:700,fontFamily:M,
+            background:showHigh?"rgba(255,77,77,0.15)":"transparent",
+            border:`1px solid ${showHigh?"#ff4d4d":"rgba(255,77,77,0.2)"}`,
+            color:showHigh?"#ff4d4d":"rgba(255,77,77,0.35)"}}>
+          🔴 {fr?"Fort":"High"}
+        </button>
+        <button onClick={()=>setShowMedium(v=>!v)} className="btn"
+          style={{flex:1,padding:"7px 0",borderRadius:7,fontSize:10,fontWeight:700,fontFamily:M,
+            background:showMedium?"rgba(240,180,41,0.12)":"transparent",
+            border:`1px solid ${showMedium?"#f0b429":"rgba(240,180,41,0.2)"}`,
+            color:showMedium?"#f0b429":"rgba(240,180,41,0.35)"}}>
+          🟡 {fr?"Moyen":"Medium"}
+        </button>
+      </div>
+
+      {/* Alerte événements forts */}
+      {highCount>0&&showHigh&&(
+        <div style={{background:"rgba(255,77,77,0.07)",border:"1px solid rgba(255,77,77,0.2)",borderRadius:8,padding:"10px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
           <span style={{fontSize:16}}>⚠️</span>
-          <span style={{fontSize:11,color:"#ff4d4d",fontFamily:MONO2,lineHeight:1.5}}>
-            {fr?`${highCount} événement${highCount>1?"s":""} à fort impact cette semaine — sois vigilant.`
-               :`${highCount} high-impact event${highCount>1?"s":""} this week — stay alert.`}
+          <span style={{fontSize:11,color:"#ff4d4d",fontFamily:M,lineHeight:1.5}}>
+            {fr?`${highCount} événement${highCount>1?"s":""} à fort impact ${weekOffset===0?"cette semaine":"semaine prochaine"}.`
+               :`${highCount} high-impact event${highCount>1?"s":""} ${weekOffset===0?"this week":"next week"}.`}
           </span>
         </div>
       )}
 
-      {error&&(
-        <div style={{background:"rgba(255,77,77,0.07)",border:"1px solid rgba(255,77,77,0.2)",borderRadius:8,padding:"10px 12px",marginBottom:8,fontSize:11,color:"#ff4d4d",fontFamily:MONO2}}>
-          {fr?"Erreur de connexion. Vérifie ta connexion internet.":"Connection error. Check your internet."}
+      {error&&<div style={{background:"rgba(255,77,77,0.07)",border:"1px solid rgba(255,77,77,0.2)",borderRadius:8,padding:"10px 12px",marginBottom:8,fontSize:11,color:"#ff4d4d",fontFamily:M}}>
+        {fr?"Erreur de connexion.":"Connection error."}
+      </div>}
+
+      {loading&&!events.length&&<div style={{textAlign:"center",padding:"24px 0",fontSize:11,color:`${neon}44`,fontFamily:M}}>
+        {fr?"Chargement…":"Loading…"}
+      </div>}
+
+      {!loading&&!error&&visibleEvents.length===0&&(
+        <div style={{textAlign:"center",padding:"20px 0"}}>
+          <div style={{fontSize:22,marginBottom:8}}>✅</div>
+          <div style={{fontSize:12,color:`${neon}55`,fontFamily:M}}>{fr?"Aucun événement":"No events"}</div>
         </div>
       )}
 
-      {loading&&!events.length&&(
-        <div style={{textAlign:"center",padding:"24px 0",fontSize:11,color:`${neon}44`,fontFamily:MONO2}}>
-          {fr?"Chargement des actualités…":"Loading news…"}
-        </div>
-      )}
-
-      {!loading&&!error&&events.length===0&&(
-        <div style={{textAlign:"center",padding:"24px 0"}}>
-          <div style={{fontSize:24,marginBottom:8}}>✅</div>
-          <div style={{fontSize:12,color:`${neon}55`,fontFamily:MONO2}}>
-            {fr?"Aucun événement majeur cette semaine":"No major events this week"}
-          </div>
-          <div style={{fontSize:10,color:`${neon}33`,fontFamily:MONO2,marginTop:4}}>
-            {fr?"Tu peux trader sereinement":"You can trade with peace of mind"}
-          </div>
-        </div>
-      )}
-
-      {Object.entries(byDate).map(([date, dayEvts])=>(
-        <div key={date} style={{marginBottom:16}}>
-          <div style={{fontSize:9,color:`${neon}66`,letterSpacing:2,fontFamily:MONO2,marginBottom:8,
+      {Object.entries(byDate).map(([date,dayEvts])=>(
+        <div key={date} style={{marginBottom:14}}>
+          <div style={{fontSize:9,color:`${neon}55`,letterSpacing:2,fontFamily:M,marginBottom:8,
             textTransform:"uppercase",display:"flex",alignItems:"center",gap:8}}>
-            <div style={{flex:1,height:1,background:`${neon}14`}}/>
+            <div style={{flex:1,height:1,background:`${neon}12`}}/>
             {fmtDate(date)}
-            <div style={{flex:1,height:1,background:`${neon}14`}}/>
+            <div style={{flex:1,height:1,background:`${neon}12`}}/>
           </div>
           {dayEvts.map((ev,i)=>{
             const ic=impactColor(ev.impact);
             const name=translateEvent(ev.event||ev.description||"—");
             const time=fmtTime(ev.time);
-            const flag=countryFlag(ev.country);
+            const flag=flags[ev.country]||"";
             return (
-              <div key={i} style={{background:`${ic}08`,border:`1px solid ${ic}22`,
-                borderRadius:10,padding:"12px 14px",marginBottom:8,
-                borderLeft:`3px solid ${ic}`}}>
+              <div key={i} style={{background:`${ic}08`,border:`1px solid ${ic}20`,borderRadius:10,padding:"12px 14px",marginBottom:8,borderLeft:`3px solid ${ic}`}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
                   <div style={{flex:1}}>
-                    <div style={{fontSize:12,fontWeight:700,color:"#c8e6c8",fontFamily:MONO2,marginBottom:6,lineHeight:1.4}}>
+                    <div style={{fontSize:12,fontWeight:700,color:"#d0ead0",fontFamily:M,marginBottom:6,lineHeight:1.4}}>
                       {flag&&<span style={{marginRight:6}}>{flag}</span>}{name}
                     </div>
-                    <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
-                      {time&&<div style={{display:"flex",alignItems:"center",gap:4}}>
-                        <span style={{fontSize:10,color:`${neon}55`}}>🕐</span>
-                        <span style={{fontSize:10,color:`${neon}66`,fontFamily:MONO2}}>{time} CET</span>
-                      </div>}
-                      {ev.prev!==undefined&&ev.prev!==null&&ev.prev!==""&&(
-                        <div style={{fontSize:10,color:`${neon}44`,fontFamily:MONO2}}>
-                          {fr?"Préc.":"Prev."} <b style={{color:`${neon}77`}}>{ev.prev}{ev.unit||""}</b>
-                        </div>
-                      )}
-                      {ev.estimate!==undefined&&ev.estimate!==null&&ev.estimate!==""&&(
-                        <div style={{fontSize:10,color:`${neon}44`,fontFamily:MONO2}}>
-                          {fr?"Prévu":"Est."} <b style={{color:`${neon}77`}}>{ev.estimate}{ev.unit||""}</b>
-                        </div>
-                      )}
+                    <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
+                      {time&&<span style={{fontSize:10,color:`${neon}55`,fontFamily:M}}>🕐 {time} CET</span>}
+                      {ev.prev!==""&&ev.prev!==null&&ev.prev!==undefined&&<span style={{fontSize:10,color:`${neon}44`,fontFamily:M}}>{fr?"Préc.":"Prev."} <b style={{color:`${neon}88`}}>{ev.prev}{ev.unit||""}</b></span>}
+                      {ev.estimate!==""&&ev.estimate!==null&&ev.estimate!==undefined&&<span style={{fontSize:10,color:`${neon}44`,fontFamily:M}}>{fr?"Prévu":"Est."} <b style={{color:`${neon}88`}}>{ev.estimate}{ev.unit||""}</b></span>}
                     </div>
                   </div>
-                  <div style={{flexShrink:0}}>
-                    <span style={{fontSize:9,padding:"3px 8px",borderRadius:5,
-                      background:`${ic}18`,color:ic,fontFamily:MONO2,fontWeight:700,letterSpacing:1}}>
-                      {impactLabel(ev.impact)}
-                    </span>
-                  </div>
+                  <span style={{fontSize:9,padding:"3px 8px",borderRadius:5,background:`${ic}18`,color:ic,fontFamily:M,fontWeight:700,letterSpacing:1,flexShrink:0}}>
+                    {impactLabel(ev.impact)}
+                  </span>
                 </div>
-                {ev.impact==="high"&&(
-                  <div style={{marginTop:8,fontSize:10,color:"#ff4d4d",fontFamily:MONO2,opacity:0.7}}>
-                    {fr?"⚠ Évite de trader 15min avant et après cette annonce"
-                       :"⚠ Avoid trading 15min before and after this release"}
-                  </div>
-                )}
+                {ev.impact==="high"&&<div style={{marginTop:8,fontSize:10,color:"#ff4d4d99",fontFamily:M}}>
+                  {fr?"⚠ Évite de trader 15min avant/après":"⚠ Avoid trading 15min before/after"}
+                </div>}
               </div>
             );
           })}
         </div>
       ))}
       <div style={{textAlign:"center",marginTop:4}}>
-        <span style={{fontSize:8,color:`${neon}22`,fontFamily:MONO2,letterSpacing:1}}>Finnhub.io</span>
+        <span style={{fontSize:8,color:`${neon}18`,fontFamily:M,letterSpacing:1}}>Finnhub.io</span>
       </div>
     </div>
   );
@@ -897,12 +903,12 @@ function LoginScreen({onLogin,lang,setLang}) {
       <CSS neon={neon}/>
       <div style={{position:"relative",width:160,height:160,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8}}>
         <svg style={{position:"absolute",top:0,left:0,width:"100%",height:"100%"}} viewBox="0 0 160 160">
-          <ellipse cx="80" cy="80" rx="74" ry="58" fill="none" stroke={neon} strokeWidth="0.8"
-            style={{animation:"pulse1 3.2s ease-in-out infinite",transformOrigin:"80px 80px"}}/>
-          <ellipse cx="80" cy="80" rx="50" ry="66" fill="none" stroke={neon} strokeWidth="0.8"
-            style={{animation:"pulse2 2.4s ease-in-out infinite 0.8s",transformOrigin:"80px 80px"}}/>
+          <circle cx="80" cy="80" r="76" fill="none" stroke={neon} strokeWidth="0.8"
+            style={{animation:"p1 3.5s ease-in-out infinite"}}/>
+          <circle cx="80" cy="80" r="58" fill="none" stroke={neon} strokeWidth="0.8"
+            style={{animation:"p2 2.4s ease-in-out infinite 1.1s"}}/>
         </svg>
-        <div style={{position:"absolute",width:55,height:55,borderRadius:"50%",background:`radial-gradient(circle,${neon}12 0%,transparent 70%)`}}/>
+        <div style={{position:"absolute",width:55,height:55,borderRadius:"50%",background:`radial-gradient(circle,${neon}10 0%,transparent 70%)`}}/>
         <div style={{position:"relative",zIndex:1}}><Logo size="lg" neon={neon}/></div>
       </div>
       <div className="slide-up" style={{width:"100%",maxWidth:360,textAlign:"center"}}>
@@ -954,53 +960,39 @@ function LoginScreen({onLogin,lang,setLang}) {
 }
 
 function SplashScreen({onDone,neon}) {
-  useEffect(()=>{const t=setTimeout(onDone,2200);return()=>clearTimeout(t);},[]);
+  useEffect(()=>{const t=setTimeout(onDone,2000);return()=>clearTimeout(t);},[]);
   return (
     <div style={{background:"#080f08",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'IBM Plex Mono','Courier New',monospace"}}>
       <CSS neon={neon}/>
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:32}}>
-        {/* Logo avec 2 ellipses pulsantes désynchronisées */}
         <div style={{position:"relative",width:200,height:200,display:"flex",alignItems:"center",justifyContent:"center"}}>
-          {/* Ellipse externe — pulse lent */}
-          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
-            <svg width="200" height="200" viewBox="0 0 200 200">
-              <ellipse cx="100" cy="100" rx="92" ry="72"
-                fill="none" stroke={neon} strokeWidth="1"
-                style={{animation:"pulse1 3.2s ease-in-out infinite",transformOrigin:"100px 100px"}}/>
-            </svg>
-          </div>
-          {/* Ellipse interne — pulse plus rapide, décalé */}
-          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
-            <svg width="200" height="200" viewBox="0 0 200 200">
-              <ellipse cx="100" cy="100" rx="64" ry="86"
-                fill="none" stroke={neon} strokeWidth="1"
-                style={{animation:"pulse2 2.4s ease-in-out infinite 0.8s",transformOrigin:"100px 100px"}}/>
-            </svg>
-          </div>
-          {/* Halo */}
-          <div style={{position:"absolute",width:80,height:80,borderRadius:"50%",
-            background:`radial-gradient(circle,${neon}14 0%,transparent 70%)`}}/>
-          {/* Logo carré + losange — apparaît avec animation */}
-          <div style={{position:"relative",zIndex:2,animation:"logoIn 0.9s cubic-bezier(0.34,1.56,0.64,1) 0.3s both"}}>
-            <div style={{width:76,height:76,borderRadius:17,
-              background:`linear-gradient(135deg,${neon}18 0%,${neon}08 100%)`,
-              border:`1.5px solid ${neon}65`,
+          {/* Cercle externe — pulse lent 3.5s */}
+          <div style={{position:"absolute",width:190,height:190,borderRadius:"50%",border:`1px solid ${neon}`,
+            animation:"p1 3.5s ease-in-out infinite",willChange:"opacity"}}/>
+          {/* Cercle interne — pulse rapide 2.4s décalé de 1.1s */}
+          <div style={{position:"absolute",width:148,height:148,borderRadius:"50%",border:`1px solid ${neon}`,
+            animation:"p2 2.4s ease-in-out infinite 1.1s",willChange:"opacity"}}/>
+          {/* Halo centre */}
+          <div style={{position:"absolute",width:88,height:88,borderRadius:"50%",
+            background:`radial-gradient(circle,${neon}10 0%,transparent 70%)`}}/>
+          {/* Logo carré + losange */}
+          <div style={{position:"relative",zIndex:2,animation:"logoIn 0.7s ease 0.2s both"}}>
+            <div style={{width:74,height:74,borderRadius:16,
+              background:`${neon}14`,
+              border:`1.5px solid ${neon}60`,
               display:"flex",alignItems:"center",justifyContent:"center",
-              boxShadow:`0 0 32px ${neon}28, inset 0 0 16px ${neon}06`}}>
-              <svg width="42" height="42" viewBox="0 0 24 24" fill="none">
+              boxShadow:`0 0 28px ${neon}22`}}>
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="none">
                 <polygon points="12,2 22,12 12,22 2,12"
-                  fill={`${neon}22`} stroke={neon} strokeWidth="1.5" strokeLinejoin="round"/>
+                  fill={`${neon}20`} stroke={neon} strokeWidth="1.5" strokeLinejoin="round"/>
                 <polygon points="12,7 17,12 12,17 7,12" fill={neon}/>
               </svg>
             </div>
           </div>
         </div>
-        {/* Nom */}
-        <div style={{textAlign:"center",animation:"fadeInSlow 0.8s ease 0.5s both"}}>
+        <div style={{textAlign:"center",animation:"fadeInSlow 0.8s ease 0.4s both"}}>
           <div style={{fontSize:28,fontWeight:700,letterSpacing:-0.5}}>
-            <b style={{color:neon}}>Track</b>
-            <span style={{color:neon+"40",fontWeight:300}}>My</span>
-            <b style={{color:neon}}>Trade</b>
+            <b style={{color:neon}}>Track</b><span style={{color:neon+"40",fontWeight:300}}>My</span><b style={{color:neon}}>Trade</b>
           </div>
           <div style={{fontSize:10,color:`${neon}44`,letterSpacing:5,marginTop:8}}>JOURNAL DE TRADING</div>
         </div>
@@ -1151,21 +1143,14 @@ function StatsInsightsModal({trades,lang,neon,onClose}) {
 }
 
 
+
 function ShareModal({trade, trades, lang, neon, config, onClose}) {
   const fr = lang === "fr";
-  const MONO2 = "'IBM Plex Mono','Courier New',monospace";
-  const canvasRef = useRef();
-  const [imageUrl, setImageUrl] = useState(null);
-  const [generating, setGenerating] = useState(false);
-
-  const fmtP = v => {
-    if(!v||v==="") return "—";
-    const n=Number(v),a=Math.abs(n);
-    return (n>=0?"+":"")+(a%1===0?a.toFixed(0):a.toFixed(1))+"%";
-  };
+  const M = "'IBM Plex Mono','Courier New',monospace";
+  const fmtP = v => { if(!v||v==="") return "—"; const n=Number(v),a=Math.abs(n); return (n>=0?"+":"")+(a%1===0?a.toFixed(0):a.toFixed(1))+"%"; };
   const rc2 = r => r==="WIN"?neon:r==="LOSS"?"#ff4d4d":"#f0b429";
 
-  // Stats semaine pour mode résumé
+  // Stats semaine
   const cutoff = new Date(Date.now()-7*86400000).toISOString().split("T")[0];
   const week = trades.filter(x=>x.date>=cutoff);
   const wWins = week.filter(x=>x.result==="WIN").length;
@@ -1175,260 +1160,143 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
   const wRev = week.filter(x=>x.isRevenge).length;
   const disc = week.length?Math.round((wConf/week.length*0.6+(1-wRev/week.length)*0.4)*10):0;
   const discC = disc>=8?neon:disc>=5?"#f0b429":"#ff4d4d";
+  const confPct = week.length?Math.round(wConf/week.length*100):0;
+  const noRevPct = week.length?Math.round((1-wRev/week.length)*100):100;
 
   const isTrade = !!trade;
 
-  // Générer l'image canvas
-  const generateImage = useCallback(() => {
-    setGenerating(true);
-    const canvas = canvasRef.current;
-    if(!canvas) return;
-    const W = 400, H = isTrade ? 560 : 480;
-    canvas.width = W;
-    canvas.height = H;
-    const ctx = canvas.getContext("2d");
-    const FONT = "IBM Plex Mono, monospace";
-    const neonHex = neon;
-    const resultColor = isTrade ? rc2(trade.result) : (wWR>=50?neon:"#ff4d4d");
+  // Insights semaine
+  const insights = [];
+  if(week.length>=3) {
+    const nc=week.filter(x=>!x.conforming);
+    const cWRv=wConf?Math.round(week.filter(x=>x.conforming&&x.result==="WIN").length/wConf*100):0;
+    const ncWR=nc.length?Math.round(nc.filter(x=>x.result==="WIN").length/nc.length*100):0;
+    if(wConf>=2&&nc.length>=2&&cWRv-ncWR>10) insights.push({c:neon,txt:fr?`Conformes : ${cWRv}% WR vs ${ncWR}% non-conformes`:`Compliant: ${cWRv}% WR vs ${ncWR}% non-compliant`});
+    if(wRev>0) insights.push({c:"#ff4d4d",txt:fr?`${wRev} revenge trade${wRev>1?"s":""} — à corriger`:`${wRev} revenge trade${wRev>1?"s":""} — fix this`});
+    else insights.push({c:neon,txt:fr?"Aucun revenge trade ✓":"No revenge trades ✓"});
+  }
 
-    // Fond
-    ctx.fillStyle = "#080f08";
-    ctx.fillRect(0,0,W,H);
-
-    // Grille subtile
-    ctx.strokeStyle = neonHex+"08";
-    ctx.lineWidth = 1;
-    for(let x=0;x<W;x+=32){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
-    for(let y=0;y<H;y+=32){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
-
-    // Barre top
-    const grad = ctx.createLinearGradient(0,0,W,0);
-    grad.addColorStop(0,neonHex);
-    grad.addColorStop(1,neonHex+"88");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0,0,W,4);
-
-    // Bordure card
-    ctx.strokeStyle = neonHex+"30";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(0,0,W,H);
-
-    // Header TRACKMYTRADE
-    ctx.font = `500 10px ${FONT}`;
-    ctx.fillStyle = neonHex+"55";
-    ctx.fillText("TRACKMYTRADE", 24, 30);
-
-    // Titre
-    ctx.font = `bold 18px ${FONT}`;
-    ctx.fillStyle = neonHex;
-    ctx.fillText(isTrade?(fr?"◈ RÉCAP TRADE":"◈ TRADE RECAP"):(fr?"◈ RÉSUMÉ SEMAINE":"◈ WEEKLY RECAP"), 24, 58);
-
-    // Date
-    ctx.font = `10px ${FONT}`;
-    ctx.fillStyle = neonHex+"44";
-    ctx.fillText(isTrade?`${trade.date}${trade.time?" · "+trade.time:""}`:(fr?`7 derniers jours · ${week.length} trades`:`Last 7 days · ${week.length} trades`), 24, 76);
-
-    // Ligne séparatrice
-    ctx.strokeStyle = neonHex+"18";
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(24,88); ctx.lineTo(W-24,88); ctx.stroke();
-
-    if(isTrade) {
-      // ── MODE TRADE ──
-      const resColor = rc2(trade.result);
-
-      // Box résultat principal
-      ctx.fillStyle = resColor+"12";
-      ctx.strokeStyle = resColor+"35";
-      ctx.lineWidth = 1;
-      roundRect(ctx, 24, 98, W-48, 72, 10);
-      ctx.fill(); ctx.stroke();
-      // Bordure gauche colorée
-      ctx.fillStyle = resColor;
-      roundRect(ctx, 24, 98, 4, 72, 2);
-      ctx.fill();
-
-      // Asset + direction
-      ctx.font = `bold 20px ${FONT}`;
-      ctx.fillStyle = "#e8f5e8";
-      ctx.fillText(`${trade.asset} · ${trade.direction}`, 38, 125);
-
-      // Date heure
-      ctx.font = `10px ${FONT}`;
-      ctx.fillStyle = neonHex+"44";
-      ctx.fillText(`${trade.date}${trade.time?" · "+trade.time:""}`, 38, 143);
-
-      // Résultat à droite
-      ctx.font = `bold 26px ${FONT}`;
-      ctx.fillStyle = resColor;
-      ctx.textAlign = "right";
-      ctx.fillText(trade.result, W-38, 125);
-      if(trade.pnlPct) {
-        ctx.font = `bold 16px ${FONT}`;
-        ctx.fillStyle = parseFloat(trade.pnlPct)>=0?neonHex:"#ff4d4d";
-        ctx.fillText(fmtP(trade.pnlPct), W-38, 148);
-      }
-      ctx.textAlign = "left";
-
-      // 3 stats
-      const stats = [
-        {l:"SETUP SCORE", v:`${trade.setupScore}/${trade.checklistMax||7}`, c:trade.conforming?neonHex:"#ff4d4d"},
-        {l:"REJET", v:trade.rejetScore>0?`${trade.rejetScore}/10`:"—", c:trade.rejetScore>=8?neonHex:trade.rejetScore>=5?"#f0b429":"#ff4d4d"},
-        {l:fr?"CONFORME":"COMPLIANT", v:trade.conforming?"✓":"✗", c:trade.conforming?neonHex:"#ff4d4d"},
-      ];
-      stats.forEach(({l,v,c},i) => {
-        const x = 24 + i*(116+4), y = 182, w = 116, h = 56;
-        ctx.fillStyle = c+"0d"; ctx.strokeStyle = c+"28"; ctx.lineWidth = 1;
-        roundRect(ctx,x,y,w,h,8); ctx.fill(); ctx.stroke();
-        ctx.font = `9px ${FONT}`; ctx.fillStyle = neonHex+"55"; ctx.fillText(l, x+10, y+16);
-        ctx.font = `bold 20px ${FONT}`; ctx.fillStyle = c; ctx.fillText(v, x+10, y+40);
-      });
-
-      // Check-in
-      let yPos = 252;
-      if(trade.checkin?.humeur||trade.checkin?.biais) {
-        ctx.fillStyle = neonHex+"07"; ctx.strokeStyle = neonHex+"18"; ctx.lineWidth = 1;
-        roundRect(ctx,24,yPos,W-48,36,8); ctx.fill(); ctx.stroke();
-        ctx.font = `9px ${FONT}`; ctx.fillStyle = neonHex+"44"; ctx.fillText("CHECK-IN", 34, yPos+13);
-        ctx.font = `11px ${FONT}`; ctx.fillStyle = "#c8e6c8";
-        let cx = 34;
-        if(trade.checkin.humeur){ctx.fillText(trade.checkin.humeur, cx, yPos+28); cx+=ctx.measureText(trade.checkin.humeur).width+12;}
-        if(trade.checkin.biais){ctx.fillStyle=neonHex+"88"; ctx.fillText(trade.checkin.biais, cx, yPos+28);}
-        yPos += 46;
-      }
-
-      // Checklist
-      ctx.fillStyle = neonHex+"06"; ctx.strokeStyle = neonHex+"14"; ctx.lineWidth = 1;
-      const clH = Math.min((config.items||[]).length, 7)*22 + 28;
-      roundRect(ctx,24,yPos,W-48,clH,8); ctx.fill(); ctx.stroke();
-      ctx.font = `9px ${FONT}`; ctx.fillStyle = neonHex+"44"; ctx.fillText("CHECKLIST", 34, yPos+16);
-      (config.items||[]).slice(0,7).forEach((item,i) => {
-        const checked = trade.checklist.includes(i);
-        const iy = yPos+28+i*22;
-        ctx.font = `13px ${FONT}`; ctx.fillStyle = checked?neonHex:"#3a5a3a";
-        ctx.fillText(checked?"✓":"✗", 34, iy);
-        ctx.font = `11px ${FONT}`; ctx.fillStyle = checked?"#c8e6c8":"#3a5a3a";
-        ctx.fillText(item.length>38?item.slice(0,38)+"…":item, 54, iy);
-      });
-      yPos += clH + 10;
-
-      // Notes
-      if(trade.notes) {
-        ctx.fillStyle = neonHex+"05"; ctx.strokeStyle = neonHex+"12"; ctx.lineWidth = 1;
-        roundRect(ctx,24,yPos,W-48,48,8); ctx.fill(); ctx.stroke();
-        ctx.font = `italic 10px ${FONT}`; ctx.fillStyle = neonHex+"55";
-        const note = `"${trade.notes.length>80?trade.notes.slice(0,80)+"…":trade.notes}"`;
-        wrapText(ctx,note,34,yPos+16,W-60,14);
-      }
-
-    } else {
-      // ── MODE SEMAINE ──
-      const stats = [
-        {l:"WIN RATE",v:`${wWR}%`,c:wWR>=50?neon:"#ff4d4d"},
-        {l:"P&L",v:fmtP(wPnl),c:wPnl>=0?neon:"#ff4d4d"},
-        {l:fr?"TRADES":"TRADES",v:`${week.length}`,c:neon},
-      ];
-      stats.forEach(({l,v,c},i)=>{
-        const x=24+i*(116+4),y=98,w=116,h=68;
-        ctx.fillStyle=c+"0d"; ctx.strokeStyle=c+"28"; ctx.lineWidth=1;
-        roundRect(ctx,x,y,w,h,10); ctx.fill(); ctx.stroke();
-        ctx.font=`9px ${FONT}`; ctx.fillStyle=neonHex+"55"; ctx.fillText(l,x+10,y+18);
-        ctx.font=`bold 24px ${FONT}`; ctx.fillStyle=c; ctx.fillText(v,x+10,y+50);
-      });
-
-      // Discipline
-      ctx.fillStyle=discC+"08"; ctx.strokeStyle=discC+"22"; ctx.lineWidth=1;
-      roundRect(ctx,24,180,W-48,70,10); ctx.fill(); ctx.stroke();
-      ctx.font=`9px ${FONT}`; ctx.fillStyle=neonHex+"44"; ctx.fillText("DISCIPLINE",34,198);
-      ctx.font=`bold 30px ${FONT}`; ctx.fillStyle=discC; ctx.fillText(`${disc}`,34,232);
-      ctx.font=`14px ${FONT}`; ctx.fillStyle=neonHex+"44"; ctx.fillText("/10",34+ctx.measureText(`${disc}`).width+4,232);
-
-      // Barres conformité / revenge
-      const barData=[
-        {l:fr?"Conformité":"Compliance",v:wConf&&week.length?Math.round(wConf/week.length*100):0,c:neon},
-        {l:fr?"Sans revenge":"No revenge",v:week.length?Math.round((1-wRev/week.length)*100):100,c:wRev===0?neon:"#f0b429"},
-      ];
-      barData.forEach(({l,v,c},i)=>{
-        const bx=120,by=196+i*30,bw=W-144;
-        ctx.font=`9px ${FONT}`; ctx.fillStyle=neonHex+"44"; ctx.fillText(l,bx,by+4);
-        ctx.font=`bold 9px ${FONT}`; ctx.fillStyle=c; ctx.textAlign="right"; ctx.fillText(`${v}%`,W-34,by+4); ctx.textAlign="left";
-        ctx.fillStyle=neonHex+"14"; roundRect(ctx,bx,by+8,bw,4,2); ctx.fill();
-        ctx.fillStyle=c; roundRect(ctx,bx,by+8,bw*v/100,4,2); ctx.fill();
-      });
-
-      // Insights
-      const insights=[];
-      if(week.length>=3){
-        const nc=week.filter(x=>!x.conforming);
-        const cWRv=wConf?Math.round(week.filter(x=>x.conforming&&x.result==="WIN").length/wConf*100):0;
-        const ncWR=nc.length?Math.round(nc.filter(x=>x.result==="WIN").length/nc.length*100):0;
-        if(wConf>=2&&nc.length>=2&&cWRv-ncWR>10) insights.push({c:neon,txt:fr?`Conformes : ${cWRv}% WR vs ${ncWR}% non-conformes.`:`Compliant: ${cWRv}% WR vs ${ncWR}% non-compliant.`});
-        if(wRev>0) insights.push({c:"#ff4d4d",txt:fr?`${wRev} revenge trade${wRev>1?"s":""} — à corriger.`:`${wRev} revenge trade${wRev>1?"s":""} — fix this.`});
-        else if(week.length>=3) insights.push({c:neon,txt:fr?"Aucun revenge trade ✓":"No revenge trades ✓"});
-      }
-      insights.slice(0,3).forEach(({c,txt},i)=>{
-        const iy=264+i*52;
-        ctx.fillStyle=c+"07"; ctx.strokeStyle=c+"20"; ctx.lineWidth=1;
-        roundRect(ctx,24,iy,W-48,44,8); ctx.fill(); ctx.stroke();
-        ctx.fillStyle=c; roundRect(ctx,24,iy,3,44,1); ctx.fill();
-        ctx.font=`11px ${FONT}`; ctx.fillStyle="#c8e6c8";
-        wrapText(ctx,txt,36,iy+16,W-68,16);
-      });
-    }
-
-    // Watermark
-    ctx.font=`9px ${FONT}`;
-    ctx.fillStyle=neonHex+"22";
-    ctx.textAlign="center";
-    ctx.fillText("trackmytrade.app", W/2, H-14);
-    ctx.textAlign="left";
-
-    setImageUrl(canvas.toDataURL("image/png"));
-    setGenerating(false);
-  }, [trade, trades, lang, neon, config]);
-
-  useEffect(()=>{ generateImage(); },[]);
-
-  function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();}
-  function wrapText(ctx,text,x,y,maxW,lineH){const words=text.split(" ");let line="";words.forEach(w=>{const test=line+w+" ";if(ctx.measureText(test).width>maxW&&line){ctx.fillText(line,x,y);line=w+" ";y+=lineH;}else{line=test;}});ctx.fillText(line,x,y);}
-
-  const doShare = async () => {
-    if(!imageUrl) return;
-    try {
-      const res = await fetch(imageUrl);
-      const blob = await res.blob();
-      const file = new File([blob], "trackmytrade.png", {type:"image/png"});
-      if(navigator.canShare&&navigator.canShare({files:[file]})) {
-        await navigator.share({files:[file], title:"TrackMyTrade"});
-      } else {
-        const a = document.createElement("a");
-        a.href = imageUrl;
-        a.download = "trackmytrade.png";
-        a.click();
-      }
-    } catch(e) { console.error(e); }
+  const doShare = () => {
+    const text = isTrade
+      ? (fr?`${trade.result} · ${trade.asset} · ${fmtP(trade.pnlPct)} · ${trade.conforming?"✓ Conforme":"✗ Non-conforme"} — TrackMyTrade`
+           :`${trade.result} · ${trade.asset} · ${fmtP(trade.pnlPct)} · ${trade.conforming?"✓ Compliant":"✗ Non-compliant"} — TrackMyTrade`)
+      : (fr?`Semaine : ${wWR}% WR · ${fmtP(wPnl)} P&L · ${week.length} trades · Discipline ${disc}/10 — TrackMyTrade`
+           :`Week: ${wWR}% WR · ${fmtP(wPnl)} P&L · ${week.length} trades · Discipline ${disc}/10 — TrackMyTrade`);
+    if(navigator.share) navigator.share({text, url:"https://trackmytrade.app"}).catch(()=>{});
+    else if(navigator.clipboard) navigator.clipboard.writeText(text).then(()=>alert(fr?"Copié !":"Copied!"));
   };
 
   return (
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.95)",zIndex:500,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20}} onClick={onClose}>
-      <div className="slide-up" style={{width:"100%",maxWidth:400,display:"flex",flexDirection:"column",alignItems:"center",gap:14}} onClick={e=>e.stopPropagation()}>
-        <canvas ref={canvasRef} style={{display:"none"}}/>
-        {generating&&<div style={{color:neon,fontSize:12,fontFamily:"'IBM Plex Mono',monospace"}}>{fr?"Génération…":"Generating…"}</div>}
-        {imageUrl&&(
-          <img src={imageUrl} alt="trade recap"
-            style={{width:"100%",maxWidth:400,borderRadius:12,border:`1px solid ${neon}30`,display:"block"}}/>
-        )}
-        <div style={{display:"flex",gap:10,width:"100%"}}>
-          <button onClick={doShare} className="btn"
-            style={{flex:1,background:`${neon}18`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:"14px 0",fontSize:13,fontWeight:700,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:2,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.94)",zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",padding:16,overflowY:"auto"}} onClick={onClose}>
+      <div className="slide-up" style={{width:"100%",maxWidth:360,background:"#0a140a",borderRadius:20,overflow:"hidden",border:`1px solid ${neon}30`}} onClick={e=>e.stopPropagation()}>
+
+        {/* Barre top */}
+        <div style={{height:4,background:`linear-gradient(90deg,${neon},${neon}66)`}}/>
+
+        <div style={{padding:"18px 18px 0"}}>
+          {/* Header */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+            <span style={{fontSize:9,color:`${neon}44`,fontFamily:M,letterSpacing:3}}>TRACKMYTRADE</span>
+            <button onClick={onClose} style={{background:"transparent",border:"none",color:`${neon}44`,fontSize:20,cursor:"pointer",lineHeight:1}}>✕</button>
+          </div>
+          <div style={{fontSize:15,fontWeight:700,color:neon,fontFamily:M,marginBottom:3}}>
+            {isTrade?(fr?"◈ RÉCAP TRADE":"◈ TRADE RECAP"):(fr?"◈ RÉSUMÉ SEMAINE":"◈ WEEKLY RECAP")}
+          </div>
+          <div style={{fontSize:9,color:`${neon}33`,fontFamily:M,marginBottom:14}}>
+            {isTrade?`${trade.date}${trade.time?" · "+trade.time:""}`:(fr?`7 derniers jours · ${week.length} trades`:`Last 7 days · ${week.length} trades`)}
+          </div>
+
+          {/* Stats 3 colonnes */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:10}}>
+            {isTrade?[
+              {l:"RÉSULTAT",v:trade.result,c:rc2(trade.result)},
+              {l:"P&L",v:fmtP(trade.pnlPct),c:parseFloat(trade.pnlPct||0)>=0?neon:"#ff4d4d"},
+              {l:"SCORE",v:`${trade.setupScore}/${trade.checklistMax||7}`,c:trade.conforming?neon:"#ff4d4d"},
+            ]:[
+              {l:"WIN RATE",v:`${wWR}%`,c:wWR>=50?neon:"#ff4d4d"},
+              {l:"P&L",v:fmtP(wPnl),c:wPnl>=0?neon:"#ff4d4d"},
+              {l:"TRADES",v:`${week.length}`,c:neon},
+            ].map(({l,v,c})=>({l,v,c}))}.map(({l,v,c},i)=>(
+              <div key={i} style={{background:`${c}0c`,border:`1px solid ${c}25`,borderRadius:10,padding:"10px 0",textAlign:"center"}}>
+                <div style={{fontSize:8,color:`${neon}44`,fontFamily:M,letterSpacing:1,marginBottom:4}}>{l}</div>
+                <div style={{fontSize:18,fontWeight:800,color:c,fontFamily:M,lineHeight:1}}>{v}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Bloc principal trade */}
+          {isTrade&&(
+            <div style={{background:`${rc2(trade.result)}08`,border:`1px solid ${rc2(trade.result)}22`,borderRadius:10,padding:"12px 14px",marginBottom:10,borderLeft:`3px solid ${rc2(trade.result)}`}}>
+              <div style={{fontSize:15,fontWeight:700,color:"#d8f0d8",fontFamily:M,marginBottom:8}}>
+                {trade.asset} · {trade.direction}
+              </div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:trade.notes?8:0}}>
+                <span style={{fontSize:10,padding:"3px 8px",borderRadius:5,background:trade.conforming?`${neon}14`:"rgba(255,77,77,0.1)",color:trade.conforming?neon:"#ff4d4d",fontFamily:M}}>
+                  {trade.conforming?(fr?"✓ conforme":"✓ compliant"):(fr?"✗ non-conforme":"✗ non-compliant")}
+                </span>
+                {trade.isRevenge&&<span style={{fontSize:10,padding:"3px 8px",borderRadius:5,background:"rgba(255,77,77,0.1)",color:"#ff4d4d",fontFamily:M}}>REVENGE</span>}
+                {trade.rejetScore>0&&<span style={{fontSize:10,padding:"3px 8px",borderRadius:5,background:`${neon}0a`,color:`${neon}77`,fontFamily:M}}>Rejet {trade.rejetScore}/10</span>}
+                {trade.checkin?.humeur&&<span style={{fontSize:10,padding:"3px 8px",borderRadius:5,background:`${neon}08`,color:`${neon}66`,fontFamily:M}}>{trade.checkin.humeur}</span>}
+              </div>
+              {trade.notes&&<div style={{fontSize:11,color:`${neon}55`,fontStyle:"italic",lineHeight:1.5}}>"{trade.notes.length>80?trade.notes.slice(0,80)+"…":trade.notes}"</div>}
+            </div>
+          )}
+
+          {/* Checklist trade */}
+          {isTrade&&(config.items||[]).length>0&&(
+            <div style={{background:`${neon}05`,border:`1px solid ${neon}12`,borderRadius:10,padding:"10px 12px",marginBottom:10}}>
+              {(config.items||[]).slice(0,7).map((item,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0",borderBottom:i<Math.min((config.items||[]).length,7)-1?`1px solid ${neon}08`:"none"}}>
+                  <span style={{fontSize:12,color:trade.checklist.includes(i)?neon:"#2a3a2a",flexShrink:0}}>{trade.checklist.includes(i)?"✓":"✗"}</span>
+                  <span style={{fontSize:10,color:trade.checklist.includes(i)?"#c8e6c8":"#3a5a3a",fontFamily:M}}>{item}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Discipline semaine */}
+          {!isTrade&&(
+            <div style={{background:`${discC}08`,border:`1px solid ${discC}20`,borderRadius:10,padding:"12px 14px",marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <span style={{fontSize:9,color:`${neon}44`,fontFamily:M,letterSpacing:2}}>DISCIPLINE</span>
+                <span style={{fontSize:24,fontWeight:800,color:discC,fontFamily:M}}>{disc}<span style={{fontSize:12,color:`${neon}33`}}>/10</span></span>
+              </div>
+              {[{l:fr?"Conformité":"Compliance",v:confPct,c:neon},{l:fr?"Sans revenge":"No revenge",v:noRevPct,c:wRev===0?neon:"#f0b429"}].map(({l,v,c})=>(
+                <div key={l} style={{marginBottom:8}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                    <span style={{fontSize:9,color:`${neon}44`,fontFamily:M}}>{l}</span>
+                    <span style={{fontSize:9,color:c,fontWeight:700,fontFamily:M}}>{v}%</span>
+                  </div>
+                  <div style={{height:3,background:`${neon}12`,borderRadius:2}}>
+                    <div style={{width:`${v}%`,height:"100%",background:c,borderRadius:2}}/>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Insights semaine */}
+          {!isTrade&&insights.map((ins,i)=>(
+            <div key={i} style={{background:`${ins.c}07`,border:`1px solid ${ins.c}18`,borderRadius:8,padding:"9px 12px",marginBottom:6,borderLeft:`3px solid ${ins.c}`}}>
+              <span style={{fontSize:11,color:"#c8e6c8",fontFamily:M,lineHeight:1.5}}>{ins.txt}</span>
+            </div>
+          ))}
+
+          {/* Watermark */}
+          <div style={{textAlign:"center",padding:"10px 0 4px"}}>
+            <span style={{fontSize:8,color:`${neon}20`,fontFamily:M,letterSpacing:2}}>trackmytrade.app</span>
+          </div>
+        </div>
+
+        {/* Bouton partager */}
+        <div style={{padding:"0 18px 18px"}}>
+          <button onClick={doShare} className="btn" style={{width:"100%",background:`${neon}18`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:"13px 0",fontSize:12,fontWeight:700,fontFamily:M,letterSpacing:2,display:"flex",alignItems:"center",justifyContent:"center",gap:10,marginTop:12}}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
             {fr?"PARTAGER":"SHARE"}
           </button>
-          <button onClick={onClose} className="btn"
-            style={{background:"transparent",border:`1px solid ${neon}22`,color:`${neon}66`,borderRadius:10,padding:"14px 16px",fontSize:12,fontFamily:"'IBM Plex Mono',monospace"}}>✕</button>
-        </div>
-        <div style={{fontSize:9,color:`${neon}22`,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:1}}>
-          {fr?"Appui long sur l'image pour la sauvegarder":"Long press image to save"}
         </div>
       </div>
     </div>
@@ -1815,7 +1683,13 @@ export default function App() {
           <div><Logo size="sm" neon={neon}/><div style={{fontSize:10,color:"#3a5a3a",marginTop:4}}>{config.strategyName}</div></div>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
             {total>0&&<div style={{textAlign:"right"}}><div style={{fontSize:12,color:winRate>=50?neon:"#ff4d4d",fontWeight:700,fontFamily:MONO}}>{winRate}% WR</div><div style={{fontSize:11,color:totalPnl>=0?neon:"#ff4d4d",fontFamily:MONO}}>{fmtPct(totalPnl)}</div></div>}
-            <button onClick={()=>setView("eco")} className="btn" style={{background:view==="eco"?`${neon}1a`:`${neon}0f`,border:`1px solid ${view==="eco"?neon:`${neon}26`}`,borderRadius:8,padding:"7px 10px",color:view==="eco"?neon:`${neon}99`,fontSize:14}}>📅</button>
+            <button onClick={()=>setView("eco")} className="btn" style={{background:view==="eco"?`${neon}1a`:`${neon}08`,border:`1px solid ${view==="eco"?neon:`${neon}22`}`,borderRadius:8,padding:"7px 10px",color:view==="eco"?neon:`${neon}66`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                <line x1="8" y1="14" x2="8" y2="14" strokeWidth="2.5"/><line x1="12" y1="14" x2="12" y2="14" strokeWidth="2.5"/><line x1="16" y1="14" x2="16" y2="14" strokeWidth="2.5"/>
+                <line x1="8" y1="18" x2="8" y2="18" strokeWidth="2.5"/><line x1="12" y1="18" x2="12" y2="18" strokeWidth="2.5"/>
+              </svg>
+            </button>
             <button onClick={()=>setShowExport(true)} className="btn" style={{background:`${neon}0f`,border:`1px solid ${neon}26`,borderRadius:8,padding:"7px 11px",color:`${neon}99`,fontSize:13}}>↓</button>
           </div>
         </div>
