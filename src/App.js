@@ -205,10 +205,11 @@ const CSS = ({neon="#00ff9d"}) => (
     .grid-bg{background-image:linear-gradient(${neon}06 1px,transparent 1px),linear-gradient(90deg,${neon}06 1px,transparent 1px);background-size:32px 32px}
     .slide-up{animation:slideUp 0.3s ease both}
     .view-in{animation:fadeIn 0.22s ease both}
-    @keyframes spinCW{0%{transform:rotate(0deg) scale(0.5) scaleY(0.6);opacity:0}20%{opacity:1}65%{transform:rotate(540deg) scale(1.08) scaleY(0.85)}85%{transform:rotate(700deg) scale(0.98) scaleY(0.95)}100%{transform:rotate(720deg) scale(1) scaleY(1)}}
-    @keyframes spinCCW{0%{transform:rotate(0deg) scale(0.5) scaleX(0.6);opacity:0}20%{opacity:1}65%{transform:rotate(-540deg) scale(1.08) scaleX(0.85)}85%{transform:rotate(-700deg) scale(0.98) scaleX(0.95)}100%{transform:rotate(-720deg) scale(1) scaleX(1)}}
-    @keyframes logoAppear{0%,65%{opacity:0;transform:scale(0.6)}80%{opacity:1;transform:scale(1.06)}100%{opacity:1;transform:scale(1)}}
+    @keyframes ellipseIn1{0%{transform:rotate(-180deg) scale(2.5);opacity:0}15%{opacity:1}70%{transform:rotate(20deg) scale(1.06)}85%{transform:rotate(-5deg) scale(0.97)}100%{transform:rotate(0deg) scale(1)}}
+    @keyframes ellipseIn2{0%{transform:rotate(180deg) scale(2.5);opacity:0}15%{opacity:1}70%{transform:rotate(-20deg) scale(1.06)}85%{transform:rotate(5deg) scale(0.97)}100%{transform:rotate(0deg) scale(1)}}
+    @keyframes logoBox{0%,50%{opacity:0;transform:scale(0) rotate(-45deg)}70%{opacity:1;transform:scale(1.15) rotate(3deg)}85%{transform:scale(0.95) rotate(-1deg)}100%{transform:scale(1) rotate(0deg)}}
     @keyframes ringPulse{0%,100%{opacity:0.12}50%{opacity:0.28}}
+    @keyframes fadeInSlow{0%{opacity:0}100%{opacity:1}}
     @keyframes ring{0%,100%{transform:scale(1);opacity:0.12}50%{transform:scale(1.08);opacity:0.22}}
   `}</style>
 );
@@ -582,10 +583,16 @@ function EcoCalendar({neon, lang}) {
       const res = await fetch(url);
       if(!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      const rel = ["USD","EUR","GBP","JPY","CHF","AUD","CAD","NZD"];
+      // Codes pays Finnhub : US, EU/euro zone, GB, JP, CH, AU, CA, NZ, CN
+      const relCountry = ["US","EU","GB","JP","CH","AU","CA","NZ","CN","DE","FR","IT","ES"];
+      const relCurrency = ["USD","EUR","GBP","JPY","CHF","AUD","CAD","NZD","CNY"];
       const evts = (data.economicCalendar||[])
-        .filter(e => ["high","medium","low"].includes(e.impact))
-        .filter(e => rel.some(c=>(e.country||"").toUpperCase().includes(c)||(e.currency||"").toUpperCase().includes(c)))
+        .filter(e => ["high","medium"].includes(e.impact))
+        .filter(e => {
+          const country = (e.country||"").toUpperCase();
+          const currency = (e.currency||"").toUpperCase();
+          return relCountry.some(c=>country.includes(c)) || relCurrency.some(c=>currency.includes(c));
+        })
         .sort((a,b) => {
           const o={high:0,medium:1,low:2};
           if(o[a.impact]!==o[b.impact]) return o[a.impact]-o[b.impact];
@@ -802,8 +809,8 @@ function LoginScreen({onLogin,lang,setLang}) {
       <CSS neon={neon}/>
       <div style={{position:"relative",width:160,height:160,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8}}>
         <svg style={{position:"absolute",top:0,left:0,width:"100%",height:"100%"}} viewBox="0 0 160 160">
-          <ellipse cx="80" cy="80" rx="76" ry="62" fill="none" stroke={neon} strokeWidth="0.8" opacity="0.15" style={{animation:"ringPulse 3s ease-in-out infinite"}}/>
-          <ellipse cx="80" cy="80" rx="50" ry="62" fill="none" stroke={neon} strokeWidth="0.8" opacity="0.22" style={{animation:"ringPulse 2.5s ease-in-out infinite",animationDelay:"0.4s"}}/>
+          <ellipse cx="80" cy="80" rx="76" ry="60" fill="none" stroke={neon} strokeWidth="0.8" opacity="0.15" style={{animation:"ringPulse 3s ease-in-out infinite"}}/>
+          <ellipse cx="80" cy="80" rx="48" ry="64" fill="none" stroke={neon} strokeWidth="0.8" opacity="0.2" style={{animation:"ringPulse 2.5s ease-in-out infinite",animationDelay:"0.5s"}}/>
         </svg>
         <div style={{position:"absolute",width:60,height:60,borderRadius:"50%",background:`radial-gradient(circle,${neon}14 0%,transparent 70%)`}}/>
         <div style={{position:"relative",zIndex:1}}><Logo size="lg" neon={neon}/></div>
@@ -858,45 +865,79 @@ function LoginScreen({onLogin,lang,setLang}) {
 
 function SplashScreen({onDone,neon}) {
   useEffect(()=>{const t=setTimeout(onDone,2800);return()=>clearTimeout(t);},[]);
+  const FONT = "'IBM Plex Mono','Courier New',monospace";
   return (
-    <div style={{background:"#080f08",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'IBM Plex Mono','Courier New',monospace"}}>
+    <div style={{background:"#080f08",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:FONT}}>
       <CSS neon={neon}/>
-      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:28}}>
-        <div style={{position:"relative",width:180,height:180,display:"flex",alignItems:"center",justifyContent:"center"}}>
-          {/* Anneau 1 — tourne dans le sens horaire */}
-          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",animation:"spinCW 2.4s cubic-bezier(0.34,1.56,0.64,1) forwards"}}>
-            <svg width="180" height="180" viewBox="0 0 180 180" style={{position:"absolute"}}>
-              <ellipse cx="90" cy="90" rx="86" ry="72" fill="none" stroke={neon} strokeWidth="1.5" strokeDasharray="200 340" opacity="0.6"/>
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:32}}>
+
+        {/* Zone logo avec ellipses animées */}
+        <div style={{position:"relative",width:220,height:220,display:"flex",alignItems:"center",justifyContent:"center"}}>
+
+          {/* Ellipse 1 — arrive en tournant dans le sens horaire depuis l'extérieur */}
+          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",
+            animation:"ellipseIn1 2.2s cubic-bezier(0.34,1.2,0.64,1) forwards"}}>
+            <svg width="220" height="220" viewBox="0 0 220 220">
+              <ellipse cx="110" cy="110" rx="100" ry="78"
+                fill="none" stroke={neon} strokeWidth="1.2" opacity="0.5"
+                strokeDasharray="260 380"/>
             </svg>
           </div>
-          {/* Anneau 2 — tourne dans le sens antihoraire */}
-          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",animation:"spinCCW 2.4s cubic-bezier(0.34,1.56,0.64,1) forwards"}}>
-            <svg width="180" height="180" viewBox="0 0 180 180" style={{position:"absolute"}}>
-              <ellipse cx="90" cy="90" rx="55" ry="68" fill="none" stroke={neon} strokeWidth="1.5" strokeDasharray="155 248" opacity="0.45"/>
+
+          {/* Ellipse 2 — arrive en sens antihoraire */}
+          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",
+            animation:"ellipseIn2 2.2s cubic-bezier(0.34,1.2,0.64,1) forwards"}}>
+            <svg width="220" height="220" viewBox="0 0 220 220">
+              <ellipse cx="110" cy="110" rx="72" ry="98"
+                fill="none" stroke={neon} strokeWidth="1.2" opacity="0.35"
+                strokeDasharray="200 380"/>
             </svg>
           </div>
-          {/* Halo */}
-          <div style={{position:"absolute",width:70,height:70,borderRadius:"50%",background:`radial-gradient(circle,${neon}16 0%,transparent 70%)`}}/>
-          {/* Logo — apparaît après l'animation */}
-          <div style={{position:"relative",zIndex:2,animation:"logoAppear 2.6s ease forwards"}}>
-            <div style={{width:64,height:64,borderRadius:14,background:`${neon}18`,border:`1.5px solid ${neon}66`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 32px ${neon}33`}}>
-              <svg width="38" height="38" viewBox="0 0 24 24" fill="none" className="glow">
-                <polygon points="12,2 22,12 12,22 2,12" fill={`${neon}22`} stroke={neon} strokeWidth="1.6" strokeLinejoin="round"/>
-                <polygon points="12,7 17,12 12,17 7,12" fill={neon} stroke={neon} strokeWidth="0.5"/>
+
+          {/* Halo central */}
+          <div style={{position:"absolute",width:90,height:90,borderRadius:"50%",
+            background:`radial-gradient(circle,${neon}12 0%,transparent 70%)`,
+            animation:"fadeInSlow 1s ease 1s both"}}/>
+
+          {/* Logo — carré arrondi + losange — apparaît après les ellipses */}
+          <div style={{position:"relative",zIndex:2,animation:"logoBox 2.6s cubic-bezier(0.34,1.4,0.64,1) forwards"}}>
+            <div style={{width:72,height:72,borderRadius:16,
+              background:`linear-gradient(135deg,${neon}18 0%,${neon}08 100%)`,
+              border:`1.5px solid ${neon}70`,
+              display:"flex",alignItems:"center",justifyContent:"center",
+              boxShadow:`0 0 40px ${neon}30, inset 0 0 20px ${neon}08`}}>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+                <polygon points="12,2 22,12 12,22 2,12"
+                  fill={`${neon}25`} stroke={neon} strokeWidth="1.6" strokeLinejoin="round"/>
+                <polygon points="12,7 17,12 12,17 7,12"
+                  fill={neon} stroke={neon} strokeWidth="0.5"/>
               </svg>
             </div>
           </div>
-          {/* Anneaux statiques après animation */}
-          <svg style={{position:"absolute",top:0,left:0,pointerEvents:"none",animation:"fadeIn 0.5s ease 2.2s both"}} width="180" height="180" viewBox="0 0 180 180">
-            <ellipse cx="90" cy="90" rx="86" ry="72" fill="none" stroke={neon} strokeWidth="0.8" opacity="0.15" style={{animation:"ringPulse 3s ease-in-out infinite"}}/>
-            <ellipse cx="90" cy="90" rx="55" ry="68" fill="none" stroke={neon} strokeWidth="0.8" opacity="0.22" style={{animation:"ringPulse 2.5s ease-in-out infinite",animationDelay:"0.4s"}}/>
+
+          {/* Ellipses statiques pulsantes après stabilisation */}
+          <svg style={{position:"absolute",top:0,left:0,pointerEvents:"none",
+            animation:"fadeInSlow 0.6s ease 2.2s both"}}
+            width="220" height="220" viewBox="0 0 220 220">
+            <ellipse cx="110" cy="110" rx="100" ry="78"
+              fill="none" stroke={neon} strokeWidth="0.8" opacity="0.15"
+              style={{animation:"ringPulse 3s ease-in-out infinite"}}/>
+            <ellipse cx="110" cy="110" rx="72" ry="98"
+              fill="none" stroke={neon} strokeWidth="0.8" opacity="0.2"
+              style={{animation:"ringPulse 2.5s ease-in-out infinite",animationDelay:"0.5s"}}/>
           </svg>
         </div>
-        <div style={{textAlign:"center",animation:"fadeIn 0.8s ease 0.8s both"}}>
-          <div style={{fontSize:26,fontWeight:700,letterSpacing:-0.5}}>
-            <b style={{color:neon}}>Track</b><span style={{color:neon+"44",fontWeight:300}}>My</span><b style={{color:neon}}>Trade</b>
+
+        {/* Nom de l'app */}
+        <div style={{textAlign:"center",animation:"fadeInSlow 0.8s ease 1.2s both"}}>
+          <div style={{fontSize:28,fontWeight:700,letterSpacing:-0.5,lineHeight:1}}>
+            <b style={{color:neon}}>Track</b>
+            <span style={{color:neon+"40",fontWeight:300}}>My</span>
+            <b style={{color:neon}}>Trade</b>
           </div>
-          <div style={{fontSize:10,color:`${neon}44`,letterSpacing:4,marginTop:6}}>JOURNAL DE TRADING</div>
+          <div style={{fontSize:10,color:`${neon}44`,letterSpacing:5,marginTop:8,fontWeight:400}}>
+            JOURNAL DE TRADING
+          </div>
         </div>
       </div>
     </div>
@@ -1709,13 +1750,14 @@ export default function App() {
           <div><Logo size="sm" neon={neon}/><div style={{fontSize:10,color:"#3a5a3a",marginTop:4}}>{config.strategyName}</div></div>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
             {total>0&&<div style={{textAlign:"right"}}><div style={{fontSize:12,color:winRate>=50?neon:"#ff4d4d",fontWeight:700,fontFamily:MONO}}>{winRate}% WR</div><div style={{fontSize:11,color:totalPnl>=0?neon:"#ff4d4d",fontFamily:MONO}}>{fmtPct(totalPnl)}</div></div>}
+            <button onClick={()=>setView("eco")} className="btn" style={{background:view==="eco"?`${neon}1a`:`${neon}0f`,border:`1px solid ${view==="eco"?neon:`${neon}26`}`,borderRadius:8,padding:"7px 10px",color:view==="eco"?neon:`${neon}99`,fontSize:14}}>📅</button>
             <button onClick={()=>setShowExport(true)} className="btn" style={{background:`${neon}0f`,border:`1px solid ${neon}26`,borderRadius:8,padding:"7px 11px",color:`${neon}99`,fontSize:13}}>↓</button>
           </div>
         </div>
       </div>
 
       <div style={{display:"flex",gap:6,padding:"10px 20px",borderBottom:`1px solid ${neon}14`}}>
-        {[["dashboard",t.stats],["log",editingId?t.editLabel:`+ ${t.addTrade.replace("+ ","")}`],["history",t.history],["settings",t.settings],["eco","📅"]].map(([v,l])=>(
+        {[["dashboard",t.stats],["log",editingId?t.editLabel:`+ ${t.addTrade.replace("+ ","")}`],["history",t.history],["settings",t.settings]].map(([v,l])=>(
           <button key={v} className="btn" onClick={()=>{if(editingId&&v!=="log")cancelEdit();else{setView(v);scrollToTop();}}}
             style={{background:view===v?(editingId&&v==="log"?"rgba(240,180,41,0.15)":`${neon}1a`):"transparent",border:`1px solid ${view===v?(editingId&&v==="log"?"#f0b429":neon):`${neon}26`}`,color:view===v?(editingId&&v==="log"?"#f0b429":neon):"#3a5a3a",borderRadius:6,padding:v==="settings"?"7px 12px":"7px 0",fontSize:11,fontWeight:700,letterSpacing:1,fontFamily:MONO,flex:v==="settings"?0:1}}>{l}</button>
         ))}
