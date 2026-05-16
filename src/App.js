@@ -205,10 +205,10 @@ const CSS = ({neon="#00ff9d"}) => (
     .grid-bg{background-image:linear-gradient(${neon}06 1px,transparent 1px),linear-gradient(90deg,${neon}06 1px,transparent 1px);background-size:32px 32px}
     .slide-up{animation:slideUp 0.3s ease both}
     .view-in{animation:fadeIn 0.22s ease both}
-    @keyframes spinCW{0%{transform:rotate(0deg) scale(0.6);opacity:0}30%{opacity:1}70%{transform:rotate(360deg) scale(1.05)}100%{transform:rotate(720deg) scale(1)}}
-    @keyframes spinCCW{0%{transform:rotate(0deg) scale(0.6);opacity:0}30%{opacity:1}70%{transform:rotate(-360deg) scale(1.05)}100%{transform:rotate(-720deg) scale(1)}}
-    @keyframes logoAppear{0%,60%{opacity:0;transform:scale(0.7)}100%{opacity:1;transform:scale(1)}}
-    @keyframes ringPulse{0%,100%{opacity:0.12}50%{opacity:0.25}}
+    @keyframes spinCW{0%{transform:rotate(0deg) scale(0.5) scaleY(0.6);opacity:0}20%{opacity:1}65%{transform:rotate(540deg) scale(1.08) scaleY(0.85)}85%{transform:rotate(700deg) scale(0.98) scaleY(0.95)}100%{transform:rotate(720deg) scale(1) scaleY(1)}}
+    @keyframes spinCCW{0%{transform:rotate(0deg) scale(0.5) scaleX(0.6);opacity:0}20%{opacity:1}65%{transform:rotate(-540deg) scale(1.08) scaleX(0.85)}85%{transform:rotate(-700deg) scale(0.98) scaleX(0.95)}100%{transform:rotate(-720deg) scale(1) scaleX(1)}}
+    @keyframes logoAppear{0%,65%{opacity:0;transform:scale(0.6)}80%{opacity:1;transform:scale(1.06)}100%{opacity:1;transform:scale(1)}}
+    @keyframes ringPulse{0%,100%{opacity:0.12}50%{opacity:0.28}}
     @keyframes ring{0%,100%{transform:scale(1);opacity:0.12}50%{transform:scale(1.08);opacity:0.22}}
   `}</style>
 );
@@ -802,8 +802,8 @@ function LoginScreen({onLogin,lang,setLang}) {
       <CSS neon={neon}/>
       <div style={{position:"relative",width:160,height:160,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8}}>
         <svg style={{position:"absolute",top:0,left:0,width:"100%",height:"100%"}} viewBox="0 0 160 160">
-          <circle cx="80" cy="80" r="74" fill="none" stroke={neon} strokeWidth="0.8" opacity="0.15" style={{animation:"ringPulse 3s ease-in-out infinite"}}/>
-          <circle cx="80" cy="80" r="54" fill="none" stroke={neon} strokeWidth="0.8" opacity="0.22" style={{animation:"ringPulse 2.5s ease-in-out infinite",animationDelay:"0.4s"}}/>
+          <ellipse cx="80" cy="80" rx="76" ry="62" fill="none" stroke={neon} strokeWidth="0.8" opacity="0.15" style={{animation:"ringPulse 3s ease-in-out infinite"}}/>
+          <ellipse cx="80" cy="80" rx="50" ry="62" fill="none" stroke={neon} strokeWidth="0.8" opacity="0.22" style={{animation:"ringPulse 2.5s ease-in-out infinite",animationDelay:"0.4s"}}/>
         </svg>
         <div style={{position:"absolute",width:60,height:60,borderRadius:"50%",background:`radial-gradient(circle,${neon}14 0%,transparent 70%)`}}/>
         <div style={{position:"relative",zIndex:1}}><Logo size="lg" neon={neon}/></div>
@@ -857,28 +857,28 @@ function LoginScreen({onLogin,lang,setLang}) {
 }
 
 function SplashScreen({onDone,neon}) {
-  useEffect(()=>{const t=setTimeout(onDone,1800);return()=>clearTimeout(t);},[]);
+  useEffect(()=>{const t=setTimeout(onDone,2800);return()=>clearTimeout(t);},[]);
   return (
     <div style={{background:"#080f08",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'IBM Plex Mono','Courier New',monospace"}}>
       <CSS neon={neon}/>
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:28}}>
         <div style={{position:"relative",width:180,height:180,display:"flex",alignItems:"center",justifyContent:"center"}}>
           {/* Anneau 1 — tourne dans le sens horaire */}
-          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",animation:"spinCW 1.4s cubic-bezier(0.4,0,0.2,1) forwards"}}>
+          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",animation:"spinCW 2.4s cubic-bezier(0.34,1.56,0.64,1) forwards"}}>
             <svg width="180" height="180" viewBox="0 0 180 180" style={{position:"absolute"}}>
-              <circle cx="90" cy="90" r="82" fill="none" stroke={neon} strokeWidth="1.5" strokeDasharray="180 340" strokeDashoffset="0" opacity="0.6"/>
+              <ellipse cx="90" cy="90" rx="86" ry="72" fill="none" stroke={neon} strokeWidth="1.5" strokeDasharray="200 340" opacity="0.6"/>
             </svg>
           </div>
           {/* Anneau 2 — tourne dans le sens antihoraire */}
-          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",animation:"spinCCW 1.4s cubic-bezier(0.4,0,0.2,1) forwards"}}>
+          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",animation:"spinCCW 2.4s cubic-bezier(0.34,1.56,0.64,1) forwards"}}>
             <svg width="180" height="180" viewBox="0 0 180 180" style={{position:"absolute"}}>
-              <circle cx="90" cy="90" r="60" fill="none" stroke={neon} strokeWidth="1.5" strokeDasharray="130 248" strokeDashoffset="0" opacity="0.45"/>
+              <ellipse cx="90" cy="90" rx="55" ry="68" fill="none" stroke={neon} strokeWidth="1.5" strokeDasharray="155 248" opacity="0.45"/>
             </svg>
           </div>
           {/* Halo */}
           <div style={{position:"absolute",width:70,height:70,borderRadius:"50%",background:`radial-gradient(circle,${neon}16 0%,transparent 70%)`}}/>
           {/* Logo — apparaît après l'animation */}
-          <div style={{position:"relative",zIndex:2,animation:"logoAppear 1.8s ease forwards"}}>
+          <div style={{position:"relative",zIndex:2,animation:"logoAppear 2.6s ease forwards"}}>
             <div style={{width:64,height:64,borderRadius:14,background:`${neon}18`,border:`1.5px solid ${neon}66`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 32px ${neon}33`}}>
               <svg width="38" height="38" viewBox="0 0 24 24" fill="none" className="glow">
                 <polygon points="12,2 22,12 12,22 2,12" fill={`${neon}22`} stroke={neon} strokeWidth="1.6" strokeLinejoin="round"/>
@@ -887,9 +887,9 @@ function SplashScreen({onDone,neon}) {
             </div>
           </div>
           {/* Anneaux statiques après animation */}
-          <svg style={{position:"absolute",top:0,left:0,pointerEvents:"none",animation:"fadeIn 0.5s ease 1.4s both"}} width="180" height="180" viewBox="0 0 180 180">
-            <circle cx="90" cy="90" r="82" fill="none" stroke={neon} strokeWidth="0.8" opacity="0.15" style={{animation:"ringPulse 3s ease-in-out infinite"}}/>
-            <circle cx="90" cy="90" r="60" fill="none" stroke={neon} strokeWidth="0.8" opacity="0.22" style={{animation:"ringPulse 2.5s ease-in-out infinite 0.4s"}}/>
+          <svg style={{position:"absolute",top:0,left:0,pointerEvents:"none",animation:"fadeIn 0.5s ease 2.2s both"}} width="180" height="180" viewBox="0 0 180 180">
+            <ellipse cx="90" cy="90" rx="86" ry="72" fill="none" stroke={neon} strokeWidth="0.8" opacity="0.15" style={{animation:"ringPulse 3s ease-in-out infinite"}}/>
+            <ellipse cx="90" cy="90" rx="55" ry="68" fill="none" stroke={neon} strokeWidth="0.8" opacity="0.22" style={{animation:"ringPulse 2.5s ease-in-out infinite",animationDelay:"0.4s"}}/>
           </svg>
         </div>
         <div style={{textAlign:"center",animation:"fadeIn 0.8s ease 0.8s both"}}>
@@ -1715,7 +1715,7 @@ export default function App() {
       </div>
 
       <div style={{display:"flex",gap:6,padding:"10px 20px",borderBottom:`1px solid ${neon}14`}}>
-        {[["dashboard",t.stats],["log",editingId?t.editLabel:`+ ${t.addTrade.replace("+ ","")}`],["history",t.history],["settings",t.settings]].map(([v,l])=>(
+        {[["dashboard",t.stats],["log",editingId?t.editLabel:`+ ${t.addTrade.replace("+ ","")}`],["history",t.history],["settings",t.settings],["eco","📅"]].map(([v,l])=>(
           <button key={v} className="btn" onClick={()=>{if(editingId&&v!=="log")cancelEdit();else{setView(v);scrollToTop();}}}
             style={{background:view===v?(editingId&&v==="log"?"rgba(240,180,41,0.15)":`${neon}1a`):"transparent",border:`1px solid ${view===v?(editingId&&v==="log"?"#f0b429":neon):`${neon}26`}`,color:view===v?(editingId&&v==="log"?"#f0b429":neon):"#3a5a3a",borderRadius:6,padding:v==="settings"?"7px 12px":"7px 0",fontSize:11,fontWeight:700,letterSpacing:1,fontFamily:MONO,flex:v==="settings"?0:1}}>{l}</button>
         ))}
@@ -1799,7 +1799,6 @@ export default function App() {
             <PerformanceChart trades={pf} neon={neon} lang={lang}/>
             {config.calendarOn&&<TradingCalendar trades={trades} neon={neon} lang={lang}/>}
           </>}
-          <EcoCalendar neon={neon} lang={lang}/>
           {total===0&&<div style={{textAlign:"center",padding:"40px 20px"}}><div style={{display:"inline-block",marginBottom:20}}><Logo size="lg" neon={neon}/></div><div style={{fontSize:13,color:"#3a5a3a",marginBottom:8,fontWeight:700}}>{t.journalEmpty}</div><div style={{fontSize:11,color:"#2a3a2a",marginBottom:24,lineHeight:1.6}}>{t.journalEmptyDesc}</div><button onClick={()=>setView("log")} className="btn" style={{background:`${neon}1a`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:"12px 28px",fontSize:12,fontFamily:MONO,fontWeight:700}}>{t.firstTrade}</button></div>}
         </div>
       )}
@@ -1987,6 +1986,12 @@ export default function App() {
         </div>
       )}
 
+      {view==="eco"&&(
+        <div className="fi view-in" style={{padding:20}}>
+          <div style={{fontSize:9,color:`${neon}44`,letterSpacing:2,textTransform:"uppercase",marginBottom:16,fontFamily:MONO}}>{lang==="fr"?"CALENDRIER ÉCONOMIQUE":"ECONOMIC CALENDAR"}</div>
+          <EcoCalendar neon={neon} lang={lang}/>
+        </div>
+      )}
       {view==="settings"&&<SettingsView config={config} onSave={cfg=>{
         const newCfg={...config,...cfg};
         setConfig(newCfg);
