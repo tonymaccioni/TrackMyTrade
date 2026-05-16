@@ -979,11 +979,12 @@ function SplashScreen({onDone,neon}) {
       <CSS neon={neon}/>
       <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center",width:"100%",padding:"0 40px"}}>
         {/* Cercles concentriques — apparaissent avec fadeIn */}
-        <div style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",pointerEvents:"none",animation:"fadeInSlow 0.5s ease 0.5s both"}}>
-          <svg width="360" height="180" viewBox="0 0 360 180">
-            <ellipse cx="180" cy="90" rx="168" ry="82" fill="none" stroke={neon} strokeWidth="0.7" style={{animation:"p1 3.5s ease-in-out infinite"}}/>
-            <ellipse cx="180" cy="90" rx="124" ry="60" fill="none" stroke={neon} strokeWidth="0.7" style={{animation:"p2 2.6s ease-in-out infinite 1.1s"}}/>
-            <ellipse cx="180" cy="90" rx="82" ry="40" fill="none" stroke={neon} strokeWidth="0.5" style={{animation:"p1 4s ease-in-out infinite 0.5s"}}/>
+        {/* Ellipses centrées sur le texte — décalées vers la droite */}
+        <div style={{position:"absolute",left:"calc(50% + 47px)",top:"50%",transform:"translate(-50%,-50%)",pointerEvents:"none",animation:"fadeInSlow 0.5s ease 0.5s both"}}>
+          <svg width="280" height="160" viewBox="0 0 280 160">
+            <ellipse cx="140" cy="80" rx="136" ry="72" fill="none" stroke={neon} strokeWidth="0.7" style={{animation:"p1 3.5s ease-in-out infinite"}}/>
+            <ellipse cx="140" cy="80" rx="100" ry="54" fill="none" stroke={neon} strokeWidth="0.7" style={{animation:"p2 2.6s ease-in-out infinite 1.1s"}}/>
+            <ellipse cx="140" cy="80" rx="66" ry="36" fill="none" stroke={neon} strokeWidth="0.5" style={{animation:"p1 4s ease-in-out infinite 0.5s"}}/>
           </svg>
         </div>
 
@@ -1779,7 +1780,7 @@ export default function App() {
                 {lang==="fr"?"OBJECTIF P&L":"P&L TARGET"} +{objectif.pnl}%
               </span>
               <span style={{fontSize:10,fontWeight:700,color:neon,fontFamily:MONO}}>
-                {pctRound}%
+                {cur>=0?"+":""}{cur.toFixed(1)}%
               </span>
             </div>
             <div style={{height:3,background:`${neon}10`,width:"100%",position:"relative"}}>
