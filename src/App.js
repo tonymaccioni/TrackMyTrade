@@ -210,8 +210,8 @@ const CSS = ({neon="#00ff9d"}) => (
     @keyframes glowPulse{0%,100%{box-shadow:0 0 8px ${neon}33,0 0 2px ${neon}22}50%{box-shadow:0 0 22px ${neon}66,0 0 8px ${neon}44}}
     @keyframes borderGlow{0%,100%{border-color:${neon}44}50%{border-color:${neon}99}}
     @keyframes particleOut{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--tx),var(--ty)) scale(0)}}
-    @keyframes p1{0%,100%{opacity:0.06}50%{opacity:0.15}}
-    @keyframes p2{0%,100%{opacity:0.1}50%{opacity:0.2}}
+    @keyframes p1{0%{opacity:0.22;transform:scale(0.94)}50%{opacity:0.08;transform:scale(1.04)}100%{opacity:0.22;transform:scale(0.94)}}
+    @keyframes p2{0%{opacity:0.28;transform:scale(0.92)}50%{opacity:0.06;transform:scale(1.06)}100%{opacity:0.28;transform:scale(0.92)}}
     @keyframes fadeInSlow{0%{opacity:0}100%{opacity:1}}
     @keyframes logoBoxGlow{0%,100%{box-shadow:0 0 8px ${neon}22}50%{box-shadow:0 0 20px ${neon}55,0 0 6px ${neon}33}}
     @keyframes ring{0%,100%{transform:scale(1);opacity:0.12}50%{transform:scale(1.08);opacity:0.22}}
@@ -909,8 +909,8 @@ function LoginScreen({onLogin,lang,setLang}) {
       <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:24,width:"100%"}}>
         <div style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",pointerEvents:"none"}}>
           <svg width="300" height="120" viewBox="0 0 300 120">
-            <circle cx="150" cy="60" r="56" fill="none" stroke={neon} strokeWidth="0.6" style={{animation:"p1 3.5s ease-in-out infinite"}}/>
-            <circle cx="150" cy="60" r="38" fill="none" stroke={neon} strokeWidth="0.6" style={{animation:"p2 2.6s ease-in-out infinite 1.1s"}}/>
+            <circle cx="150" cy="60" r="56" fill="none" stroke={neon} strokeWidth="0.6" style={{animation:"p1 3.5s ease-in-out infinite",transformOrigin:"150px 60px"}}/>
+            <circle cx="150" cy="60" r="38" fill="none" stroke={neon} strokeWidth="0.6" style={{animation:"p2 2.6s ease-in-out infinite 1.1s",transformOrigin:"150px 60px"}}/>
           </svg>
         </div>
         <div style={{position:"relative",zIndex:2}}>
@@ -982,9 +982,9 @@ function SplashScreen({onDone,neon}) {
         {/* Ellipses centrées sur le texte — décalées vers la droite */}
         <div style={{position:"absolute",left:"calc(50% + 47px)",top:"50%",transform:"translate(-50%,-50%)",pointerEvents:"none",animation:"fadeInSlow 0.5s ease 0.5s both"}}>
           <svg width="280" height="160" viewBox="0 0 280 160">
-            <ellipse cx="140" cy="80" rx="136" ry="72" fill="none" stroke={neon} strokeWidth="0.7" style={{animation:"p1 3.5s ease-in-out infinite"}}/>
-            <ellipse cx="140" cy="80" rx="100" ry="54" fill="none" stroke={neon} strokeWidth="0.7" style={{animation:"p2 2.6s ease-in-out infinite 1.1s"}}/>
-            <ellipse cx="140" cy="80" rx="66" ry="36" fill="none" stroke={neon} strokeWidth="0.5" style={{animation:"p1 4s ease-in-out infinite 0.5s"}}/>
+            <ellipse cx="140" cy="80" rx="136" ry="72" fill="none" stroke={neon} strokeWidth="0.8" style={{animation:"p1 3.5s ease-in-out infinite",transformOrigin:"140px 80px"}}/>
+            <ellipse cx="140" cy="80" rx="100" ry="54" fill="none" stroke={neon} strokeWidth="0.8" style={{animation:"p2 2.6s ease-in-out infinite 1.1s",transformOrigin:"140px 80px"}}/>
+            <ellipse cx="140" cy="80" rx="66" ry="36" fill="none" stroke={neon} strokeWidth="0.6" style={{animation:"p1 4s ease-in-out infinite 0.5s",transformOrigin:"140px 80px"}}/>
           </svg>
         </div>
 
@@ -1747,7 +1747,7 @@ export default function App() {
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div><Logo size="sm" neon={neon}/><div style={{fontSize:10,color:"#3a5a3a",marginTop:4}}>{config.strategyName}</div></div>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
-            {total>0&&<div style={{textAlign:"right"}}><div style={{fontSize:12,color:winRate>=50?neon:"#ff4d4d",fontWeight:700,fontFamily:MONO}}>{winRate}% WR</div><div style={{fontSize:11,color:totalPnl>=0?neon:"#ff4d4d",fontFamily:MONO}}>{fmtPct(totalPnl)}</div></div>}
+            {total>0&&!objectif.pnl&&<div style={{textAlign:"right"}}><div style={{fontSize:12,color:winRate>=50?neon:"#ff4d4d",fontWeight:700,fontFamily:MONO}}>{winRate}% WR</div><div style={{fontSize:11,color:totalPnl>=0?neon:"#ff4d4d",fontFamily:MONO}}>{fmtPct(totalPnl)}</div></div>}
             <button onClick={()=>setView("eco")} className="btn" style={{background:view==="eco"?`${neon}1a`:`${neon}08`,border:`1px solid ${view==="eco"?neon:`${neon}22`}`,borderRadius:8,padding:"7px 10px",color:view==="eco"?neon:`${neon}66`,display:"flex",alignItems:"center",justifyContent:"center"}}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
