@@ -1436,8 +1436,8 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
   const [objPnl,setObjPnl]=useState(config.objPnl||"");
   const [objWr,setObjWr]=useState(config.objWr||"");
   const [objTrades,setObjTrades]=useState(config.objTrades||"");const [eliminatoires,setEliminatoires]=useState(config.eliminatoires||[]);
-  const save=()=>{const savedObj={pnl:objPnl,wr:objWr,trades:objTrades,editMode:false};
-    onSave({items,threshold,strategyName:stratName,maxTrades,neonColor,calendarOn,notifOn,customAssets:assets,eliminatoires,objPnl,objWr,objTrades});
+  const save=()=>{const savedObj={pnl:objPnl,wr:"",trades:"",editMode:false};
+    onSave({items,threshold,strategyName:stratName,maxTrades,neonColor,calendarOn,notifOn,customAssets:assets,eliminatoires,objPnl});
     onObjectifChange(savedObj);setSavedOk(true);setTimeout(()=>setSavedOk(false),2000);};
   const Toggle=({label,val,set})=>(
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${neonColor}0d`}}>
@@ -1497,24 +1497,15 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
       </div>
       {/* Objectif de phase */}
     <div style={{background:`${neon}04`,border:`1px solid ${neon}18`,borderRadius:10,padding:14,marginBottom:14}}>
-      <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:10}}>OBJECTIF DE PHASE</div>
-      <div style={{display:"flex",gap:8,marginBottom:8}}>
-        <div style={{flex:1}}>
-          <div style={{fontSize:8,color:"#3a5a3a",marginBottom:4}}>P&L CIBLE %</div>
-          <input value={objPnl} onChange={e=>setObjPnl(e.target.value)} placeholder="ex: 5" type="number"
-            style={{...inSt,marginBottom:0,fontSize:13}}/>
-        </div>
-        <div style={{flex:1}}>
-          <div style={{fontSize:8,color:"#3a5a3a",marginBottom:4}}>WR CIBLE %</div>
-          <input value={objWr} onChange={e=>setObjWr(e.target.value)} placeholder="ex: 60" type="number"
-            style={{...inSt,marginBottom:0,fontSize:13}}/>
-        </div>
-        <div style={{flex:1}}>
-          <div style={{fontSize:8,color:"#3a5a3a",marginBottom:4}}>NB TRADES</div>
-          <input value={objTrades} onChange={e=>setObjTrades(e.target.value)} placeholder="ex: 20" type="number"
-            style={{...inSt,marginBottom:0,fontSize:13}}/>
-        </div>
+      <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:10}}>OBJECTIF P&L DE PHASE</div>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <input value={objPnl} onChange={e=>setObjPnl(e.target.value)} placeholder="ex: 5" type="number"
+          style={{...inSt,marginBottom:0,flex:1,fontSize:14}}/>
+        <span style={{fontSize:13,color:`${neon}66`,fontFamily:"'IBM Plex Mono',monospace",flexShrink:0}}>%</span>
       </div>
+      {objPnl&&<div style={{fontSize:10,color:"#3a5a3a",marginTop:6,fontFamily:"'IBM Plex Mono',monospace"}}>
+        {lang==="fr"?`Objectif : atteindre +${objPnl}% de P&L sur cette phase`:`Target: reach +${objPnl}% P&L this phase`}
+      </div>}
     </div>
     <button onClick={save} className="btn" style={{width:"100%",background:`${neonColor}26`,border:`1px solid ${neonColor}`,color:neonColor,borderRadius:10,padding:14,fontSize:13,fontWeight:700,fontFamily:MONO,marginBottom:10}}>{savedOk?t.savedOk:t.saveBtn}</button>
       <div style={{height:1,background:`${neon}14`,margin:"14px 0"}}/>
@@ -1775,43 +1766,39 @@ export default function App() {
         ))}
       </div>
 
-      {/* Barre objectif — affichage seulement */}
-      {(objectif.pnl||objectif.wr||objectif.trades)&&(
-        <div style={{padding:"7px 20px",borderBottom:`1px solid ${neon}0a`,background:"rgba(8,15,8,0.5)"}}>
-          <div style={{display:"flex",gap:10,alignItems:"center",overflowX:"auto"}}>
-            <span style={{fontSize:9,color:`${neon}44`,fontFamily:MONO,letterSpacing:1,flexShrink:0}}>
-              {lang==="fr"?"OBJECTIF":"TARGET"} →
-            </span>
-            {objectif.pnl&&(()=>{
-              const cur=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
-              const target=parseFloat(objectif.pnl)||1;
-              const pct=Math.min(100,Math.max(0,Math.round(cur/target*100)));
-              const c=pct>=100?neon:pct>=60?"#f0b429":"#c8e6c8";
-              return <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
-                <span style={{fontSize:9,color:`${neon}44`,fontFamily:MONO}}>P&L</span>
-                <div style={{width:52,height:4,background:`${neon}12`,borderRadius:2}}>
-                  <div style={{width:`${pct}%`,height:"100%",background:c,borderRadius:2,transition:"width 0.5s"}}/>
-                </div>
-                <span style={{fontSize:9,color:c,fontFamily:MONO,fontWeight:700}}>{pct}%</span>
-              </div>;
-            })()}
-            {objectif.wr&&(()=>{
-              const c=winRate>=parseFloat(objectif.wr)?neon:winRate>=parseFloat(objectif.wr)*0.8?"#f0b429":"#c8e6c8";
-              return <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
-                <span style={{fontSize:9,color:`${neon}44`,fontFamily:MONO}}>WR</span>
-                <span style={{fontSize:10,fontWeight:700,color:c,fontFamily:MONO}}>{winRate}%<span style={{color:`${neon}33`}}>/{objectif.wr}%</span></span>
-              </div>;
-            })()}
-            {objectif.trades&&(()=>{
-              const c=total>=parseInt(objectif.trades)?neon:total>=parseInt(objectif.trades)*0.7?"#f0b429":"#c8e6c8";
-              return <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
-                <span style={{fontSize:9,color:`${neon}44`,fontFamily:MONO}}>TRADES</span>
-                <span style={{fontSize:10,fontWeight:700,color:c,fontFamily:MONO}}>{total}<span style={{color:`${neon}33`}}>/{objectif.trades}</span></span>
-              </div>;
-            })()}
+      {/* Barre objectif P&L — pleine largeur */}
+      {objectif.pnl&&(()=>{
+        const cur=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
+        const target=parseFloat(objectif.pnl)||1;
+        const pct=Math.min(100,Math.max(0,cur/target*100));
+        const pctRound=Math.round(pct);
+        const c=pct>=100?neon:pct>=60?"#f0b429":"#ff4d4d";
+        return (
+          <div style={{borderBottom:`1px solid ${neon}0a`,background:"rgba(8,15,8,0.6)"}}>
+            {/* Labels */}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 20px 3px"}}>
+              <span style={{fontSize:9,color:`${neon}44`,fontFamily:MONO,letterSpacing:1}}>
+                {lang==="fr"?"OBJECTIF P&L":"P&L TARGET"} +{objectif.pnl}%
+              </span>
+              <span style={{fontSize:10,fontWeight:700,color:c,fontFamily:MONO}}>
+                {pctRound}%
+              </span>
+            </div>
+            {/* Barre pleine largeur */}
+            <div style={{height:3,background:`${neon}10`,width:"100%",position:"relative"}}>
+              <div style={{
+                height:"100%",
+                width:`${pct}%`,
+                background:c,
+                transition:"width 0.6s ease",
+                boxShadow:pct>0?`0 0 6px ${c}88`:"none"
+              }}/>
+              {/* Marqueur objectif (100%) */}
+              <div style={{position:"absolute",right:0,top:-2,width:1,height:7,background:`${neon}44`}}/>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {view==="dashboard"&&(
         <div className="fi" style={{padding:20}}>
