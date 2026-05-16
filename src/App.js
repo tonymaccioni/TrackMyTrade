@@ -205,10 +205,15 @@ const CSS = ({neon="#00ff9d"}) => (
     .grid-bg{background-image:linear-gradient(${neon}06 1px,transparent 1px),linear-gradient(90deg,${neon}06 1px,transparent 1px);background-size:32px 32px}
     .slide-up{animation:slideUp 0.3s ease both}
     .view-in{animation:fadeIn 0.22s ease both}
-    @keyframes p1{0%,100%{opacity:0.06}50%{opacity:0.16}}
+    @keyframes slideFromLeft{0%{opacity:0;transform:translateX(-60px)}65%{transform:translateX(6px)}80%{transform:translateX(-2px)}100%{opacity:1;transform:translateX(0)}}
+    @keyframes slideFromRight{0%{opacity:0;transform:translateX(60px)}65%{transform:translateX(-6px)}80%{transform:translateX(2px)}100%{opacity:1;transform:translateX(0)}}
+    @keyframes glowPulse{0%,100%{box-shadow:0 0 8px ${neon}33,0 0 2px ${neon}22}50%{box-shadow:0 0 22px ${neon}66,0 0 8px ${neon}44}}
+    @keyframes borderGlow{0%,100%{border-color:${neon}44}50%{border-color:${neon}99}}
+    @keyframes particleOut{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--tx),var(--ty)) scale(0)}}
+    @keyframes p1{0%,100%{opacity:0.06}50%{opacity:0.15}}
     @keyframes p2{0%,100%{opacity:0.1}50%{opacity:0.2}}
-    @keyframes logoIn{0%{opacity:0;transform:scale(0.8)}70%{transform:scale(1.04)}100%{opacity:1;transform:scale(1)}}
     @keyframes fadeInSlow{0%{opacity:0}100%{opacity:1}}
+    @keyframes logoBoxGlow{0%,100%{box-shadow:0 0 8px ${neon}22}50%{box-shadow:0 0 20px ${neon}55,0 0 6px ${neon}33}}
     @keyframes ring{0%,100%{transform:scale(1);opacity:0.12}50%{transform:scale(1.08);opacity:0.22}}
   `}</style>
 );
@@ -218,7 +223,7 @@ function Logo({size="sm",neon="#00ff9d"}) {
   return (
     <div style={{display:"flex",alignItems:"center",gap:9}}>
       <div style={{width:box,height:box,borderRadius:7,background:`${neon}1a`,border:`1px solid ${neon}55`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:`0 0 20px ${neon}44, 0 0 8px ${neon}22`}}>
-        <svg width={Math.round(box*0.68)} height={Math.round(box*0.68)} viewBox="0 0 24 24" fill="none" className="glow">
+        <svg width={Math.round(box*0.74)} height={Math.round(box*0.74)} viewBox="0 0 24 24" fill="none">
           <polygon points="12,2 22,12 12,22 2,12" fill={`${neon}22`} stroke={neon} strokeWidth="1.6" strokeLinejoin="round"/>
           <polygon points="12,7 17,12 12,17 7,12" fill={neon} stroke={neon} strokeWidth="0.5"/>
         </svg>
@@ -901,27 +906,15 @@ function LoginScreen({onLogin,lang,setLang}) {
   if(signupDone) return (
     <div style={{background:"#080f08",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:28,fontFamily:MONO,maxWidth:480,margin:"0 auto"}}>
       <CSS neon={neon}/>
-      <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:20,width:"100%"}}>
-        {/* Cercles derrière */}
+      <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:24,width:"100%"}}>
         <div style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",pointerEvents:"none"}}>
-          <svg width="280" height="140" viewBox="0 0 280 140">
-            <circle cx="140" cy="70" r="65" fill="none" stroke={neon} strokeWidth="0.7" style={{animation:"p1 3.5s ease-in-out infinite"}}/>
-            <circle cx="140" cy="70" r="46" fill="none" stroke={neon} strokeWidth="0.7" style={{animation:"p2 2.4s ease-in-out infinite 1.1s"}}/>
+          <svg width="300" height="120" viewBox="0 0 300 120">
+            <circle cx="150" cy="60" r="56" fill="none" stroke={neon} strokeWidth="0.6" style={{animation:"p1 3.5s ease-in-out infinite"}}/>
+            <circle cx="150" cy="60" r="38" fill="none" stroke={neon} strokeWidth="0.6" style={{animation:"p2 2.6s ease-in-out infinite 1.1s"}}/>
           </svg>
         </div>
-        {/* Logo horizontal */}
-        <div style={{position:"relative",zIndex:2,display:"flex",alignItems:"center",gap:14}}>
-          <div style={{width:58,height:58,borderRadius:13,background:`${neon}14`,border:`1.5px solid ${neon}55`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 20px ${neon}18`,flexShrink:0}}>
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
-              <polygon points="12,2 22,12 12,22 2,12" fill={`${neon}20`} stroke={neon} strokeWidth="1.5" strokeLinejoin="round"/>
-              <polygon points="12,7 17,12 12,17 7,12" fill={neon}/>
-            </svg>
-          </div>
-          <div>
-            <div style={{fontSize:26,fontWeight:700,letterSpacing:-0.5,lineHeight:1,whiteSpace:"nowrap"}}>
-              <b style={{color:neon}}>Track</b><span style={{color:neon+"40",fontWeight:300}}>My</span><b style={{color:neon}}>Trade</b>
-            </div>
-          </div>
+        <div style={{position:"relative",zIndex:2}}>
+          <Logo size="lg" neon={neon}/>
         </div>
       </div>
       <div className="slide-up" style={{width:"100%",maxWidth:360,textAlign:"center"}}>
@@ -973,37 +966,61 @@ function LoginScreen({onLogin,lang,setLang}) {
 }
 
 function SplashScreen({onDone,neon}) {
-  useEffect(()=>{const t=setTimeout(onDone,2200);return()=>clearTimeout(t);},[]);
+  useEffect(()=>{const t=setTimeout(onDone,2400);return()=>clearTimeout(t);},[]);
+  const [showParticles,setShowParticles]=useState(false);
+  useEffect(()=>{const t=setTimeout(()=>setShowParticles(true),680);return()=>clearTimeout(t);},[]);
+  const particles=[
+    {tx:"-38px",ty:"-32px"},{tx:"36px",ty:"-40px"},{tx:"44px",ty:"10px"},
+    {tx:"30px",ty:"38px"},{tx:"-44px",ty:"20px"},{tx:"-30px",ty:"42px"},
+    {tx:"-10px",ty:"-48px"},{tx:"14px",ty:"-44px"},
+  ];
   return (
-    <div style={{background:"#080f08",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'IBM Plex Mono','Courier New',monospace"}}>
+    <div style={{background:"#080f08",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'IBM Plex Mono','Courier New',monospace",overflow:"hidden"}}>
       <CSS neon={neon}/>
-      <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center",width:"100%",padding:"0 32px"}}>
-        {/* Cercles concentriques centrés derrière le texte */}
-        <div style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",pointerEvents:"none"}}>
-          <svg width="320" height="200" viewBox="0 0 320 200">
-            <circle cx="160" cy="100" r="95" fill="none" stroke={neon} strokeWidth="0.8"
-              style={{animation:"p1 3.5s ease-in-out infinite"}}/>
-            <circle cx="160" cy="100" r="68" fill="none" stroke={neon} strokeWidth="0.8"
-              style={{animation:"p2 2.4s ease-in-out infinite 1.1s"}}/>
-            <circle cx="160" cy="100" r="44" fill="none" stroke={neon} strokeWidth="0.6"
-              style={{animation:"p1 4s ease-in-out infinite 0.6s"}}/>
+      <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center",width:"100%",padding:"0 40px"}}>
+        {/* Cercles concentriques — apparaissent avec fadeIn */}
+        <div style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",pointerEvents:"none",animation:"fadeInSlow 0.5s ease 0.5s both"}}>
+          <svg width="340" height="200" viewBox="0 0 340 200">
+            <circle cx="170" cy="100" r="92" fill="none" stroke={neon} strokeWidth="0.7" style={{animation:"p1 3.5s ease-in-out infinite"}}/>
+            <circle cx="170" cy="100" r="66" fill="none" stroke={neon} strokeWidth="0.7" style={{animation:"p2 2.6s ease-in-out infinite 1.1s"}}/>
+            <circle cx="170" cy="100" r="42" fill="none" stroke={neon} strokeWidth="0.5" style={{animation:"p1 4s ease-in-out infinite 0.5s"}}/>
           </svg>
         </div>
-        {/* Logo horizontal : carré + texte */}
-        <div style={{position:"relative",zIndex:2,display:"flex",alignItems:"center",gap:18,animation:"logoIn 0.8s ease 0.3s both"}}>
-          {/* Carré arrondi + losange */}
-          <div style={{width:72,height:72,borderRadius:16,background:`${neon}14`,border:`1.5px solid ${neon}55`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 24px ${neon}20`,flexShrink:0}}>
-            <svg width="44" height="44" viewBox="0 0 24 24" fill="none">
-              <polygon points="12,2 22,12 12,22 2,12" fill={`${neon}20`} stroke={neon} strokeWidth="1.5" strokeLinejoin="round"/>
-              <polygon points="12,7 17,12 12,17 7,12" fill={neon}/>
-            </svg>
-          </div>
-          {/* Texte TrackMyTrade */}
-          <div>
-            <div style={{fontSize:34,fontWeight:700,letterSpacing:-1,lineHeight:1,whiteSpace:"nowrap"}}>
-              <b style={{color:neon}}>Track</b><span style={{color:neon+"40",fontWeight:300}}>My</span><b style={{color:neon}}>Trade</b>
+
+        {/* Carré + losange — arrive depuis la gauche */}
+        <div style={{position:"relative",zIndex:2,display:"flex",alignItems:"center",gap:18,animation:"slideFromLeft 0.7s cubic-bezier(0.34,1.4,0.64,1) 0.1s both"}}>
+          <div style={{position:"relative"}}>
+            {/* Particules au moment de la collision */}
+            {showParticles&&particles.map((p,i)=>(
+              <div key={i} style={{position:"absolute",top:"50%",left:"50%",
+                width:3,height:3,borderRadius:"50%",background:neon,
+                "--tx":p.tx,"--ty":p.ty,
+                animation:`particleOut ${0.5+i*0.04}s ease-out ${i*0.03}s both`}}/>
+            ))}
+            <div style={{width:76,height:76,borderRadius:16,
+              background:`linear-gradient(135deg,${neon}1e 0%,${neon}08 100%)`,
+              border:`1.5px solid ${neon}60`,
+              display:"flex",alignItems:"center",justifyContent:"center",
+              boxShadow:`0 0 28px ${neon}33, 0 0 60px ${neon}14`,
+              position:"relative",overflow:"hidden"}}>
+              <div style={{position:"absolute",top:-4,left:-4,width:"55%",height:"55%",background:`linear-gradient(135deg,${neon}16 0%,transparent 70%)`,borderRadius:"0 0 60% 0"}}/>
+              <svg width="46" height="46" viewBox="0 0 24 24" fill="none">
+                <polygon points="12,2 22,12 12,22 2,12" fill={`${neon}22`} stroke={neon} strokeWidth="1.5" strokeLinejoin="round"/>
+                <polygon points="12,7 17,12 12,17 7,12" fill={neon}/>
+              </svg>
             </div>
-            <div style={{fontSize:9,color:`${neon}44`,letterSpacing:4,marginTop:6}}>JOURNAL DE TRADING</div>
+          </div>
+
+          {/* Texte — arrive depuis la droite */}
+          <div style={{animation:"slideFromRight 0.7s cubic-bezier(0.34,1.4,0.64,1) 0.1s both"}}>
+            <div style={{fontSize:36,fontWeight:700,letterSpacing:-1,lineHeight:1,whiteSpace:"nowrap"}}>
+              <b style={{color:neon}}>Track</b>
+              <span style={{color:neon+"3a",fontWeight:300}}>My</span>
+              <b style={{color:neon}}>Trade</b>
+            </div>
+            <div style={{fontSize:9,color:`${neon}44`,letterSpacing:5,marginTop:8,animation:"fadeInSlow 0.6s ease 0.8s both"}}>
+              JOURNAL DE TRADING
+            </div>
           </div>
         </div>
       </div>
@@ -1408,15 +1425,20 @@ function GuidedSetup({onDone,lang}) {
   );
 }
 
-function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChange,neon,phases}) {
+function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChange,neon,phases,onObjectifChange}) {
   const t=T[lang];const inSt=mkInput(neon);
   const [items,setItems]=useState([...config.items]);const [threshold,setThreshold]=useState(config.threshold);
   const [stratName,setStratName]=useState(config.strategyName||"");const [maxTrades,setMaxTrades]=useState(config.maxTrades||1);
   const [neonColor,setNeonColor]=useState(neon);const [calendarOn,setCalendarOn]=useState(config.calendarOn!==false);
   const [notifOn,setNotifOn]=useState(config.notifOn!==false);const [customAsset,setCustomAsset]=useState("");
   const [assets,setAssets]=useState(config.customAssets||PRESET_ASSETS);
-  const [savedOk,setSavedOk]=useState(false);const [phaseConfirm,setPhaseConfirm]=useState(false);const [eliminatoires,setEliminatoires]=useState(config.eliminatoires||[]);
-  const save=()=>{onSave({items,threshold,strategyName:stratName,maxTrades,neonColor,calendarOn,notifOn,customAssets:assets,eliminatoires});setSavedOk(true);setTimeout(()=>setSavedOk(false),2000);};
+  const [savedOk,setSavedOk]=useState(false);const [phaseConfirm,setPhaseConfirm]=useState(false);
+  const [objPnl,setObjPnl]=useState(config.objPnl||"");
+  const [objWr,setObjWr]=useState(config.objWr||"");
+  const [objTrades,setObjTrades]=useState(config.objTrades||"");const [eliminatoires,setEliminatoires]=useState(config.eliminatoires||[]);
+  const save=()=>{const savedObj={pnl:objPnl,wr:objWr,trades:objTrades,editMode:false};
+    onSave({items,threshold,strategyName:stratName,maxTrades,neonColor,calendarOn,notifOn,customAssets:assets,eliminatoires,objPnl,objWr,objTrades});
+    onObjectifChange(savedObj);setSavedOk(true);setTimeout(()=>setSavedOk(false),2000);};
   const Toggle=({label,val,set})=>(
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${neonColor}0d`}}>
       <span style={{fontSize:12,color:"#c8e6c8",fontFamily:MONO}}>{label}</span>
@@ -1473,7 +1495,28 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
         <Toggle label={t.calendarToggle} val={calendarOn} set={setCalendarOn}/>
         <Toggle label={t.enableNotif} val={notifOn} set={setNotifOn}/>
       </div>
-      <button onClick={save} className="btn" style={{width:"100%",background:`${neonColor}26`,border:`1px solid ${neonColor}`,color:neonColor,borderRadius:10,padding:14,fontSize:13,fontWeight:700,fontFamily:MONO,marginBottom:10}}>{savedOk?t.savedOk:t.saveBtn}</button>
+      {/* Objectif de phase */}
+    <div style={{background:`${neon}04`,border:`1px solid ${neon}18`,borderRadius:10,padding:14,marginBottom:14}}>
+      <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:10}}>OBJECTIF DE PHASE</div>
+      <div style={{display:"flex",gap:8,marginBottom:8}}>
+        <div style={{flex:1}}>
+          <div style={{fontSize:8,color:"#3a5a3a",marginBottom:4}}>P&L CIBLE %</div>
+          <input value={objPnl} onChange={e=>setObjPnl(e.target.value)} placeholder="ex: 5" type="number"
+            style={{...inSt,marginBottom:0,fontSize:13}}/>
+        </div>
+        <div style={{flex:1}}>
+          <div style={{fontSize:8,color:"#3a5a3a",marginBottom:4}}>WR CIBLE %</div>
+          <input value={objWr} onChange={e=>setObjWr(e.target.value)} placeholder="ex: 60" type="number"
+            style={{...inSt,marginBottom:0,fontSize:13}}/>
+        </div>
+        <div style={{flex:1}}>
+          <div style={{fontSize:8,color:"#3a5a3a",marginBottom:4}}>NB TRADES</div>
+          <input value={objTrades} onChange={e=>setObjTrades(e.target.value)} placeholder="ex: 20" type="number"
+            style={{...inSt,marginBottom:0,fontSize:13}}/>
+        </div>
+      </div>
+    </div>
+    <button onClick={save} className="btn" style={{width:"100%",background:`${neonColor}26`,border:`1px solid ${neonColor}`,color:neonColor,borderRadius:10,padding:14,fontSize:13,fontWeight:700,fontFamily:MONO,marginBottom:10}}>{savedOk?t.savedOk:t.saveBtn}</button>
       <div style={{height:1,background:`${neon}14`,margin:"14px 0"}}/>
       {!phaseConfirm?(
         <button onClick={()=>setPhaseConfirm(true)} className="btn" style={{width:"100%",background:`${neon}0a`,border:`1px solid ${neon}28`,color:neon,borderRadius:10,padding:12,fontSize:12,fontFamily:MONO,marginBottom:10}}>{t.newPhaseBtn}{phases.length>0?` — Phase ${phases.length+1}`:""}</button>
@@ -1732,67 +1775,41 @@ export default function App() {
         ))}
       </div>
 
-      {/* Barre objectif */}
-      {(objectif.pnl||objectif.wr||objectif.trades||objectif.editMode)&&(
-        <div style={{padding:"8px 20px",borderBottom:`1px solid ${neon}0a`,background:"rgba(8,15,8,0.5)"}}>
-          {objectif.editMode?(
-            <div style={{display:"flex",gap:6,alignItems:"center"}}>
-              <input placeholder={lang==="fr"?"P&L cible %":"Target P&L %"} value={objectif.pnl}
-                onChange={e=>setObjectif(o=>({...o,pnl:e.target.value}))}
-                style={{flex:1,background:"#0d1a0d",border:`1px solid ${neon}22`,borderRadius:6,color:"#c8e6c8",padding:"5px 8px",fontSize:11,fontFamily:MONO,outline:"none"}}/>
-              <input placeholder="WR %" value={objectif.wr}
-                onChange={e=>setObjectif(o=>({...o,wr:e.target.value}))}
-                style={{flex:1,background:"#0d1a0d",border:`1px solid ${neon}22`,borderRadius:6,color:"#c8e6c8",padding:"5px 8px",fontSize:11,fontFamily:MONO,outline:"none"}}/>
-              <input placeholder={lang==="fr"?"Nb trades":"Nb trades"} value={objectif.trades}
-                onChange={e=>setObjectif(o=>({...o,trades:e.target.value}))}
-                style={{flex:1,background:"#0d1a0d",border:`1px solid ${neon}22`,borderRadius:6,color:"#c8e6c8",padding:"5px 8px",fontSize:11,fontFamily:MONO,outline:"none"}}/>
-              <button onClick={()=>setObjectif(o=>({...o,editMode:false}))} className="btn"
-                style={{background:`${neon}18`,border:`1px solid ${neon}`,color:neon,borderRadius:6,padding:"5px 10px",fontSize:11,fontFamily:MONO}}>✓</button>
-            </div>
-          ):(
-            <div style={{display:"flex",gap:10,alignItems:"center",overflowX:"auto"}}>
-              <span style={{fontSize:9,color:`${neon}44`,fontFamily:MONO,letterSpacing:1,flexShrink:0}}>
-                {lang==="fr"?"OBJECTIF":"TARGET"} →
-              </span>
-              {objectif.pnl&&(()=>{
-                const cur=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
-                const target=parseFloat(objectif.pnl)||1;
-                const pct=Math.min(100,Math.max(0,Math.round(cur/target*100)));
-                const c=pct>=100?neon:pct>=60?"#f0b429":"#c8e6c8";
-                return <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
-                  <span style={{fontSize:9,color:`${neon}44`,fontFamily:MONO}}>P&L</span>
-                  <div style={{width:50,height:4,background:`${neon}12`,borderRadius:2}}>
-                    <div style={{width:`${pct}%`,height:"100%",background:c,borderRadius:2,transition:"width 0.5s"}}/>
-                  </div>
-                  <span style={{fontSize:9,color:c,fontFamily:MONO,fontWeight:700}}>{pct}%</span>
-                </div>;
-              })()}
-              {objectif.wr&&(()=>{
-                const c=winRate>=parseFloat(objectif.wr)?neon:winRate>=parseFloat(objectif.wr)*0.8?"#f0b429":"#c8e6c8";
-                return <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
-                  <span style={{fontSize:9,color:`${neon}44`,fontFamily:MONO}}>WR</span>
-                  <span style={{fontSize:10,fontWeight:700,color:c,fontFamily:MONO}}>{winRate}%<span style={{color:`${neon}33`}}>/{objectif.wr}%</span></span>
-                </div>;
-              })()}
-              {objectif.trades&&(()=>{
-                const c=total>=parseInt(objectif.trades)?neon:total>=parseInt(objectif.trades)*0.7?"#f0b429":"#c8e6c8";
-                return <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
-                  <span style={{fontSize:9,color:`${neon}44`,fontFamily:MONO}}>{lang==="fr"?"TRADES":"TRADES"}</span>
-                  <span style={{fontSize:10,fontWeight:700,color:c,fontFamily:MONO}}>{total}<span style={{color:`${neon}33`}}>/{objectif.trades}</span></span>
-                </div>;
-              })()}
-              <button onClick={()=>setObjectif(o=>({...o,editMode:true}))}
-                style={{background:"transparent",border:"none",color:`${neon}33`,fontSize:12,cursor:"pointer",marginLeft:"auto",flexShrink:0}}>✏</button>
-            </div>
-          )}
-        </div>
-      )}
-      {!objectif.editMode&&!objectif.pnl&&!objectif.wr&&!objectif.trades&&view==="dashboard"&&(
-        <div style={{padding:"5px 20px",borderBottom:`1px solid ${neon}08`}}>
-          <button onClick={()=>setObjectif(o=>({...o,editMode:true}))}
-            style={{background:"transparent",border:"none",color:`${neon}22`,fontSize:9,cursor:"pointer",fontFamily:MONO,letterSpacing:1}}>
-            + {lang==="fr"?"Définir un objectif de phase":"Set a phase target"}
-          </button>
+      {/* Barre objectif — affichage seulement */}
+      {(objectif.pnl||objectif.wr||objectif.trades)&&(
+        <div style={{padding:"7px 20px",borderBottom:`1px solid ${neon}0a`,background:"rgba(8,15,8,0.5)"}}>
+          <div style={{display:"flex",gap:10,alignItems:"center",overflowX:"auto"}}>
+            <span style={{fontSize:9,color:`${neon}44`,fontFamily:MONO,letterSpacing:1,flexShrink:0}}>
+              {lang==="fr"?"OBJECTIF":"TARGET"} →
+            </span>
+            {objectif.pnl&&(()=>{
+              const cur=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
+              const target=parseFloat(objectif.pnl)||1;
+              const pct=Math.min(100,Math.max(0,Math.round(cur/target*100)));
+              const c=pct>=100?neon:pct>=60?"#f0b429":"#c8e6c8";
+              return <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
+                <span style={{fontSize:9,color:`${neon}44`,fontFamily:MONO}}>P&L</span>
+                <div style={{width:52,height:4,background:`${neon}12`,borderRadius:2}}>
+                  <div style={{width:`${pct}%`,height:"100%",background:c,borderRadius:2,transition:"width 0.5s"}}/>
+                </div>
+                <span style={{fontSize:9,color:c,fontFamily:MONO,fontWeight:700}}>{pct}%</span>
+              </div>;
+            })()}
+            {objectif.wr&&(()=>{
+              const c=winRate>=parseFloat(objectif.wr)?neon:winRate>=parseFloat(objectif.wr)*0.8?"#f0b429":"#c8e6c8";
+              return <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
+                <span style={{fontSize:9,color:`${neon}44`,fontFamily:MONO}}>WR</span>
+                <span style={{fontSize:10,fontWeight:700,color:c,fontFamily:MONO}}>{winRate}%<span style={{color:`${neon}33`}}>/{objectif.wr}%</span></span>
+              </div>;
+            })()}
+            {objectif.trades&&(()=>{
+              const c=total>=parseInt(objectif.trades)?neon:total>=parseInt(objectif.trades)*0.7?"#f0b429":"#c8e6c8";
+              return <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
+                <span style={{fontSize:9,color:`${neon}44`,fontFamily:MONO}}>TRADES</span>
+                <span style={{fontSize:10,fontWeight:700,color:c,fontFamily:MONO}}>{total}<span style={{color:`${neon}33`}}>/{objectif.trades}</span></span>
+              </div>;
+            })()}
+          </div>
         </div>
       )}
 
