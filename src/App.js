@@ -2073,7 +2073,7 @@ export default function App() {
         const ddUsed=objectif.drawdown&&cap?Math.abs(Math.min(0,cur)/(parseFloat(objectif.drawdown)||1)*100):0;
         return <div style={{background:"rgba(9,9,16,0.6)",borderBottom:`1px solid #ffffff06`}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 18px 3px"}}>
-            <span style={{fontSize:8,color:`${neon}55`,fontFamily:MONO,letterSpacing:1}}>
+            <span style={{fontSize:9,color:"#ffffffcc",fontFamily:MONO,letterSpacing:1,fontWeight:600}}>
               {config.phaseName||"PHASE"}{config.accountType?` · ${config.accountType==="prop"?"Prop Firm":config.accountType==="demo"?"Démo":"Perso"}`:""}
               {config.capital?` · ${parseInt(config.capital).toLocaleString()}${config.devise||"€"}`:""}
             </span>
@@ -2085,8 +2085,8 @@ export default function App() {
             <div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${neon}88,${neon})`,transition:"width 0.6s ease",boxShadow:`0 0 6px ${neon}55`}}/>
           </div>}
           {(objectif.pnl||objectif.drawdown)&&<div style={{display:"flex",justifyContent:"space-between",padding:"0 18px 4px"}}>
-            {objectif.pnl&&<span style={{fontSize:7,color:"#ffffffbb"}}>Obj +{objectif.pnl}%</span>}
-            {objectif.drawdown&&<span style={{fontSize:7,color:ddUsed>80?"#ff4d4d":"#ffffff25"}}>DD {ddUsed>80?"⚠ ":""}-{Math.abs(Math.min(0,cur)).toFixed(1)}% / -{objectif.drawdown}%</span>}
+            {objectif.pnl&&<span style={{fontSize:8,color:"#ffffffbb"}}>Obj +{objectif.pnl}%</span>}
+            {objectif.drawdown&&<span style={{fontSize:8,color:ddUsed>80?"#ff4d4d":"#ffffff25"}}>DD {ddUsed>80?"⚠ ":""}-{Math.abs(Math.min(0,cur)).toFixed(1)}% / -{objectif.drawdown}%</span>}
           </div>}
         </div>;
       })()}
