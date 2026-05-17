@@ -836,34 +836,35 @@ function LoginScreen({onLogin,lang,setLang}) {
 
 function SplashScreen({onDone,neon}) {
   useEffect(()=>{const t=setTimeout(onDone,2700);return()=>clearTimeout(t);},[]);
-  const n=neon||"#00ff9d";
   return (
-    <div style={{background:"#06100a",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'IBM Plex Mono','Courier New',monospace",overflow:"hidden",position:"relative"}}>
-      <CSS neon={n}/>
-      <div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse 55% 45% at 50% 50%, ${n}10 0%, transparent 70%)`,pointerEvents:"none"}}/>
-      <div style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",pointerEvents:"none",animation:"fadeInSlow 0.5s ease 0.3s both"}}>
-        <svg width="520" height="520" viewBox="0 0 520 520" style={{overflow:"visible"}}>
-          <defs><filter id="glow"><feGaussianBlur stdDeviation="2.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
-          <circle cx="260" cy="260" r="240" fill="none" stroke={n} strokeWidth="0.5" opacity="0.12" style={{animation:"p1 5s ease-in-out infinite",transformOrigin:"260px 260px"}}/>
-          <circle cx="260" cy="260" r="190" fill="none" stroke={n} strokeWidth="0.8" opacity="0.18" style={{animation:"p2 4.2s ease-in-out infinite 0.8s",transformOrigin:"260px 260px"}}/>
-          <circle cx="260" cy="260" r="142" fill="none" stroke={n} strokeWidth="1.1" opacity="0.26" filter="url(#glow)" style={{animation:"p1 3.5s ease-in-out infinite 0.4s",transformOrigin:"260px 260px"}}/>
-          <circle cx="260" cy="260" r="96" fill="none" stroke={n} strokeWidth="1.4" opacity="0.35" filter="url(#glow)" style={{animation:"p2 2.8s ease-in-out infinite 1.2s",transformOrigin:"260px 260px"}}/>
-          <circle cx="260" cy="260" r="54" fill={`${n}06`} stroke={n} strokeWidth="1.6" opacity="0.5" filter="url(#glow)" style={{animation:"p1 2.2s ease-in-out infinite",transformOrigin:"260px 260px"}}/>
-        </svg>
-      </div>
-      <div style={{position:"relative",zIndex:2,display:"flex",alignItems:"center",gap:20,animation:"slideFromLeft 0.95s cubic-bezier(0.34,1.3,0.64,1) 0.15s both"}}>
-        <div style={{width:80,height:80,borderRadius:18,background:`linear-gradient(135deg,${n}28 0%,${n}0a 100%)`,border:`1.5px solid ${n}70`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 36px ${n}44, 0 0 12px ${n}22, inset 0 1px 0 ${n}30`,position:"relative",overflow:"hidden",animation:"logoBoxGlow 3s ease-in-out infinite",flexShrink:0}}>
-          <div style={{position:"absolute",top:-4,left:-4,width:"55%",height:"55%",background:`linear-gradient(135deg,${n}22 0%,transparent 70%)`,borderRadius:"0 0 60% 0"}}/>
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
-            <polygon points="12,2 22,12 12,22 2,12" fill={`${n}28`} stroke={n} strokeWidth="1.5" strokeLinejoin="round"/>
-            <polygon points="12,7 17,12 12,17 7,12" fill={n}/>
+    <div style={{background:"#080f08",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'IBM Plex Mono','Courier New',monospace",overflow:"hidden"}}>
+      <CSS neon={neon}/>
+      <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center",width:"100%",padding:"0 40px"}}>
+        {/* Ellipses centrées sur le texte — plus petites */}
+        <div style={{position:"absolute",left:"calc(50% + 47px)",top:"50%",transform:"translate(-50%,-50%)",pointerEvents:"none",animation:"fadeInSlow 0.5s ease 0.5s both"}}>
+          <svg width="240" height="140" viewBox="0 0 240 140">
+            <ellipse cx="120" cy="70" rx="116" ry="64" fill="none" stroke={neon} strokeWidth="0.7" style={{animation:"p1 3.5s ease-in-out infinite",transformOrigin:"120px 70px"}}/>
+            <ellipse cx="120" cy="70" rx="86" ry="48" fill="none" stroke={neon} strokeWidth="0.7" style={{animation:"p2 2.6s ease-in-out infinite 1.1s",transformOrigin:"120px 70px"}}/>
+            <ellipse cx="120" cy="70" rx="56" ry="32" fill="none" stroke={neon} strokeWidth="0.5" style={{animation:"p1 4s ease-in-out infinite 0.5s",transformOrigin:"120px 70px"}}/>
           </svg>
         </div>
-        <div style={{animation:"slideFromRight 0.95s cubic-bezier(0.34,1.3,0.64,1) 0.15s both"}}>
-          <div style={{fontSize:38,fontWeight:700,letterSpacing:-1,lineHeight:1,whiteSpace:"nowrap",textShadow:`0 0 40px ${n}55`}}>
-            <b style={{color:n}}>Track</b><span style={{color:n+"55",fontWeight:300}}>My</span><b style={{color:n}}>Trade</b>
+        {/* Logo horizontal */}
+        <div style={{position:"relative",zIndex:2,display:"flex",alignItems:"center",gap:18,animation:"slideFromLeft 0.95s cubic-bezier(0.34,1.3,0.64,1) 0.15s both"}}>
+          <div style={{width:76,height:76,borderRadius:16,background:`linear-gradient(135deg,${neon}1e 0%,${neon}08 100%)`,border:`1.5px solid ${neon}60`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 28px ${neon}33`,position:"relative",overflow:"hidden",animation:"logoBoxGlow 3s ease-in-out infinite",flexShrink:0}}>
+            <div style={{position:"absolute",top:-4,left:-4,width:"55%",height:"55%",background:`linear-gradient(135deg,${neon}16 0%,transparent 70%)`,borderRadius:"0 0 60% 0"}}/>
+            <svg width="46" height="46" viewBox="0 0 24 24" fill="none">
+              <polygon points="12,2 22,12 12,22 2,12" fill={`${neon}22`} stroke={neon} strokeWidth="1.5" strokeLinejoin="round"/>
+              <polygon points="12,7 17,12 12,17 7,12" fill={neon}/>
+            </svg>
           </div>
-          <div style={{fontSize:9,color:`${n}55`,letterSpacing:6,marginTop:9,animation:"fadeInSlow 0.6s ease 0.8s both"}}>JOURNAL DE TRADING</div>
+          <div style={{animation:"slideFromRight 0.95s cubic-bezier(0.34,1.3,0.64,1) 0.15s both"}}>
+            <div style={{fontSize:36,fontWeight:700,letterSpacing:-1,lineHeight:1,whiteSpace:"nowrap"}}>
+              <b style={{color:neon}}>Track</b><span style={{color:neon+"3a",fontWeight:300}}>My</span><b style={{color:neon}}>Trade</b>
+            </div>
+            <div style={{fontSize:9,color:`${neon}44`,letterSpacing:5,marginTop:8,animation:"fadeInSlow 0.6s ease 0.8s both"}}>
+              JOURNAL DE TRADING
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -2032,13 +2033,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* Barre phase / objectif */}
-      {config.phaseName&&!objectif.pnl&&(
-        <div style={{padding:"3px 20px",background:"rgba(8,15,8,0.45)",borderBottom:`1px solid ${neon}0d`,display:"flex",alignItems:"center",gap:6}}>
-          <span style={{fontSize:7,color:`${neon}35`,fontFamily:MONO,letterSpacing:2}}>▶</span>
-          <span style={{fontSize:8,color:`${neon}55`,fontFamily:MONO,letterSpacing:2,textTransform:"uppercase"}}>{config.phaseName}</span>
-        </div>
-      )}
+      {/* Barre objectif option A — fine, sous le header */}
       {objectif.pnl&&(()=>{
         const cur=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
         const target=parseFloat(objectif.pnl)||1;
