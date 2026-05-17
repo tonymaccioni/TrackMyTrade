@@ -785,7 +785,7 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
           </svg>
         </div>
         <div style={{position:"relative",zIndex:2}}>
-          <Logo size="lg" neon={neon}/>
+          <SplashLogo neon={neon}/>
         </div>
       </div>
       <div className="slide-up" style={{width:"100%",maxWidth:360,textAlign:"center"}}>
@@ -1447,40 +1447,84 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
 }
 
 
+function SplashLogo({neon}) {
+  return (
+    <div style={{display:"flex",alignItems:"center",gap:14,animation:"slideFromLeft 0.7s cubic-bezier(0.34,1.3,0.64,1) both"}}>
+      <div style={{width:64,height:64,borderRadius:16,background:`linear-gradient(135deg,${neon}22,${neon}08)`,border:`1.5px solid ${neon}65`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 40px ${neon}44,0 0 14px ${neon}22,inset 0 1px 0 ${neon}35`,position:"relative",overflow:"hidden",flexShrink:0,animation:"logoBoxGlow 3s ease-in-out infinite"}}>
+        <div style={{position:"absolute",top:-3,left:-3,width:"55%",height:"55%",background:`linear-gradient(135deg,${neon}20,transparent 70%)`,borderRadius:"0 0 50% 0"}}/>
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+          <polygon points="12,2 22,12 12,22 2,12" fill={`${neon}22`} stroke={neon} strokeWidth="1.5" strokeLinejoin="round"/>
+          <polygon points="12,7 17,12 12,17 7,12" fill={neon} style={{filter:`drop-shadow(0 0 7px ${neon})`}}/>
+        </svg>
+      </div>
+      <div style={{animation:"slideFromRight 0.7s cubic-bezier(0.34,1.3,0.64,1) both"}}>
+        <div style={{fontSize:28,fontWeight:900,letterSpacing:-1.5,lineHeight:1,whiteSpace:"nowrap",textShadow:`0 0 40px ${neon}44`,fontFamily:MONO}}>
+          <b style={{color:neon}}>Track</b><span style={{color:"#ffffff1a",fontWeight:300}}>My</span><b style={{color:neon}}>Trade</b>
+        </div>
+        <div style={{fontSize:8,color:`${neon}55`,letterSpacing:5,marginTop:6,fontFamily:MONO}}>JOURNAL DE TRADING</div>
+      </div>
+    </div>
+  );
+}
+
 function Onboarding({onDone}) {
   const [step,setStep]=useState(0);const [lang,setLang]=useState("fr");
   const t=T[lang];const neon="#00ff9d";
   const slides=[
     {visual:(
-      <div style={{position:"relative",width:"100%",height:220,display:"flex",alignItems:"center",justifyContent:"center"}}>
-        {/* 3 Cercles concentriques animés */}
-        <svg style={{position:"absolute",top:0,left:0,width:"100%",height:"100%"}} viewBox="0 0 220 220">
-          <circle cx="110" cy="110" r="105" fill="none" stroke={neon} strokeWidth="0.8" opacity="0.1" style={{animation:"ring 2.5s ease-in-out infinite"}}/>
-          <circle cx="110" cy="110" r="80" fill="none" stroke={neon} strokeWidth="0.8" opacity="0.16" style={{animation:"ring 2s ease-in-out infinite",animationDelay:"0.25s"}}/>
-          <circle cx="110" cy="110" r="56" fill="none" stroke={neon} strokeWidth="1" opacity="0.22" style={{animation:"ring 1.8s ease-in-out infinite",animationDelay:"0.5s"}}/>
+      <div style={{position:"relative",width:"100%",height:240,display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse 80% 60% at 50% 50%,${neon}10,transparent 70%)`,pointerEvents:"none"}}/>
+        <svg style={{position:"absolute",top:0,left:0,width:"100%",height:"100%"}} viewBox="0 0 300 240">
+          <circle cx="150" cy="120" r="110" fill="none" stroke={neon} strokeWidth="0.6" opacity="0.08" style={{animation:"ring 3s ease-in-out infinite"}}/>
+          <circle cx="150" cy="120" r="82" fill="none" stroke={neon} strokeWidth="0.6" opacity="0.13" style={{animation:"ring 2.5s ease-in-out infinite",animationDelay:"0.3s"}}/>
+          <circle cx="150" cy="120" r="55" fill="none" stroke={neon} strokeWidth="0.8" opacity="0.18" style={{animation:"ring 2s ease-in-out infinite",animationDelay:"0.6s"}}/>
         </svg>
-        <div style={{position:"absolute",width:90,height:90,borderRadius:"50%",background:`radial-gradient(circle,${neon}14 0%,transparent 70%)`}}/>
-        {/* Logo centré */}
-        <div style={{position:"relative",zIndex:2}}>
-          <Logo size="lg" neon={neon}/>
-        </div>
+        <div style={{position:"relative",zIndex:2}}><SplashLogo neon={neon}/></div>
       </div>
     ),title:t.welcome,desc:t.welcomeDesc,cta:t.discover},
-    {visual:<div style={{display:"flex",flexDirection:"column",gap:8,maxWidth:260,margin:"0 auto"}}>{["HA M5 claire ✓","MM20 orientée ✓","BB approche ✓","Rejet propre —"].map((item,i)=><div key={i} className="fu" style={{background:i<3?"rgba(0,255,157,0.1)":"rgba(255,77,77,0.06)",border:`1px solid ${i<3?"rgba(0,255,157,0.3)":"rgba(255,77,77,0.2)"}`,borderRadius:10,padding:"11px 16px",fontSize:13,fontWeight:600,color:i<3?"#00ff9d":"#ff4d4d",fontFamily:MONO,animationDelay:`${i*0.1}s`,boxShadow:i<3?"0 2px 12px rgba(0,255,157,0.08)":"none",textShadow:i<3?"0 0 10px rgba(0,255,157,0.5)":"none"}}>{item}</div>)}</div>,title:t.checklist,desc:t.checklistDesc,cta:t.next},
-    {visual:<div style={{maxWidth:260,margin:"0 auto"}}><div style={{display:"flex",gap:10,marginBottom:10}}>{[["WIN RATE","73%"],["P&L","+4.2%"]].map(([l,v])=><div key={l} style={{flex:1,background:"rgba(0,255,157,0.1)",border:"1px solid rgba(0,255,157,0.3)",borderRadius:12,padding:12,textAlign:"center",boxShadow:"0 4px 20px rgba(0,255,157,0.1), inset 0 1px 0 rgba(0,255,157,0.15)"}}><div style={{fontSize:22,fontWeight:800,color:{neon},fontFamily:MONO,textShadow:"0 0 20px rgba(0,255,157,0.8), 0 2px 6px rgba(0,0,0,0.5)"}}>{v}</div><div style={{fontSize:9,color:"#ffffffaa",marginTop:4,letterSpacing:1}}>{l}</div></div>)}</div></div>,title:t.measure,desc:t.measureDesc,cta:t.start},
+    {visual:(
+      <div style={{display:"flex",flexDirection:"column",gap:8,maxWidth:280,margin:"0 auto"}}>
+        {[["HA M5 claire ✓",true],["MM20 orientée ✓",true],["BB approche ✓",true],["Rejet propre —",false]].map(([item,ok],i)=>(
+          <div key={i} className="fu" style={{background:ok?`${neon}0d`:"rgba(255,77,77,0.06)",border:`1px solid ${ok?neon+"30":"rgba(255,77,77,0.2)"}`,borderRadius:10,padding:"12px 16px",fontSize:13,fontWeight:600,color:ok?neon:"#ff4d4d",fontFamily:MONO,animationDelay:`${i*0.1}s`,display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:16,flexShrink:0}}>{ok?"✓":"—"}</span>
+            <span>{item.replace(" ✓","").replace(" —","")}</span>
+          </div>
+        ))}
+      </div>
+    ),title:t.checklist,desc:t.checklistDesc,cta:t.next},
+    {visual:(
+      <div style={{maxWidth:280,margin:"0 auto"}}>
+        <div style={{display:"flex",gap:10,marginBottom:10}}>
+          {[["WIN RATE","73%"],["P&L","+4.2%"]].map(([l,v])=>(
+            <div key={l} style={{flex:1,background:`${neon}0d`,border:`1px solid ${neon}30`,borderRadius:14,padding:"16px 12px",textAlign:"center",boxShadow:`0 4px 24px ${neon}10,inset 0 1px 0 ${neon}18`}}>
+              <div style={{fontSize:26,fontWeight:900,color:neon,fontFamily:MONO,textShadow:`0 0 24px ${neon}88`,lineHeight:1}}>{v}</div>
+              <div style={{fontSize:9,color:"#ffffffaa",marginTop:6,letterSpacing:2}}>{l}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{background:`${neon}06`,border:`1px solid ${neon}18`,borderRadius:10,padding:"10px 14px",display:"flex",alignItems:"center",gap:10}}>
+          <div style={{flex:1,height:3,background:`${neon}15`,borderRadius:2,overflow:"hidden"}}>
+            <div style={{width:"73%",height:"100%",background:`linear-gradient(90deg,${neon}66,${neon})`,borderRadius:2,boxShadow:`0 0 8px ${neon}55`}}/>
+          </div>
+          <span style={{fontSize:10,color:neon,fontFamily:MONO,fontWeight:700,whiteSpace:"nowrap"}}>73% WR</span>
+        </div>
+      </div>
+    ),title:t.measure,desc:t.measureDesc,cta:t.start},
   ];
   const s=slides[step];
   return (
-    <div style={{background:"#0c0c12",minHeight:"100vh",display:"flex",flexDirection:"column",fontFamily:MONO,maxWidth:480,margin:"0 auto"}}>
+    <div style={{background:"#0c0c12",minHeight:"100vh",display:"flex",flexDirection:"column",fontFamily:MONO,maxWidth:480,margin:"0 auto",color:"#ffffff"}}>
       <CSS neon={neon}/>
-      <div style={{padding:"16px 24px 0",display:"flex",justifyContent:"flex-end",gap:6}}>{["fr","en"].map(l=><button key={l} onClick={()=>setLang(l)} className="btn" style={{background:lang===l?`${neon}26`:"transparent",border:`1px solid ${lang===l?neon:`${neon}33`}`,color:lang===l?neon:"#ffffffaa",borderRadius:6,padding:"5px 12px",fontSize:11,fontWeight:700,fontFamily:MONO}}>{l.toUpperCase()}</button>)}</div>
+      <div style={{padding:"16px 24px 0",display:"flex",justifyContent:"flex-end",gap:6}}>
+        {["fr","en"].map(l=><button key={l} onClick={()=>setLang(l)} className="btn" style={{background:lang===l?`${neon}26`:"transparent",border:`1px solid ${lang===l?neon:`${neon}33`}`,color:lang===l?neon:"#ffffffaa",borderRadius:6,padding:"5px 12px",fontSize:11,fontWeight:700,fontFamily:MONO}}>{l.toUpperCase()}</button>)}
+      </div>
       <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"12px 28px 24px"}}>
         <div className="fi" key={`v${step}${lang}`} style={{marginBottom:28,width:"100%"}}>{s.visual}</div>
         <div className="fi" key={`t${step}${lang}`} style={{textAlign:"center",marginBottom:28}}>
-          <div style={{fontSize:24,fontWeight:700,color:neon,whiteSpace:"pre-line",lineHeight:1.25,marginBottom:12,fontFamily:MONO,textShadow:`0 0 30px ${neon}99, 0 2px 8px rgba(0,0,0,0.5)`}}>{s.title}</div>
+          <div style={{fontSize:24,fontWeight:700,color:neon,whiteSpace:"pre-line",lineHeight:1.25,marginBottom:12,fontFamily:MONO,textShadow:`0 0 30px ${neon}99`}}>{s.title}</div>
           <div style={{fontSize:13,color:"#ffffffaa",lineHeight:1.8,maxWidth:300,margin:"0 auto"}}>{s.desc}</div>
         </div>
-        <button onClick={()=>step<slides.length-1?setStep(step+1):onDone(lang)} className="btn" style={{width:"100%",maxWidth:300,background:`${neon}22`,border:`1px solid ${neon}`,color:neon,borderRadius:12,padding:16,fontSize:14,fontWeight:700,fontFamily:MONO,marginBottom:12,boxShadow:`0 0 24px ${neon}33, 0 4px 12px rgba(0,0,0,0.4)`,textShadow:`0 0 12px ${neon}88`}}>{s.cta}</button>
+        <button onClick={()=>step<slides.length-1?setStep(step+1):onDone(lang)} className="btn" style={{width:"100%",maxWidth:300,background:`${neon}22`,border:`1px solid ${neon}`,color:neon,borderRadius:12,padding:16,fontSize:14,fontWeight:700,fontFamily:MONO,marginBottom:12,boxShadow:`0 0 24px ${neon}33`,textShadow:`0 0 12px ${neon}88`}}>{s.cta}</button>
         {step>0&&<button onClick={()=>setStep(step-1)} className="btn" style={{background:"transparent",border:"none",color:"#ffffff44",fontSize:12,fontFamily:MONO}}>{t.back}</button>}
       </div>
       <div style={{padding:"8px 28px 32px"}}><Dots total={slides.length} current={step} neon={neon}/></div>
