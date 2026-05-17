@@ -835,37 +835,87 @@ function LoginScreen({onLogin,lang,setLang}) {
 }
 
 function SplashScreen({onDone,neon}) {
-  useEffect(()=>{const t=setTimeout(onDone,2700);return()=>clearTimeout(t);},[]);
+  const [tick,setTick]=useState(0);
+  const rafRef=useRef();const startRef=useRef(null);
+    const done=setTimeout(onDone,2700);
+    const animate=ts=>{if(!startRef.current)startRef.current=ts;setTick((ts-startRef.current)/1000);rafRef.current=requestAnimationFrame(animate);};
+    rafRef.current=requestAnimationFrame(animate);
+    return()=>{clearTimeout(done);cancelAnimationFrame(rafRef.current);};
+  },[]);
+  const t=tick;
+  const cols=11,rows=19,cw=300/cols,rh=580/rows;
+  const PTS=[[52,88],[248,65],[32,215],[268,192],[142,35],[72,335],[232,305],[25,445],[275,382],[115,488],[195,452],[45,532],[255,515],[128,148],[185,348],[88,188],[218,162],[158,545],[38,308],[262,458]];
+  const pts=PTS.map(([x,y],i)=>({x:x+Math.sin(t*1.05+i*1.4)*9,y:y+Math.cos(t*0.88+i*0.75)*7,op:0.35+Math.sin(t*1.4+i*0.9)*0.18,r:1.2+(i%4)*0.55}));
+  const dotActive=Math.floor(t/0.55)%4;
   return (
-    <div style={{background:"#0c0c12",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Geist Mono','IBM Plex Mono',monospace",overflow:"hidden"}}>
+    <div style={{background:"#07070d",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Geist Mono','IBM Plex Mono',monospace",overflow:"hidden",position:"relative"}}>
       <CSS neon={neon}/>
-      <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center",width:"100%",padding:"0 40px"}}>
-        {/* Ellipses centrées sur le texte — plus petites */}
-        <div style={{position:"absolute",left:"calc(50% + 47px)",top:"50%",transform:"translate(-50%,-50%)",pointerEvents:"none",animation:"fadeInSlow 0.5s ease 0.5s both"}}>
-          <svg width="240" height="140" viewBox="0 0 240 140">
-            <ellipse cx="120" cy="70" rx="116" ry="64" fill="none" stroke={neon} strokeWidth="0.7" style={{animation:"p1 3.5s ease-in-out infinite",transformOrigin:"120px 70px"}}/>
-            <ellipse cx="120" cy="70" rx="86" ry="48" fill="none" stroke={neon} strokeWidth="0.7" style={{animation:"p2 2.6s ease-in-out infinite 1.1s",transformOrigin:"120px 70px"}}/>
-            <ellipse cx="120" cy="70" rx="56" ry="32" fill="none" stroke={neon} strokeWidth="0.5" style={{animation:"p1 4s ease-in-out infinite 0.5s",transformOrigin:"120px 70px"}}/>
+
+      {/* ── FOND RADIAL ── */}
+      <div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse 75% 60% at 50% 50%,${neon}12,transparent 68%)`,pointerEvents:"none",zIndex:1}}/>
+
+      {/* ── GRILLE + PARTICULES — zIndex 1 (derrière) ── */}
+      <svg style={{position:"absolute",inset:0,zIndex:1}} width="100%" height="100%" viewBox="0 0 300 580" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <filter id="glow"><feGaussianBlur stdDeviation="1.8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        {/* Grille pulsante */}
+        {Array.from({length:rows+1}).map((_,r)=>Array.from({length:cols+1}).map((_,c)=>{
+          const cx=c*cw,cy=r*rh;
+          const dist=Math.hypot(cx-150,cy-290)/185;
+          const wave=Math.sin(t*1.5-dist*4.5)*0.5+0.5;
+          const op=wave*(1-Math.min(1,dist*0.75))*0.42;
+          if(op<0.02)return null;
+          return <circle key={`${r}-${c}`} cx={cx} cy={cy} r={1.4} fill={neon} opacity={op}/>;
+        }))}
+        {/* Lignes grille */}
+        {Array.from({length:rows}).map((_,r)=>Array.from({length:cols}).map((_,c)=>{
+          const cx=c*cw,cy=r*rh;
+          const dist=Math.hypot(cx-150,cy-290)/185;
+          const wave=Math.sin(t*1.5-dist*4.5)*0.5+0.5;
+          const op=wave*(1-Math.min(1,dist*0.85))*0.1;
+          if(op<0.01)return null;
+          return <g key={`l${r}-${c}`}>
+            <line x1={cx} y1={cy} x2={cx+cw} y2={cy} stroke={neon} strokeWidth="0.4" opacity={op}/>
+            <line x1={cx} y1={cy} x2={cx} y2={cy+rh} stroke={neon} strokeWidth="0.4" opacity={op}/>
+          </g>;
+        }))}
+        {/* Connexions particules */}
+        {pts.map((p1,i)=>pts.slice(i+1).map((p2,j)=>{
+          const d=Math.hypot(p1.x-p2.x,p1.y-p2.y);
+          if(d>110)return null;
+          return <line key={`c${i}-${j}`} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke={neon} strokeWidth="0.5" opacity={(1-d/110)*0.18}/>;
+        }))}
+        {/* Halos particules */}
+        <g filter="url(#glow)">
+          {pts.map((p,i)=><circle key={i} cx={p.x} cy={p.y} r={p.r+2.5} fill={neon} opacity={p.op*0.25}/>)}
+        </g>
+        {/* Points nets */}
+        {pts.map((p,i)=><circle key={i} cx={p.x} cy={p.y} r={p.r} fill={neon} opacity={p.op}/>)}
+      </svg>
+
+      {/* ── LOGO — zIndex 10, toujours devant ── */}
+      <div style={{position:"relative",zIndex:10,display:"flex",alignItems:"center",gap:18,animation:"slideFromLeft 0.95s cubic-bezier(0.34,1.3,0.64,1) 0.15s both"}}>
+        <div style={{width:78,height:78,borderRadius:18,background:`linear-gradient(135deg,${neon}22,${neon}08)`,border:`1.5px solid ${neon}65`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 36px ${neon}55,0 0 12px ${neon}22,inset 0 1px 0 ${neon}35`,position:"relative",overflow:"hidden",animation:"logoBoxGlow 3s ease-in-out infinite",flexShrink:0}}>
+          <div style={{position:"absolute",top:-4,left:-4,width:"55%",height:"55%",background:`linear-gradient(135deg,${neon}20,transparent 70%)`,borderRadius:"0 0 60% 0"}}/>
+          <svg width="46" height="46" viewBox="0 0 24 24" fill="none">
+            <polygon points="12,2 22,12 12,22 2,12" fill={`${neon}22`} stroke={neon} strokeWidth="1.5" strokeLinejoin="round"/>
+            <polygon points="12,7 17,12 12,17 7,12" fill={neon} style={{filter:`drop-shadow(0 0 5px ${neon})`}}/>
           </svg>
         </div>
-        {/* Logo horizontal */}
-        <div style={{position:"relative",zIndex:2,display:"flex",alignItems:"center",gap:18,animation:"slideFromLeft 0.95s cubic-bezier(0.34,1.3,0.64,1) 0.15s both"}}>
-          <div style={{width:76,height:76,borderRadius:16,background:`linear-gradient(135deg,${neon}1e 0%,${neon}08 100%)`,border:`1.5px solid ${neon}60`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 28px ${neon}33`,position:"relative",overflow:"hidden",animation:"logoBoxGlow 3s ease-in-out infinite",flexShrink:0}}>
-            <div style={{position:"absolute",top:-4,left:-4,width:"55%",height:"55%",background:`linear-gradient(135deg,${neon}16 0%,transparent 70%)`,borderRadius:"0 0 60% 0"}}/>
-            <svg width="46" height="46" viewBox="0 0 24 24" fill="none">
-              <polygon points="12,2 22,12 12,22 2,12" fill={`${neon}22`} stroke={neon} strokeWidth="1.5" strokeLinejoin="round"/>
-              <polygon points="12,7 17,12 12,17 7,12" fill={neon}/>
-            </svg>
+        <div style={{animation:"slideFromRight 0.95s cubic-bezier(0.34,1.3,0.64,1) 0.15s both"}}>
+          <div style={{fontSize:36,fontWeight:800,letterSpacing:-1,lineHeight:1,whiteSpace:"nowrap",textShadow:`0 0 40px ${neon}44`}}>
+            <b style={{color:neon}}>Track</b><span style={{color:"#ffffff1a",fontWeight:300}}>My</span><b style={{color:neon}}>Trade</b>
           </div>
-          <div style={{animation:"slideFromRight 0.95s cubic-bezier(0.34,1.3,0.64,1) 0.15s both"}}>
-            <div style={{fontSize:36,fontWeight:700,letterSpacing:-1,lineHeight:1,whiteSpace:"nowrap"}}>
-              <b style={{color:neon}}>Track</b><span style={{color:neon+"3a",fontWeight:300}}>My</span><b style={{color:neon}}>Trade</b>
-            </div>
-            <div style={{fontSize:9,color:`${neon}44`,letterSpacing:5,marginTop:8,animation:"fadeInSlow 0.6s ease 0.8s both"}}>
-              JOURNAL DE TRADING
-            </div>
-          </div>
+          <div style={{fontSize:9,color:`${neon}55`,letterSpacing:5,marginTop:9,animation:"fadeInSlow 0.6s ease 0.8s both"}}>JOURNAL DE TRADING</div>
         </div>
+      </div>
+
+      {/* Dots */}
+      <div style={{position:"absolute",bottom:44,display:"flex",gap:8,zIndex:10}}>
+        {[0,1,2,3].map(i=>{const active=dotActive===i;return(
+          <div key={i} style={{width:active?22:6,height:6,borderRadius:3,background:active?neon:`${neon}18`,boxShadow:active?`0 0 12px ${neon}99`:"none",transition:"all 0.35s cubic-bezier(0.34,1.5,0.64,1)"}}/>
+        );})}
       </div>
     </div>
   );
@@ -2070,23 +2120,21 @@ export default function App() {
         const pct=objectif.pnl?Math.min(100,Math.max(0,cur/target*100)):0;
         const cap=parseFloat(config.capital)||0;
         const curEuro=cap?Math.round(cap*cur/100):null;
-        const ddUsed=objectif.drawdown&&cap?Math.abs(Math.min(0,cur)/(parseFloat(objectif.drawdown)||1)*100):0;
         return <div style={{background:"rgba(9,9,16,0.6)",borderBottom:`1px solid #ffffff06`}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 18px 3px"}}>
-            <span style={{fontSize:9,color:"#ffffffcc",fontFamily:MONO,letterSpacing:1,fontWeight:600}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 18px 4px"}}>
+            <span style={{fontSize:10,color:"#ffffffcc",fontFamily:MONO,letterSpacing:1,fontWeight:600}}>
               {config.phaseName||"PHASE"}{config.accountType?` · ${config.accountType==="prop"?"Prop Firm":config.accountType==="demo"?"Démo":"Perso"}`:""}
               {config.capital?` · ${parseInt(config.capital).toLocaleString()}${config.devise||"€"}`:""}
             </span>
-            <span style={{fontSize:10,fontWeight:700,color:cur>=0?neon:"#ff4d4d",fontFamily:MONO}}>
-              {cur>=0?"+":""}{cur.toFixed(1)}%{curEuro!==null?<span style={{fontSize:8,color:"#ffffff44",marginLeft:3}}> ({curEuro>=0?"+":""}{curEuro}{config.devise||"€"})</span>:null}
-            </span>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              {objectif.pnl&&<span style={{fontSize:9,color:"#ffffff55",fontFamily:MONO}}>/ +{objectif.pnl}%</span>}
+              <span style={{fontSize:11,fontWeight:700,color:cur>=0?neon:"#ff4d4d",fontFamily:MONO}}>
+                {cur>=0?"+":""}{cur.toFixed(1)}%{curEuro!==null?<span style={{fontSize:9,color:"#ffffff44",marginLeft:4}}>({curEuro>=0?"+":""}{curEuro}{config.devise||"€"})</span>:null}
+              </span>
+            </div>
           </div>
-          {objectif.pnl&&<div style={{height:2,background:"#ffffff10",margin:"0 18px 2px"}}>
-            <div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${neon}88,${neon})`,transition:"width 0.6s ease",boxShadow:`0 0 6px ${neon}55`}}/>
-          </div>}
-          {(objectif.pnl||objectif.drawdown)&&<div style={{display:"flex",justifyContent:"space-between",padding:"0 18px 4px"}}>
-            {objectif.pnl&&<span style={{fontSize:8,color:"#ffffffbb"}}>Obj +{objectif.pnl}%</span>}
-            {objectif.drawdown&&<span style={{fontSize:8,color:ddUsed>80?"#ff4d4d":"#ffffff25"}}>DD {ddUsed>80?"⚠ ":""}-{Math.abs(Math.min(0,cur)).toFixed(1)}% / -{objectif.drawdown}%</span>}
+          {objectif.pnl&&<div style={{height:2,background:"#ffffff10",margin:"0 18px 5px"}}>
+            <div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${neon}66,${neon})`,transition:"width 0.6s ease",boxShadow:`0 0 6px ${neon}55`}}/>
           </div>}
         </div>;
       })()}
