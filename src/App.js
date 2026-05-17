@@ -207,13 +207,27 @@ const CSS = ({neon="#00ff9d"}) => (
     .view-in{animation:fadeIn 0.22s ease both}
     @keyframes slideFromLeft{0%{opacity:0;transform:translateX(-60px)}65%{transform:translateX(6px)}80%{transform:translateX(-2px)}100%{opacity:1;transform:translateX(0)}}
     @keyframes slideFromRight{0%{opacity:0;transform:translateX(60px)}65%{transform:translateX(-6px)}80%{transform:translateX(2px)}100%{opacity:1;transform:translateX(0)}}
-    @keyframes glowPulse{0%,100%{box-shadow:0 0 8px ${neon}33,0 0 2px ${neon}22}50%{box-shadow:0 0 22px ${neon}66,0 0 8px ${neon}44}}
-    @keyframes borderGlow{0%,100%{border-color:${neon}44}50%{border-color:${neon}99}}
-    @keyframes particleOut{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--tx),var(--ty)) scale(0)}}
-    @keyframes p1{0%{opacity:0.22;transform:scale(0.94)}50%{opacity:0.08;transform:scale(1.04)}100%{opacity:0.22;transform:scale(0.94)}}
-    @keyframes p2{0%{opacity:0.28;transform:scale(0.92)}50%{opacity:0.06;transform:scale(1.06)}100%{opacity:0.28;transform:scale(0.92)}}
+    @keyframes p1{0%{opacity:0.2;transform:scale(0.95)}50%{opacity:0.07;transform:scale(1.03)}100%{opacity:0.2;transform:scale(0.95)}}
+    @keyframes p2{0%{opacity:0.25;transform:scale(0.93)}50%{opacity:0.05;transform:scale(1.05)}100%{opacity:0.25;transform:scale(0.93)}}
     @keyframes fadeInSlow{0%{opacity:0}100%{opacity:1}}
     @keyframes logoBoxGlow{0%,100%{box-shadow:0 0 8px ${neon}22}50%{box-shadow:0 0 20px ${neon}55,0 0 6px ${neon}33}}
+    @keyframes icoCheck{from{stroke-dashoffset:30}to{stroke-dashoffset:0}}
+    @keyframes icoX{from{stroke-dashoffset:22}to{stroke-dashoffset:0}}
+    @keyframes icoRadar{0%{r:3;opacity:0.7}100%{r:14;opacity:0}}
+    @keyframes icoPop{0%{transform:scale(0);opacity:0}70%{transform:scale(1.2)}100%{transform:scale(1);opacity:1}}
+    @keyframes icoBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+    @keyframes icoShake{0%,100%{transform:rotate(0)}20%{transform:rotate(-10deg)}40%{transform:rotate(10deg)}60%{transform:rotate(-6deg)}80%{transform:rotate(6deg)}}
+    @keyframes icoSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+    @keyframes icoPulse{0%,100%{opacity:0.5;transform:scale(0.92)}50%{opacity:1;transform:scale(1.08)}}
+    @keyframes icoFlame{0%,100%{transform:scaleY(1) skewX(0deg)}25%{transform:scaleY(1.07) skewX(-2deg)}75%{transform:scaleY(0.93) skewX(2deg)}}
+    @keyframes icoFlame2{0%,100%{transform:scaleY(1) skewX(0deg)}33%{transform:scaleY(1.09) skewX(2deg)}66%{transform:scaleY(0.91) skewX(-2deg)}}
+    @keyframes icoClock{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+    @keyframes icoDraw{from{stroke-dashoffset:80}to{stroke-dashoffset:0}}
+    @keyframes icoHeartbeat{0%,100%{transform:scale(1)}15%{transform:scale(1.25)}30%{transform:scale(1)}45%{transform:scale(1.15)}60%{transform:scale(1)}}
+    @keyframes icoDiamond{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes barFill{from{width:0}to{width:var(--bar-w)}}
+    @keyframes kpiPop{0%{opacity:0;transform:scale(0.7)}70%{transform:scale(1.08)}100%{opacity:1;transform:scale(1)}}
     @keyframes ring{0%,100%{transform:scale(1);opacity:0.12}50%{transform:scale(1.08);opacity:0.22}}
   `}</style>
 );
@@ -555,221 +569,6 @@ function AdvancedStats({trades,neon,lang}) {
 }
 
 
-function EcoCalendar({neon, lang}) {
-  const fr = lang === "fr";
-  const M = "'IBM Plex Mono','Courier New',monospace";
-  const FINN_KEY = "d83q1d1r01qkm5c95nb0d83q1d1r01qkm5c95nbg";
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [lastUpdate, setLastUpdate] = useState(null);
-  const [weekOffset, setWeekOffset] = useState(0); // 0=cette semaine, 1=semaine prochaine
-  const [showHigh, setShowHigh] = useState(true);
-  const [showMedium, setShowMedium] = useState(true);
-
-  const translateEvent = name => {
-    if(!fr||!name) return name;
-    const map = {
-      "Non-Farm Payrolls":"NFP — Emplois non-agricoles",
-      "Unemployment Rate":"Taux de chômage",
-      "CPI":"IPC — Inflation",
-      "Core CPI":"IPC sous-jacent",
-      "GDP":"PIB",
-      "Retail Sales":"Ventes au détail",
-      "Fed Interest Rate Decision":"Décision taux — Fed",
-      "ECB Interest Rate Decision":"Décision taux — BCE",
-      "BOE Interest Rate Decision":"Décision taux — BoE",
-      "FOMC Statement":"Communiqué FOMC",
-      "Initial Jobless Claims":"Inscriptions chômage",
-      "Trade Balance":"Balance commerciale",
-      "Manufacturing PMI":"PMI Manufacturier",
-      "Services PMI":"PMI Services",
-      "Consumer Confidence":"Confiance consommateurs",
-      "PPI":"IPP — Prix producteurs",
-      "ISM Manufacturing":"ISM Manufacturier",
-      "ISM Services":"ISM Services",
-      "Durable Goods Orders":"Commandes biens durables",
-      "Jerome Powell Speaks":"Discours Powell",
-      "Christine Lagarde Speaks":"Discours Lagarde",
-      "Andrew Bailey Speaks":"Discours Bailey",
-    };
-    for(const [en,fr_] of Object.entries(map)){if(name.includes(en))return name.replace(en,fr_);}
-    return name;
-  };
-
-  const impactColor = imp => imp==="high"?"#ff4d4d":"#f0b429";
-  const impactLabel = imp => fr?(imp==="high"?"FORT":"MOYEN"):(imp==="high"?"HIGH":"MEDIUM");
-  const flags = {US:"🇺🇸",EU:"🇪🇺",GB:"🇬🇧",JP:"🇯🇵",CH:"🇨🇭",AU:"🇦🇺",CA:"🇨🇦",NZ:"🇳🇿",CN:"🇨🇳",DE:"🇩🇪",FR:"🇫🇷"};
-
-  const fetchEvents = async (offset=0) => {
-    setLoading(true); setError(null);
-    try {
-      const now = new Date();
-      const day = now.getDay();
-      const monday = new Date(now);
-      monday.setDate(now.getDate() - (day===0?6:day-1) + offset*7);
-      monday.setHours(0,0,0,0);
-      const sunday = new Date(monday);
-      sunday.setDate(monday.getDate()+6);
-      const fmt = d => d.toISOString().split("T")[0];
-      const url = `https://finnhub.io/api/v1/calendar/economic?from=${fmt(monday)}&to=${fmt(sunday)}&token=${FINN_KEY}`;
-      const res = await fetch(url);
-      if(!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const relC = ["US","EU","GB","JP","CH","AU","CA","NZ","CN","DE","FR","IT","ES"];
-      const evts = (data.economicCalendar||[])
-        .filter(e=>["high","medium"].includes(e.impact))
-        .filter(e=>relC.some(c=>(e.country||"").toUpperCase().startsWith(c)))
-        .sort((a,b)=>{
-          const o={high:0,medium:1};
-          if(o[a.impact]!==o[b.impact]) return o[a.impact]-o[b.impact];
-          return (a.time||"").localeCompare(b.time||"");
-        });
-      setEvents(evts);
-      setLastUpdate(new Date().toLocaleTimeString(fr?"fr-FR":"en-US",{hour:"2-digit",minute:"2-digit"}));
-    } catch(e) { setError(e.message); }
-    finally { setLoading(false); }
-  };
-
-  useEffect(()=>{fetchEvents(weekOffset);},[weekOffset]);
-
-  const visibleEvents = events.filter(e=>
-    (e.impact==="high"&&showHigh)||(e.impact==="medium"&&showMedium)
-  );
-
-  const byDate={};
-  visibleEvents.forEach(e=>{
-    const d=(e.time||e.date||"").split(" ")[0];
-    if(!byDate[d]) byDate[d]=[];
-    byDate[d].push(e);
-  });
-
-  const dayFr=["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"];
-  const dayEn=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-  const fmtDate=d=>{if(!d)return"";const dt=new Date(d+"T12:00:00");return `${(fr?dayFr:dayEn)[dt.getDay()]} ${dt.getDate()}`};
-  const fmtTime=t=>{if(!t)return"";const p=t.split(" ");return p[1]?p[1].slice(0,5):"";};
-  const highCount=events.filter(e=>e.impact==="high").length;
-
-  return (
-    <div style={{background:`${neon}04`,border:`1px solid ${neon}18`,borderRadius:10,padding:16,marginBottom:12}}>
-
-      {/* Header */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-        <div>
-          <div style={{fontSize:9,color:`${neon}55`,letterSpacing:2,textTransform:"uppercase",fontFamily:M}}>
-            {fr?"ACTUALITÉS ÉCONOMIQUES":"ECONOMIC NEWS"}
-          </div>
-          {lastUpdate&&<div style={{fontSize:8,color:`${neon}33`,marginTop:2,fontFamily:M}}>
-            {fr?"Mis à jour ":"Updated "}{lastUpdate}
-          </div>}
-        </div>
-        <button onClick={()=>fetchEvents(weekOffset)} disabled={loading} className="btn"
-          style={{background:`${neon}0d`,border:`1px solid ${neon}28`,borderRadius:6,padding:"5px 10px",color:loading?`${neon}44`:neon,fontSize:10,fontFamily:M}}>
-          {loading?"…":"↺"}
-        </button>
-      </div>
-
-      {/* Switch semaine */}
-      <div style={{display:"flex",gap:4,background:"#0a120a",borderRadius:8,padding:3,marginBottom:10}}>
-        {[[0,fr?"Cette semaine":"This week"],[1,fr?"Semaine prochaine":"Next week"]].map(([offset,label])=>(
-          <button key={offset} onClick={()=>setWeekOffset(offset)} className="btn"
-            style={{flex:1,padding:"7px 0",borderRadius:6,fontSize:10,fontWeight:700,fontFamily:M,
-              background:weekOffset===offset?neon:"transparent",
-              color:weekOffset===offset?"#080f08":`${neon}44`,border:"none",transition:"all 0.2s"}}>
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* Filtres impact */}
-      <div style={{display:"flex",gap:6,marginBottom:12}}>
-        <button onClick={()=>setShowHigh(v=>!v)} className="btn"
-          style={{flex:1,padding:"7px 0",borderRadius:7,fontSize:10,fontWeight:700,fontFamily:M,
-            background:showHigh?"rgba(255,77,77,0.15)":"transparent",
-            border:`1px solid ${showHigh?"#ff4d4d":"rgba(255,77,77,0.2)"}`,
-            color:showHigh?"#ff4d4d":"rgba(255,77,77,0.35)"}}>
-          🔴 {fr?"Fort":"High"}
-        </button>
-        <button onClick={()=>setShowMedium(v=>!v)} className="btn"
-          style={{flex:1,padding:"7px 0",borderRadius:7,fontSize:10,fontWeight:700,fontFamily:M,
-            background:showMedium?"rgba(240,180,41,0.12)":"transparent",
-            border:`1px solid ${showMedium?"#f0b429":"rgba(240,180,41,0.2)"}`,
-            color:showMedium?"#f0b429":"rgba(240,180,41,0.35)"}}>
-          🟡 {fr?"Moyen":"Medium"}
-        </button>
-      </div>
-
-      {/* Alerte événements forts */}
-      {highCount>0&&showHigh&&(
-        <div style={{background:"rgba(255,77,77,0.07)",border:"1px solid rgba(255,77,77,0.2)",borderRadius:8,padding:"10px 14px",marginBottom:12,display:"flex",gap:10,alignItems:"center"}}>
-          <span style={{fontSize:16}}>⚠️</span>
-          <span style={{fontSize:11,color:"#ff4d4d",fontFamily:M,lineHeight:1.5}}>
-            {fr?`${highCount} événement${highCount>1?"s":""} à fort impact ${weekOffset===0?"cette semaine":"semaine prochaine"}.`
-               :`${highCount} high-impact event${highCount>1?"s":""} ${weekOffset===0?"this week":"next week"}.`}
-          </span>
-        </div>
-      )}
-
-      {error&&<div style={{background:"rgba(255,77,77,0.07)",border:"1px solid rgba(255,77,77,0.2)",borderRadius:8,padding:"10px 12px",marginBottom:8,fontSize:11,color:"#ff4d4d",fontFamily:M}}>
-        {fr?"Erreur de connexion.":"Connection error."}
-      </div>}
-
-      {loading&&!events.length&&<div style={{textAlign:"center",padding:"24px 0",fontSize:11,color:`${neon}44`,fontFamily:M}}>
-        {fr?"Chargement…":"Loading…"}
-      </div>}
-
-      {!loading&&!error&&visibleEvents.length===0&&(
-        <div style={{textAlign:"center",padding:"20px 0"}}>
-          <div style={{fontSize:22,marginBottom:8}}>✅</div>
-          <div style={{fontSize:12,color:`${neon}55`,fontFamily:M}}>{fr?"Aucun événement":"No events"}</div>
-        </div>
-      )}
-
-      {Object.entries(byDate).map(([date,dayEvts])=>(
-        <div key={date} style={{marginBottom:14}}>
-          <div style={{fontSize:9,color:`${neon}55`,letterSpacing:2,fontFamily:M,marginBottom:8,
-            textTransform:"uppercase",display:"flex",alignItems:"center",gap:8}}>
-            <div style={{flex:1,height:1,background:`${neon}12`}}/>
-            {fmtDate(date)}
-            <div style={{flex:1,height:1,background:`${neon}12`}}/>
-          </div>
-          {dayEvts.map((ev,i)=>{
-            const ic=impactColor(ev.impact);
-            const name=translateEvent(ev.event||ev.description||"—");
-            const time=fmtTime(ev.time);
-            const flag=flags[ev.country]||"";
-            return (
-              <div key={i} style={{background:`${ic}08`,border:`1px solid ${ic}20`,borderRadius:10,padding:"12px 14px",marginBottom:8,borderLeft:`3px solid ${ic}`}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:12,fontWeight:700,color:"#d0ead0",fontFamily:M,marginBottom:6,lineHeight:1.4}}>
-                      {flag&&<span style={{marginRight:6}}>{flag}</span>}{name}
-                    </div>
-                    <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
-                      {time&&<span style={{fontSize:10,color:`${neon}55`,fontFamily:M}}>🕐 {time} CET</span>}
-                      {ev.prev!==""&&ev.prev!==null&&ev.prev!==undefined&&<span style={{fontSize:10,color:`${neon}44`,fontFamily:M}}>{fr?"Préc.":"Prev."} <b style={{color:`${neon}88`}}>{ev.prev}{ev.unit||""}</b></span>}
-                      {ev.estimate!==""&&ev.estimate!==null&&ev.estimate!==undefined&&<span style={{fontSize:10,color:`${neon}44`,fontFamily:M}}>{fr?"Prévu":"Est."} <b style={{color:`${neon}88`}}>{ev.estimate}{ev.unit||""}</b></span>}
-                    </div>
-                  </div>
-                  <span style={{fontSize:9,padding:"3px 8px",borderRadius:5,background:`${ic}18`,color:ic,fontFamily:M,fontWeight:700,letterSpacing:1,flexShrink:0}}>
-                    {impactLabel(ev.impact)}
-                  </span>
-                </div>
-                {ev.impact==="high"&&<div style={{marginTop:8,fontSize:10,color:"#ff4d4d99",fontFamily:M}}>
-                  {fr?"⚠ Évite de trader 15min avant/après":"⚠ Avoid trading 15min before/after"}
-                </div>}
-              </div>
-            );
-          })}
-        </div>
-      ))}
-      <div style={{textAlign:"center",marginTop:4}}>
-        <span style={{fontSize:8,color:`${neon}18`,fontFamily:M,letterSpacing:1}}>Finnhub.io</span>
-      </div>
-    </div>
-  );
-}
-
 function TradingCalendar({trades,neon,lang}) {
   const t=T[lang];
   const now=new Date();
@@ -909,7 +708,7 @@ function LoginScreen({onLogin,lang,setLang}) {
       <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:24,width:"100%"}}>
         <div style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",pointerEvents:"none"}}>
           <svg width="300" height="120" viewBox="0 0 300 120">
-            <circle cx="150" cy="60" r="56" fill="none" stroke={neon} strokeWidth="0.6" style={{animation:"p1 3.5s ease-in-out infinite",transformOrigin:"150px 60px"}}/>
+            <circle cx="150" cy="60" r="50" fill="none" stroke={neon} strokeWidth="0.6" style={{animation:"p1 3.5s ease-in-out infinite",transformOrigin:"150px 60px"}}/>
             <circle cx="150" cy="60" r="38" fill="none" stroke={neon} strokeWidth="0.6" style={{animation:"p2 2.6s ease-in-out infinite 1.1s",transformOrigin:"150px 60px"}}/>
           </svg>
         </div>
@@ -967,57 +766,30 @@ function LoginScreen({onLogin,lang,setLang}) {
 
 function SplashScreen({onDone,neon}) {
   useEffect(()=>{const t=setTimeout(onDone,2700);return()=>clearTimeout(t);},[]);
-  const [showParticles,setShowParticles]=useState(false);
-  useEffect(()=>{const t=setTimeout(()=>setShowParticles(true),850);return()=>clearTimeout(t);},[]);
-  const particles=[
-    {tx:"-38px",ty:"-32px"},{tx:"36px",ty:"-40px"},{tx:"44px",ty:"10px"},
-    {tx:"30px",ty:"38px"},{tx:"-44px",ty:"20px"},{tx:"-30px",ty:"42px"},
-    {tx:"-10px",ty:"-48px"},{tx:"14px",ty:"-44px"},
-  ];
   return (
     <div style={{background:"#080f08",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'IBM Plex Mono','Courier New',monospace",overflow:"hidden"}}>
       <CSS neon={neon}/>
       <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center",width:"100%",padding:"0 40px"}}>
-        {/* Cercles concentriques — apparaissent avec fadeIn */}
-        {/* Ellipses centrées sur le texte — décalées vers la droite */}
+        {/* Ellipses centrées sur le texte — plus petites */}
         <div style={{position:"absolute",left:"calc(50% + 47px)",top:"50%",transform:"translate(-50%,-50%)",pointerEvents:"none",animation:"fadeInSlow 0.5s ease 0.5s both"}}>
-          <svg width="280" height="160" viewBox="0 0 280 160">
-            <ellipse cx="140" cy="80" rx="136" ry="72" fill="none" stroke={neon} strokeWidth="0.8" style={{animation:"p1 3.5s ease-in-out infinite",transformOrigin:"140px 80px"}}/>
-            <ellipse cx="140" cy="80" rx="100" ry="54" fill="none" stroke={neon} strokeWidth="0.8" style={{animation:"p2 2.6s ease-in-out infinite 1.1s",transformOrigin:"140px 80px"}}/>
-            <ellipse cx="140" cy="80" rx="66" ry="36" fill="none" stroke={neon} strokeWidth="0.6" style={{animation:"p1 4s ease-in-out infinite 0.5s",transformOrigin:"140px 80px"}}/>
+          <svg width="240" height="140" viewBox="0 0 240 140">
+            <ellipse cx="120" cy="70" rx="116" ry="64" fill="none" stroke={neon} strokeWidth="0.7" style={{animation:"p1 3.5s ease-in-out infinite",transformOrigin:"120px 70px"}}/>
+            <ellipse cx="120" cy="70" rx="86" ry="48" fill="none" stroke={neon} strokeWidth="0.7" style={{animation:"p2 2.6s ease-in-out infinite 1.1s",transformOrigin:"120px 70px"}}/>
+            <ellipse cx="120" cy="70" rx="56" ry="32" fill="none" stroke={neon} strokeWidth="0.5" style={{animation:"p1 4s ease-in-out infinite 0.5s",transformOrigin:"120px 70px"}}/>
           </svg>
         </div>
-
-        {/* Carré + losange — arrive depuis la gauche */}
+        {/* Logo horizontal */}
         <div style={{position:"relative",zIndex:2,display:"flex",alignItems:"center",gap:18,animation:"slideFromLeft 0.95s cubic-bezier(0.34,1.3,0.64,1) 0.15s both"}}>
-          <div style={{position:"relative"}}>
-            {/* Particules au moment de la collision */}
-            {showParticles&&particles.map((p,i)=>(
-              <div key={i} style={{position:"absolute",top:"50%",left:"50%",
-                width:3,height:3,borderRadius:"50%",background:neon,
-                "--tx":p.tx,"--ty":p.ty,
-                animation:`particleOut ${0.5+i*0.04}s ease-out ${i*0.03}s both`}}/>
-            ))}
-            <div style={{width:76,height:76,borderRadius:16,
-              background:`linear-gradient(135deg,${neon}1e 0%,${neon}08 100%)`,
-              border:`1.5px solid ${neon}60`,
-              display:"flex",alignItems:"center",justifyContent:"center",
-              boxShadow:`0 0 28px ${neon}33, 0 0 60px ${neon}14`,
-              position:"relative",overflow:"hidden"}}>
-              <div style={{position:"absolute",top:-4,left:-4,width:"55%",height:"55%",background:`linear-gradient(135deg,${neon}16 0%,transparent 70%)`,borderRadius:"0 0 60% 0"}}/>
-              <svg width="46" height="46" viewBox="0 0 24 24" fill="none">
-                <polygon points="12,2 22,12 12,22 2,12" fill={`${neon}22`} stroke={neon} strokeWidth="1.5" strokeLinejoin="round"/>
-                <polygon points="12,7 17,12 12,17 7,12" fill={neon}/>
-              </svg>
-            </div>
+          <div style={{width:76,height:76,borderRadius:16,background:`linear-gradient(135deg,${neon}1e 0%,${neon}08 100%)`,border:`1.5px solid ${neon}60`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 28px ${neon}33`,position:"relative",overflow:"hidden",animation:"logoBoxGlow 3s ease-in-out infinite",flexShrink:0}}>
+            <div style={{position:"absolute",top:-4,left:-4,width:"55%",height:"55%",background:`linear-gradient(135deg,${neon}16 0%,transparent 70%)`,borderRadius:"0 0 60% 0"}}/>
+            <svg width="46" height="46" viewBox="0 0 24 24" fill="none">
+              <polygon points="12,2 22,12 12,22 2,12" fill={`${neon}22`} stroke={neon} strokeWidth="1.5" strokeLinejoin="round"/>
+              <polygon points="12,7 17,12 12,17 7,12" fill={neon}/>
+            </svg>
           </div>
-
-          {/* Texte — arrive depuis la droite */}
           <div style={{animation:"slideFromRight 0.95s cubic-bezier(0.34,1.3,0.64,1) 0.15s both"}}>
             <div style={{fontSize:36,fontWeight:700,letterSpacing:-1,lineHeight:1,whiteSpace:"nowrap"}}>
-              <b style={{color:neon}}>Track</b>
-              <span style={{color:neon+"3a",fontWeight:300}}>My</span>
-              <b style={{color:neon}}>Trade</b>
+              <b style={{color:neon}}>Track</b><span style={{color:neon+"3a",fontWeight:300}}>My</span><b style={{color:neon}}>Trade</b>
             </div>
             <div style={{fontSize:9,color:`${neon}44`,letterSpacing:5,marginTop:8,animation:"fadeInSlow 0.6s ease 0.8s both"}}>
               JOURNAL DE TRADING
@@ -1029,11 +801,148 @@ function SplashScreen({onDone,neon}) {
   );
 }
 
+
+// ── ICÔNES ANIMÉES ──
+function IcoWin({neon,size=32}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 38 38" fill="none" aria-hidden="true">
+      <circle cx="19" cy="19" r="14" stroke={neon} strokeWidth="1.2" fill={neon+"08"} style={{animation:"icoRadar 2s ease-out infinite",transformOrigin:"19px 19px"}}/>
+      <circle cx="19" cy="19" r="14" stroke={neon} strokeWidth="1.2" fill="none" opacity="0.25"/>
+      <polyline points="11.5,19.5 16,24.5 27,13" stroke={neon} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="30" style={{animation:"icoCheck 0.5s ease 0.15s both"}}/>
+    </svg>
+  );
+}
+
+function IcoLoss({size=32}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 38 38" fill="none" aria-hidden="true">
+      <circle cx="19" cy="19" r="14" stroke="#ff4d4d" strokeWidth="1.2" fill="#ff4d4d08"/>
+      <line x1="12" y1="12" x2="26" y2="26" stroke="#ff4d4d" strokeWidth="2.2" strokeLinecap="round" strokeDasharray="22" style={{animation:"icoX 0.3s ease 0.1s both"}}/>
+      <line x1="26" y1="12" x2="12" y2="26" stroke="#ff4d4d" strokeWidth="2.2" strokeLinecap="round" strokeDasharray="22" style={{animation:"icoX 0.3s ease 0.25s both"}}/>
+    </svg>
+  );
+}
+
+function IcoBE({size=32}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 38 38" fill="none" aria-hidden="true">
+      <circle cx="19" cy="19" r="14" stroke="#f0b429" strokeWidth="1.2" fill="#f0b42908"/>
+      <line x1="11" y1="19" x2="27" y2="19" stroke="#f0b429" strokeWidth="2.2" strokeLinecap="round"/>
+      <line x1="11" y1="15" x2="19" y2="19" stroke="#f0b429" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
+      <line x1="19" y1="19" x2="27" y2="23" stroke="#f0b429" strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
+    </svg>
+  );
+}
+
+function IcoWarn({size=32}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 38 38" fill="none" aria-hidden="true" style={{animation:"icoBounce 1.4s ease-in-out infinite 0.4s"}}>
+      <path d="M19 7L34 31H4L19 7Z" stroke="#f0b429" strokeWidth="1.3" strokeLinejoin="round" fill="#f0b42910"/>
+      <line x1="19" y1="16" x2="19" y2="23" stroke="#f0b429" strokeWidth="2.2" strokeLinecap="round"/>
+      <circle cx="19" cy="27" r="1.5" fill="#f0b429"/>
+    </svg>
+  );
+}
+
+function IcoBlock({size=32}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 38 38" fill="none" aria-hidden="true" style={{animation:"icoShake 0.55s ease 0.3s both"}}>
+      <circle cx="19" cy="19" r="14" stroke="#ff4d4d" strokeWidth="1.3" fill="#ff4d4d08"/>
+      <line x1="8" y1="8" x2="30" y2="30" stroke="#ff4d4d" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function IcoTip({neon,size=32}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 38 38" fill="none" aria-hidden="true">
+      <circle cx="19" cy="19" r="4.5" stroke="#00d4ff" strokeWidth="1.5" style={{animation:"icoPulse 2s ease-in-out infinite"}}/>
+      <g style={{animation:"icoSpin 7s linear infinite",transformOrigin:"19px 19px"}}>
+        <line x1="19" y1="4" x2="19" y2="8" stroke="#00d4ff" strokeWidth="1.5" strokeLinecap="round"/>
+        <line x1="19" y1="30" x2="19" y2="34" stroke="#00d4ff" strokeWidth="1.5" strokeLinecap="round"/>
+        <line x1="4" y1="19" x2="8" y2="19" stroke="#00d4ff" strokeWidth="1.5" strokeLinecap="round" opacity="0.7"/>
+        <line x1="30" y1="19" x2="34" y2="19" stroke="#00d4ff" strokeWidth="1.5" strokeLinecap="round" opacity="0.7"/>
+        <line x1="8.5" y1="8.5" x2="11.5" y2="11.5" stroke="#00d4ff" strokeWidth="1.2" strokeLinecap="round" opacity="0.45"/>
+        <line x1="26.5" y1="26.5" x2="29.5" y2="29.5" stroke="#00d4ff" strokeWidth="1.2" strokeLinecap="round" opacity="0.45"/>
+        <line x1="29.5" y1="8.5" x2="26.5" y2="11.5" stroke="#00d4ff" strokeWidth="1.2" strokeLinecap="round" opacity="0.45"/>
+        <line x1="11.5" y1="26.5" x2="8.5" y2="29.5" stroke="#00d4ff" strokeWidth="1.2" strokeLinecap="round" opacity="0.45"/>
+      </g>
+    </svg>
+  );
+}
+
+function IcoFlame({size=32}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 38 38" fill="none" aria-hidden="true">
+      <g style={{animation:"icoFlame 0.9s ease-in-out infinite",transformOrigin:"19px 34px"}}>
+        <path d="M19 5 C19 5 29 15 29 24 C29 31 24.5 37 19 38 C13.5 37 9 31 9 24 C9 15 19 5 19 5Z" stroke="#ff4d4d" strokeWidth="1.3" strokeLinejoin="round" fill="#ff4d4d0d"/>
+      </g>
+      <g style={{animation:"icoFlame2 0.7s ease-in-out infinite 0.1s",transformOrigin:"19px 34px"}}>
+        <path d="M19 15 C19 15 25 21 25 27 C25 31.5 22.5 35.5 19 37 C15.5 35.5 13 31.5 13 27 C13 21 19 15 19 15Z" fill="#f0b429" fillOpacity="0.25" stroke="#f0b429" strokeWidth="0.8" strokeLinejoin="round"/>
+      </g>
+      <g style={{animation:"icoFlame 0.6s ease-in-out infinite 0.2s",transformOrigin:"19px 35px"}}>
+        <path d="M19 24 C18 22 17 20 18 18 C19 20 21 21 19 28Z" fill="#f0b429" fillOpacity="0.6"/>
+      </g>
+    </svg>
+  );
+}
+
+function IcoClock({neon,size=32}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 38 38" fill="none" aria-hidden="true">
+      <circle cx="19" cy="19" r="13" stroke={neon} strokeWidth="1.2" fill={neon+"06"} opacity="0.7"/>
+      <line x1="19" y1="11" x2="19" y2="19" stroke={neon} strokeWidth="2" strokeLinecap="round" style={{animation:"icoClock 3s linear infinite",transformOrigin:"19px 19px"}}/>
+      <line x1="19" y1="19" x2="24.5" y2="22.5" stroke={neon} strokeWidth="1.5" strokeLinecap="round"/>
+      <circle cx="19" cy="19" r="1.8" fill={neon}/>
+    </svg>
+  );
+}
+
+function IcoDiamond({neon,size=32}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 38 38" fill="none" aria-hidden="true">
+      <g style={{animation:"icoDiamond 5s linear infinite",transformOrigin:"19px 19px"}}>
+        <polygon points="19,5 33,19 19,33 5,19" stroke={neon} strokeWidth="1.2" fill={neon+"0a"}/>
+      </g>
+      <polygon points="19,12 26,19 19,26 12,19" fill={neon} fillOpacity="0.3" style={{animation:"icoPulse 2s ease-in-out infinite"}}/>
+    </svg>
+  );
+}
+
+function IcoHumeur({neon,size=32}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 38 38" fill="none" aria-hidden="true">
+      <circle cx="19" cy="19" r="9" stroke={neon} strokeWidth="1.2" fill={neon+"08"} style={{animation:"icoHeartbeat 1.8s ease-in-out infinite 0.5s",transformOrigin:"19px 19px"}}/>
+      <circle cx="19" cy="19" r="4" fill={neon} fillOpacity="0.4" style={{animation:"icoPulse 1.8s ease-in-out infinite 0.5s",transformOrigin:"19px 19px"}}/>
+      <circle cx="19" cy="19" r="15" stroke={neon} strokeWidth="0.6" fill="none" style={{animation:"icoRadar 2.5s ease-out infinite",transformOrigin:"19px 19px"}}/>
+    </svg>
+  );
+}
+
+function IcoActif({neon,size=32}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 38 38" fill="none" aria-hidden="true">
+      <polyline points="4,28 10,20 16,24 22,14 28,18 34,8" stroke={neon} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="70" style={{animation:"icoDraw 1.2s ease 0.2s both"}}/>
+      <line x1="4" y1="32" x2="34" y2="32" stroke={neon} strokeWidth="0.8" opacity="0.2"/>
+      <circle cx="34" cy="8" r="2.5" fill={neon} fillOpacity="0.6" style={{animation:"icoPulse 1.5s ease-in-out infinite"}}/>
+    </svg>
+  );
+}
+
+function IcoStar({neon,size=32}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 38 38" fill="none" aria-hidden="true" style={{animation:"icoPop 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.1s both"}}>
+      <polygon points="19,5 22.5,14.5 33,14.5 24.5,20.5 27.5,31 19,25 10.5,31 13.5,20.5 5,14.5 15.5,14.5" stroke={neon} strokeWidth="1.2" strokeLinejoin="round" fill={neon+"12"}/>
+    </svg>
+  );
+}
+
+// ── RÉSUMÉ COMPLET MODERNISÉ ──
 function StatsInsightsModal({trades,lang,neon,onClose}) {
   const fr=lang==="fr";
+  const MONO2="'IBM Plex Mono','Courier New',monospace";
   if(!trades||trades.length<3) return null;
 
-  // ── Calculs enrichis ──
   const wins=trades.filter(x=>x.result==="WIN");
   const losses=trades.filter(x=>x.result==="LOSS");
   const wr=Math.round(wins.length/trades.length*100);
@@ -1043,134 +952,146 @@ function StatsInsightsModal({trades,lang,neon,onClose}) {
   const totalPnl=trades.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
   const fmtP=v=>{const n=Number(v),a=Math.abs(n);return`${n>=0?"+":""}${a%1===0?a.toFixed(0):a.toFixed(1)}%`;};
 
-  // Par jour de la semaine
-  const days=fr?["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"]:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const conf=trades.filter(x=>x.conforming);
+  const nconf=trades.filter(x=>!x.conforming);
+  const confWR=conf.length?Math.round(conf.filter(x=>x.result==="WIN").length/conf.length*100):0;
+  const nconfWR=nconf.length?Math.round(nconf.filter(x=>x.result==="WIN").length/nconf.length*100):0;
+  const revs=trades.filter(x=>x.isRevenge);
+  const disc=Math.round((conf.length/trades.length*0.6+(1-revs.length/trades.length)*0.4)*10);
+  const discC=disc>=8?neon:disc>=5?"#f0b429":"#ff4d4d";
+  const confPct=trades.length?Math.round(conf.length/trades.length*100):0;
+  const noRevPct=trades.length?Math.round((1-revs.length/trades.length)*100):100;
+
+  // Par jour
+  const daysFr=["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"];
+  const daysEn=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
   const byDay={};
   trades.forEach(x=>{const d=new Date(x.date).getDay();if(!byDay[d])byDay[d]={w:0,t:0};byDay[d].t++;if(x.result==="WIN")byDay[d].w++;});
-  const dayStats=Object.entries(byDay).filter(([,v])=>v.t>=2).map(([d,v])=>({day:days[d],wr:Math.round(v.w/v.t*100),t:v.t})).sort((a,b)=>b.wr-a.wr);
-
-  // Par heure
-  const byHour={};
-  trades.filter(x=>x.time).forEach(x=>{const h=parseInt(x.time.split(":")[0]);const k=`${h}h`;if(!byHour[k])byHour[k]={w:0,t:0};byHour[k].t++;if(x.result==="WIN")byHour[k].w++;});
-  const hourStats=Object.entries(byHour).filter(([,v])=>v.t>=2).map(([h,v])=>({h,wr:Math.round(v.w/v.t*100),t:v.t})).sort((a,b)=>b.wr-a.wr);
+  const dayStats=Object.entries(byDay).filter(([,v])=>v.t>=2).map(([d,v])=>({day:(fr?daysFr:daysEn)[d],wr:Math.round(v.w/v.t*100),t:v.t})).sort((a,b)=>b.wr-a.wr);
 
   // Par actif
   const byAsset={};
   trades.forEach(x=>{if(!byAsset[x.asset])byAsset[x.asset]={w:0,t:0,pnl:0};byAsset[x.asset].t++;byAsset[x.asset].pnl+=parseFloat(x.pnlPct)||0;if(x.result==="WIN")byAsset[x.asset].w++;});
   const assetStats=Object.entries(byAsset).filter(([,v])=>v.t>=2).map(([a,v])=>({a,wr:Math.round(v.w/v.t*100),pnl:parseFloat(v.pnl.toFixed(1)),t:v.t})).sort((a,b)=>b.wr-a.wr);
 
-  // Conformes vs non-conformes
-  const conf=trades.filter(x=>x.conforming);
-  const nconf=trades.filter(x=>!x.conforming);
-  const confWR=conf.length?Math.round(conf.filter(x=>x.result==="WIN").length/conf.length*100):0;
-  const nconfWR=nconf.length?Math.round(nconf.filter(x=>x.result==="WIN").length/nconf.length*100):0;
+  // Par heure
+  const byHour={};
+  trades.filter(x=>x.time).forEach(x=>{const h=parseInt(x.time.split(":")[0]);const k=`${h}h`;if(!byHour[k])byHour[k]={w:0,t:0};byHour[k].t++;if(x.result==="WIN")byHour[k].w++;});
+  const hourStats=Object.entries(byHour).filter(([,v])=>v.t>=2).map(([h,v])=>({h,wr:Math.round(v.w/v.t*100),t:v.t})).sort((a,b)=>b.wr-a.wr);
 
-  // Par humeur
+  // Humeur
   const byHumeur={};
-  trades.filter(x=>x.checkin?.humeur).forEach(x=>{const h=x.checkin.humeur;if(!byHumeur[h])byHumeur[h]={w:0,t:0};byHumeur[h].t++;if(x.result==="WIN")byHumeur[h].w++;});
+  trades.filter(x=>x.checkin&&x.checkin.humeur).forEach(x=>{const h=x.checkin.humeur;if(!byHumeur[h])byHumeur[h]={w:0,t:0};byHumeur[h].t++;if(x.result==="WIN")byHumeur[h].w++;});
   const humeurStats=Object.entries(byHumeur).filter(([,v])=>v.t>=2).map(([h,v])=>({h,wr:Math.round(v.w/v.t*100),t:v.t})).sort((a,b)=>b.wr-a.wr);
 
-  // Par score de rejet
+  // Rejet
   const highRejet=trades.filter(x=>x.rejetScore>=8);
   const lowRejet=trades.filter(x=>x.rejetScore>0&&x.rejetScore<8);
   const highRWR=highRejet.length?Math.round(highRejet.filter(x=>x.result==="WIN").length/highRejet.length*100):null;
   const lowRWR=lowRejet.length?Math.round(lowRejet.filter(x=>x.result==="WIN").length/lowRejet.length*100):null;
 
-  // Revenge trades
-  const revs=trades.filter(x=>x.isRevenge);
-  const revLoss=revs.length?Math.round(revs.filter(x=>x.result==="LOSS").length/revs.length*100):null;
-
-  // Score discipline
-  const disc=Math.round((conf.length/trades.length*0.6+(1-revs.length/trades.length)*0.4)*10);
-  const discColor=disc>=8?neon:disc>=5?"#f0b429":"#ff4d4d";
-
-  // Générer les insights en texte naturel
-  const insights = [];
-  const MONO2 = "'IBM Plex Mono','Courier New',monospace";
-
-  // Vue globale
-  if(fr) {
-    insights.push({type:"global", txt:`Sur ${trades.length} trades, tu affiches un Win Rate de ${wr}% pour un P&L total de ${fmtP(totalPnl)}. ${wr>=55?"C'est une bonne performance — ton edge est réel.":wr>=45?"Ton WR est proche de l'équilibre. Quelques ajustements peuvent faire la différence.":"Il y a du travail à faire sur la sélection des setups."} Ton ratio Gain/Perte est de ${ratio.toFixed(2)}${ratio>=1.5?" — excellent.":ratio>=1?" — correct.":"— à améliorer, tes gains ne couvrent pas assez tes pertes."} Score discipline : ${disc}/10.`});
+  // Insights texte
+  const insights=[];
+  if(fr){
+    insights.push({type:"global",icon:"diamond",txt:`Sur ${trades.length} trades, tu affiches ${wr}% WR pour ${fmtP(totalPnl)} de P&L total. ${wr>=55?"Ton edge est réel.":wr>=45?"Proche de l'équilibre.":"Travaille la sélection des setups."} Ratio G/P : ${ratio.toFixed(2)}${ratio>=1.5?" — excellent.":" — à améliorer."} Discipline : ${disc}/10.`});
+    if(conf.length>=2&&nconf.length>=2) insights.push({type:confWR-nconfWR>10?"good":"warn",icon:confWR-nconfWR>10?"check":"warn",txt:`Conformes : ${confWR}% WR vs ${nconfWR}% non-conformes.${confWR-nconfWR>10?` +${confWR-nconfWR}% quand tu respectes tes règles.`:""}`});
+    if(assetStats.length>=2) insights.push({type:"asset",icon:"actif",txt:`${assetStats[0].a} est ton meilleur actif (${assetStats[0].wr}% WR, ${fmtP(assetStats[0].pnl)}).${assetStats[assetStats.length-1].wr<40?` Évite ${assetStats[assetStats.length-1].a} — seulement ${assetStats[assetStats.length-1].wr}% WR.`:""}`});
+    if(dayStats.length>=2) insights.push({type:dayStats[dayStats.length-1].wr<40?"warn":"day",icon:"clock",txt:`Tu trades mieux le ${dayStats[0].day} (${dayStats[0].wr}% WR).${dayStats[dayStats.length-1].wr<40?` Le ${dayStats[dayStats.length-1].day} est ta pire journée (${dayStats[dayStats.length-1].wr}% WR).`:""}`});
+    if(hourStats.length>=1) insights.push({type:"hour",icon:"clock",txt:`Meilleure plage : autour de ${hourStats[0].h} avec ${hourStats[0].wr}% WR sur ${hourStats[0].t} trades.`});
+    if(humeurStats.length>=2) insights.push({type:humeurStats[humeurStats.length-1].wr<40?"warn":"mood",icon:"humeur",txt:`En état "${humeurStats[0].h}" : ${humeurStats[0].wr}% WR. En état "${humeurStats[humeurStats.length-1].h}" : ${humeurStats[humeurStats.length-1].wr}%.${humeurStats[humeurStats.length-1].wr<40?" Ne trade pas dans cet état.":""}`});
+    if(highRWR!==null&&lowRWR!==null) insights.push({type:highRWR>lowRWR?"good":"neutral",icon:"star",txt:`Rejet ≥8 : ${highRWR}% WR vs ${lowRWR}% avec rejet <8.${highRWR-lowRWR>15?" La qualité du rejet change tout.":""}`});
+    if(revs.length>0) insights.push({type:"danger",icon:"flame",txt:`${revs.length} revenge trade${revs.length>1?"s":""} — ${Math.round(revs.filter(x=>x.result==="LOSS").length/revs.length*100)}% de pertes. Stop.`});
   } else {
-    insights.push({type:"global", txt:`Over ${trades.length} trades, your Win Rate is ${wr}% with a total P&L of ${fmtP(totalPnl)}. ${wr>=55?"Strong performance — your edge is real.":wr>=45?"WR near breakeven. A few adjustments can make the difference.":"Work needed on setup selection."} Risk/Reward ratio: ${ratio.toFixed(2)}${ratio>=1.5?" — excellent.":ratio>=1?" — decent.":"— needs improvement, gains don't cover losses enough."} Discipline score: ${disc}/10.`});
-  }
-
-  // Conformité
-  if(conf.length>=2&&nconf.length>=2) {
-    const diff=confWR-nconfWR;
-    if(fr) insights.push({type:diff>0?"good":"warn", txt:diff>10?`Quand tu respectes ta checklist tu gagnes ${confWR}% du temps. Sans la respecter tu tombes à ${nconfWR}%. Cette différence de ${diff}% prouve que tes règles fonctionnent — arrête de les ignorer.`:`Tu gagnes ${confWR}% sur les setups conformes vs ${nconfWR}% sur les non-conformes. L'écart est faible — vérifie si ta checklist est bien calibrée.`});
-    else insights.push({type:diff>0?"good":"warn", txt:diff>10?`When following your checklist you win ${confWR}% of the time. Without it you drop to ${nconfWR}%. This ${diff}% gap proves your rules work — stop ignoring them.`:`${confWR}% WR on compliant vs ${nconfWR}% on non-compliant. Small gap — check if your checklist is well calibrated.`});
-  }
-
-  // Meilleur/pire actif
-  if(assetStats.length>=2) {
-    const best=assetStats[0], worst=assetStats[assetStats.length-1];
-    if(fr) insights.push({type:"asset", txt:`Ton meilleur actif est ${best.a} avec ${best.wr}% WR sur ${best.t} trades (P&L ${fmtP(best.pnl)}). ${worst.wr<40?`Évite ${worst.a} pour l'instant — seulement ${worst.wr}% WR sur ${worst.t} trades.`:`${worst.a} est ton actif le moins performant avec ${worst.wr}% WR.`}`});
-    else insights.push({type:"asset", txt:`Best asset: ${best.a} with ${best.wr}% WR over ${best.t} trades (P&L ${fmtP(best.pnl)}). ${worst.wr<40?`Avoid ${worst.a} for now — only ${worst.wr}% WR over ${worst.t} trades.`:`${worst.a} is your weakest asset with ${worst.wr}% WR.`}`});
-  }
-
-  // Jours
-  if(dayStats.length>=2) {
-    const best=dayStats[0], worst=dayStats[dayStats.length-1];
-    if(fr) insights.push({type:worst.wr<40?"warn":"day", txt:`Tu trades mieux le ${best.day} (${best.wr}% WR).${worst.wr<40?` Le ${worst.day} est clairement ta pire journée avec ${worst.wr}% WR sur ${worst.t} trades — envisage de ne pas trader ce jour-là.`:` Le ${worst.day} est ton jour le plus difficile (${worst.wr}% WR).`}`});
-    else insights.push({type:worst.wr<40?"warn":"day", txt:`You trade best on ${best.day} (${best.wr}% WR).${worst.wr<40?` ${worst.day} is clearly your worst day with ${worst.wr}% WR over ${worst.t} trades — consider avoiding it.`:` ${worst.day} is your hardest day (${worst.wr}% WR).`}`});
-  }
-
-  // Heures
-  if(hourStats.length>=2) {
-    const best=hourStats[0];
-    if(fr) insights.push({type:"hour", txt:`Ta meilleure plage horaire est autour de ${best.h} avec ${best.wr}% WR sur ${best.t} trades. Concentre tes sessions sur ces créneaux.`});
-    else insights.push({type:"hour", txt:`Your best time window is around ${best.h} with ${best.wr}% WR over ${best.t} trades. Focus your sessions on these slots.`});
-  }
-
-  // Humeur
-  if(humeurStats.length>=2) {
-    const best=humeurStats[0], worst=humeurStats[humeurStats.length-1];
-    if(fr) insights.push({type:worst.wr<40?"warn":"mood", txt:`En état "${best.h}" tu affiches ${best.wr}% WR. En état "${worst.h}" tu tombes à ${worst.wr}%.${worst.wr<40?" C'est un signal clair — ne trade pas dans cet état.":""}`});
-    else insights.push({type:worst.wr<40?"warn":"mood", txt:`When "${best.h}" you hit ${best.wr}% WR. When "${worst.h}" you drop to ${worst.wr}%.${worst.wr<40?" Clear signal — don't trade in that state.":""}`});
-  }
-
-  // Rejet
-  if(highRWR!==null&&lowRWR!==null&&Math.abs(highRWR-lowRWR)>10) {
-    if(fr) insights.push({type:highRWR>lowRWR?"good":"neutral", txt:`Avec un rejet ≥8/10 tu gagnes ${highRWR}% du temps. Avec un rejet plus faible c'est ${lowRWR}%.${highRWR-lowRWR>15?" Sois plus sélectif sur la qualité du rejet — ça change tout.":""}`});
-    else insights.push({type:highRWR>lowRWR?"good":"neutral", txt:`With rejection ≥8/10 you win ${highRWR}% of the time. With lower rejection it's ${lowRWR}%.${highRWR-lowRWR>15?" Be more selective on rejection quality — it makes a big difference.":""}`});
-  }
-
-  // Revenge
-  if(revs.length>0) {
-    if(fr) insights.push({type:"danger", txt:`${revs.length} revenge trade${revs.length>1?"s":""} enregistré${revs.length>1?"s":""} avec ${revLoss}% de pertes. Chaque revenge trade est une entorse à ta discipline. Mets en place une règle d'arrêt après 2 pertes consécutives.`});
-    else insights.push({type:"danger", txt:`${revs.length} revenge trade${revs.length>1?"s":""} logged with ${revLoss}% loss rate. Each revenge trade breaks your discipline. Set a hard stop rule after 2 consecutive losses.`});
+    insights.push({type:"global",icon:"diamond",txt:`Over ${trades.length} trades, ${wr}% WR for ${fmtP(totalPnl)} P&L. ${wr>=55?"Your edge is real.":wr>=45?"Near breakeven.":"Work on setup selection."} R/R: ${ratio.toFixed(2)}. Discipline: ${disc}/10.`});
+    if(conf.length>=2&&nconf.length>=2) insights.push({type:confWR-nconfWR>10?"good":"warn",icon:confWR-nconfWR>10?"check":"warn",txt:`Compliant: ${confWR}% WR vs ${nconfWR}% non-compliant.${confWR-nconfWR>10?` +${confWR-nconfWR}% when following rules.`:""}`});
+    if(assetStats.length>=2) insights.push({type:"asset",icon:"actif",txt:`${assetStats[0].a} is your best asset (${assetStats[0].wr}% WR, ${fmtP(assetStats[0].pnl)}).${assetStats[assetStats.length-1].wr<40?` Avoid ${assetStats[assetStats.length-1].a} — only ${assetStats[assetStats.length-1].wr}% WR.`:""}`});
+    if(dayStats.length>=2) insights.push({type:dayStats[dayStats.length-1].wr<40?"warn":"day",icon:"clock",txt:`Best day: ${dayStats[0].day} (${dayStats[0].wr}% WR).${dayStats[dayStats.length-1].wr<40?` Worst: ${dayStats[dayStats.length-1].day} (${dayStats[dayStats.length-1].wr}% WR).`:""}`});
+    if(hourStats.length>=1) insights.push({type:"hour",icon:"clock",txt:`Best window: around ${hourStats[0].h} with ${hourStats[0].wr}% WR over ${hourStats[0].t} trades.`});
+    if(humeurStats.length>=2) insights.push({type:humeurStats[humeurStats.length-1].wr<40?"warn":"mood",icon:"humeur",txt:`"${humeurStats[0].h}": ${humeurStats[0].wr}% WR. "${humeurStats[humeurStats.length-1].h}": ${humeurStats[humeurStats.length-1].wr}%.${humeurStats[humeurStats.length-1].wr<40?" Don't trade in that state.":""}`});
+    if(highRWR!==null&&lowRWR!==null) insights.push({type:highRWR>lowRWR?"good":"neutral",icon:"star",txt:`Rejection ≥8: ${highRWR}% WR vs ${lowRWR}% with lower rejection.${highRWR-lowRWR>15?" Quality rejection matters.":""}`});
+    if(revs.length>0) insights.push({type:"danger",icon:"flame",txt:`${revs.length} revenge trade${revs.length>1?"s":""} — ${Math.round(revs.filter(x=>x.result==="LOSS").length/revs.length*100)}% loss rate. Stop.`});
   }
 
   const typeColor={global:neon,good:neon,warn:"#f0b429",danger:"#ff4d4d",asset:neon,day:"#f0b429",hour:neon,mood:"#f0b429",neutral:neon};
-  const typeIcon={global:"◈",good:"✓",warn:"⚠",danger:"✕",asset:"◆",day:"◷",hour:"◷",mood:"●",neutral:"·"};
+
+  const renderIcon=(icon,color,sz=22)=>{
+    if(icon==="check") return <IcoWin neon={color} size={sz}/>;
+    if(icon==="warn") return <IcoWarn size={sz}/>;
+    if(icon==="flame") return <IcoFlame size={sz}/>;
+    if(icon==="clock") return <IcoClock neon={color} size={sz}/>;
+    if(icon==="diamond") return <IcoDiamond neon={color} size={sz}/>;
+    if(icon==="humeur") return <IcoHumeur neon={color} size={sz}/>;
+    if(icon==="actif") return <IcoActif neon={color} size={sz}/>;
+    if(icon==="star") return <IcoStar neon={color} size={sz}/>;
+    return <IcoDiamond neon={color} size={sz}/>;
+  };
 
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:400,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
-      <div className="slide-up" style={{background:"#0d1a0d",border:`1px solid ${neon}30`,borderRadius:"20px 20px 0 0",width:"100%",maxWidth:480,maxHeight:"85vh",overflowY:"auto",paddingBottom:40}} onClick={e=>e.stopPropagation()}>
-        <div style={{position:"sticky",top:0,background:"#0d1a0d",padding:"16px 20px 12px",borderBottom:`1px solid ${neon}14`,zIndex:1}}>
+      <div className="slide-up" style={{background:"#0a140a",border:`1px solid ${neon}28`,borderRadius:"20px 20px 0 0",width:"100%",maxWidth:480,maxHeight:"88vh",overflowY:"auto",paddingBottom:40}} onClick={e=>e.stopPropagation()}>
+        {/* Barre top */}
+        <div style={{height:3,background:neon,opacity:0.7,borderRadius:"20px 20px 0 0"}}/>
+        {/* Header sticky */}
+        <div style={{position:"sticky",top:0,background:"#0a140a",padding:"16px 20px 12px",borderBottom:`1px solid ${neon}10`,zIndex:1}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div style={{fontSize:14,fontWeight:700,color:neon,fontFamily:MONO2}}>{fr?"RÉSUMÉ COMPLET":"FULL SUMMARY"}</div>
-            <button onClick={onClose} style={{background:"transparent",border:"none",color:`${neon}66`,fontSize:20,cursor:"pointer"}}>✕</button>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <IcoDiamond neon={neon} size={22}/>
+              <div style={{fontSize:14,fontWeight:700,color:neon,fontFamily:MONO2}}>{fr?"RÉSUMÉ COMPLET":"FULL SUMMARY"}</div>
+            </div>
+            <button onClick={onClose} style={{background:"transparent",border:"none",color:`${neon}55`,fontSize:20,cursor:"pointer"}}>✕</button>
           </div>
-          <div style={{fontSize:10,color:`${neon}44`,marginTop:2,fontFamily:MONO2}}>{trades.length} {fr?"trades analysés":"trades analyzed"}</div>
+          <div style={{fontSize:10,color:`${neon}33`,marginTop:4,fontFamily:MONO2}}>{trades.length} {fr?"trades analysés":"trades analyzed"}</div>
         </div>
-        <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}}>
-          {insights.map((ins,i)=>(
-            <div key={i} style={{background:`${typeColor[ins.type]}08`,border:`1px solid ${typeColor[ins.type]}20`,borderRadius:12,padding:"14px 16px",borderLeft:`3px solid ${typeColor[ins.type]}`}}>
-              <div style={{display:"flex",gap:8,marginBottom:6,alignItems:"center"}}>
-                <span style={{fontSize:12,color:typeColor[ins.type],fontWeight:700}}>{typeIcon[ins.type]}</span>
-              </div>
-              <p style={{fontSize:12,color:"#c8e6c8",lineHeight:1.75,fontFamily:MONO2,margin:0}}>{ins.txt}</p>
+
+        {/* KPI animés */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,padding:"16px 20px 8px"}}>
+          {[
+            {l:"WIN RATE",v:`${wr}%`,c:wr>=50?neon:"#ff4d4d",delay:"0.05s"},
+            {l:"P&L",v:fmtP(totalPnl),c:totalPnl>=0?neon:"#ff4d4d",delay:"0.12s"},
+            {l:"TRADES",v:`${trades.length}`,c:neon,delay:"0.19s"},
+          ].map(({l,v,c,delay})=>(
+            <div key={l} style={{background:`${c}0c`,border:`1px solid ${c}22`,borderRadius:10,padding:"10px 0",textAlign:"center",animation:`kpiPop 0.5s cubic-bezier(0.34,1.56,0.64,1) ${delay} both`}}>
+              <div style={{fontSize:8,color:`${neon}44`,fontFamily:MONO2,letterSpacing:1,marginBottom:4}}>{l}</div>
+              <div style={{fontSize:20,fontWeight:800,color:c,fontFamily:MONO2,lineHeight:1}}>{v}</div>
             </div>
           ))}
+        </div>
+
+        {/* Discipline */}
+        <div style={{margin:"0 20px 14px",background:`${discC}08`,border:`1px solid ${discC}18`,borderRadius:10,padding:"12px 14px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <span style={{fontSize:9,color:`${neon}44`,fontFamily:MONO2,letterSpacing:2}}>{fr?"DISCIPLINE":"DISCIPLINE"}</span>
+            <span style={{fontSize:22,fontWeight:800,color:discC,fontFamily:MONO2}}>{disc}<span style={{fontSize:12,color:`${neon}33`}}>/10</span></span>
+          </div>
+          {[{l:fr?"Conformité":"Compliance",v:confPct,c:neon,delay:"0.3s"},{l:fr?"Sans revenge":"No revenge",v:noRevPct,c:revs.length===0?neon:"#f0b429",delay:"0.5s"}].map(({l,v,c,delay})=>(
+            <div key={l} style={{marginBottom:8}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                <span style={{fontSize:9,color:`${neon}44`,fontFamily:MONO2}}>{l}</span>
+                <span style={{fontSize:9,color:c,fontWeight:700,fontFamily:MONO2}}>{v}%</span>
+              </div>
+              <div style={{height:3,background:`${neon}10`,borderRadius:2,overflow:"hidden"}}>
+                <div style={{["--bar-w"]:`${v}%`,height:"100%",background:c,borderRadius:2,animation:`barFill 0.8s ease ${delay} both`}}/>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Insights avec icônes */}
+        <div style={{padding:"0 20px",display:"flex",flexDirection:"column",gap:10}}>
+          {insights.map((ins,i)=>{
+            const c=typeColor[ins.type];
+            return (
+              <div key={i} style={{background:`${c}07`,border:`1px solid ${c}18`,borderRadius:12,padding:"12px 14px",borderLeft:`3px solid ${c}`,display:"flex",gap:10,alignItems:"flex-start",animation:`fadeUp 0.35s ease ${0.1+i*0.08}s both`}}>
+                <div style={{flexShrink:0,marginTop:2}}>{renderIcon(ins.icon,c,24)}</div>
+                <p style={{fontSize:12,color:"#c8e6c8",lineHeight:1.7,fontFamily:MONO2,margin:0}}>{ins.txt}</p>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
   );
 }
-
-
 
 
 function ShareModal({trade, trades, lang, neon, config, onClose}) {
@@ -1409,7 +1330,7 @@ function GuidedSetup({onDone,lang}) {
   return (
     <div style={{background:"#080f08",minHeight:"100vh",fontFamily:MONO,maxWidth:480,margin:"0 auto",display:"flex",flexDirection:"column"}}>
       <CSS neon={neon}/>
-      <div style={{padding:"24px 24px 16px",borderBottom:`1px solid ${neon}14`}}><Logo size="sm" neon={neon}/><div style={{marginTop:20}}><Dots total={TOTAL} current={step} neon={neon}/></div></div>
+      <div style={{padding:"24px 24px 16px",borderBottom:`1px solid ${neon}14`}}><div><Logo size="sm" neon={neon}/>{config.phaseName&&<div style={{fontSize:9,color:`${neon}33`,fontFamily:MONO,marginTop:2,letterSpacing:1}}>{config.phaseName}</div>}</div><div style={{marginTop:20}}><Dots total={TOTAL} current={step} neon={neon}/></div></div>
       <div style={{flex:1,padding:"28px 24px",overflow:"auto"}}>
         <div className="fu" key={step}>
           <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:3,marginBottom:6}}>{t.step} 0{step+1} / 04</div>
@@ -1426,7 +1347,7 @@ function GuidedSetup({onDone,lang}) {
   );
 }
 
-function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChange,neon,phases,onObjectifChange}) {
+function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChange,neon,phases,onObjectifChange,onImport,pushEnabled,onPushChange}) {
   const t=T[lang];const inSt=mkInput(neon);
   const [items,setItems]=useState([...config.items]);const [threshold,setThreshold]=useState(config.threshold);
   const [stratName,setStratName]=useState(config.strategyName||"");const [maxTrades,setMaxTrades]=useState(config.maxTrades||1);
@@ -1434,11 +1355,15 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
   const [notifOn,setNotifOn]=useState(config.notifOn!==false);const [customAsset,setCustomAsset]=useState("");
   const [assets,setAssets]=useState(config.customAssets||PRESET_ASSETS);
   const [savedOk,setSavedOk]=useState(false);const [phaseConfirm,setPhaseConfirm]=useState(false);
+  const [newPhaseName,setNewPhaseName]=useState("");
+  const [phaseName,setPhaseName]=useState(config.phaseName||"");
+  const [pushEnabled,setPushEnabled]=useState(config.pushEnabled||false);
   const [objPnl,setObjPnl]=useState(config.objPnl||"");
+  const [phaseName,setPhaseName]=useState(config.phaseName||"");
   const [objWr,setObjWr]=useState(config.objWr||"");
   const [objTrades,setObjTrades]=useState(config.objTrades||"");const [eliminatoires,setEliminatoires]=useState(config.eliminatoires||[]);
   const save=()=>{const savedObj={pnl:objPnl,wr:"",trades:"",editMode:false};
-    onSave({items,threshold,strategyName:stratName,maxTrades,neonColor,calendarOn,notifOn,customAssets:assets,eliminatoires,objPnl});
+    onSave({items,threshold,strategyName:stratName,maxTrades,neonColor,calendarOn,notifOn,customAssets:assets,eliminatoires,objPnl,phaseName});
     onObjectifChange(savedObj);setSavedOk(true);setTimeout(()=>setSavedOk(false),2000);};
   const Toggle=({label,val,set})=>(
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${neonColor}0d`}}>
@@ -1496,16 +1421,35 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
         <Toggle label={t.calendarToggle} val={calendarOn} set={setCalendarOn}/>
         <Toggle label={t.enableNotif} val={notifOn} set={setNotifOn}/>
       </div>
-      {/* Objectif de phase */}
+      {/* Nom de la phase */}
     <div style={{background:`${neon}04`,border:`1px solid ${neon}18`,borderRadius:10,padding:14,marginBottom:14}}>
-      <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:10}}>OBJECTIF P&L DE PHASE</div>
-      <div style={{display:"flex",alignItems:"center",gap:8}}>
-        <input value={objPnl} onChange={e=>setObjPnl(e.target.value)} placeholder="ex: 5" type="number"
-          style={{...inSt,marginBottom:0,flex:1,fontSize:14}}/>
-        <span style={{fontSize:13,color:`${neon}66`,fontFamily:"'IBM Plex Mono',monospace",flexShrink:0}}>%</span>
+      <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:10}}>{lang==="fr"?"NOM DE LA PHASE":"PHASE NAME"}</div>
+      <input value={phaseName} onChange={e=>setPhaseName(e.target.value)}
+        placeholder={lang==="fr"?"ex: FTMO 1ère étape":"e.g. FTMO Phase 1"}
+        style={{...inSt,marginBottom:0,fontSize:13}}/>
+      {phaseName&&<div style={{fontSize:10,color:"#3a5a3a",marginTop:6,fontFamily:"'IBM Plex Mono',monospace"}}>
+        {lang==="fr"?"Affiché sous le logo dans le header":"Shown under logo in header"}
+      </div>}
+    </div>
+    {/* Phase en cours — nom + objectif liés */}
+    <div style={{background:`${neon}04`,border:`1px solid ${neon}18`,borderRadius:10,padding:14,marginBottom:14}}>
+      <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:12}}>PHASE EN COURS</div>
+      <div style={{marginBottom:10}}>
+        <div style={{fontSize:8,color:"#3a5a3a",marginBottom:4}}>{lang==="fr"?"NOM DE LA PHASE":"PHASE NAME"}</div>
+        <input value={phaseName} onChange={e=>setPhaseName(e.target.value)}
+          placeholder={lang==="fr"?"ex: FTMO 1ère étape, Prop firm…":"e.g. FTMO Step 1, Live account…"}
+          style={{...inSt,fontSize:12,marginBottom:0}}/>
       </div>
-      {objPnl&&<div style={{fontSize:10,color:"#3a5a3a",marginTop:6,fontFamily:"'IBM Plex Mono',monospace"}}>
-        {lang==="fr"?`Objectif : atteindre +${objPnl}% de P&L sur cette phase`:`Target: reach +${objPnl}% P&L this phase`}
+      <div>
+        <div style={{fontSize:8,color:"#3a5a3a",marginBottom:4}}>{lang==="fr"?"OBJECTIF P&L %":"P&L TARGET %"}</div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <input value={objPnl} onChange={e=>setObjPnl(e.target.value)} placeholder="ex: 8" type="number"
+            style={{...inSt,marginBottom:0,flex:1,fontSize:13}}/>
+          <span style={{fontSize:13,color:`${neon}55`,fontFamily:"'IBM Plex Mono',monospace",flexShrink:0}}>%</span>
+        </div>
+      </div>
+      {(phaseName||objPnl)&&<div style={{fontSize:10,color:`${neon}33`,marginTop:10,fontFamily:"'IBM Plex Mono',monospace",lineHeight:1.6}}>
+        {phaseName&&<span>{phaseName}</span>}{phaseName&&objPnl&&<span style={{color:`${neon}22`}}> · </span>}{objPnl&&<span>{lang==="fr"?`Objectif +${objPnl}%`:`Target +${objPnl}%`}</span>}
       </div>}
     </div>
     <button onClick={save} className="btn" style={{width:"100%",background:`${neonColor}26`,border:`1px solid ${neonColor}`,color:neonColor,borderRadius:10,padding:14,fontSize:13,fontWeight:700,fontFamily:MONO,marginBottom:10}}>{savedOk?t.savedOk:t.saveBtn}</button>
@@ -1515,10 +1459,13 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
       ):(
         <div style={{background:`${neon}08`,border:`1px solid ${neon}30`,borderRadius:10,padding:14,marginBottom:10}}>
           <div style={{fontSize:12,fontWeight:700,color:neon,fontFamily:MONO,marginBottom:4}}>{t.newPhaseConfirmQ}</div>
-          <div style={{fontSize:11,color:"#5a7a5a",marginBottom:12,lineHeight:1.5}}>{t.newPhaseDesc}</div>
+          <div style={{fontSize:11,color:"#5a7a5a",marginBottom:10,lineHeight:1.5}}>{t.newPhaseDesc}</div>
+          <input value={newPhaseName} onChange={e=>setNewPhaseName(e.target.value)}
+            placeholder={lang==="fr"?"Nom de cette phase (ex: FTMO Step 1)…":"Phase name (e.g. FTMO Step 1)…"}
+            style={{...inSt,marginBottom:10,fontSize:12}}/>
           <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>{onNewPhase();setPhaseConfirm(false);}} className="btn" style={{flex:2,background:`${neon}22`,border:`1px solid ${neon}`,color:neon,borderRadius:8,padding:"10px 0",fontSize:12,fontWeight:700,fontFamily:MONO}}>{t.newPhaseConfirmBtn}</button>
-            <button onClick={()=>setPhaseConfirm(false)} className="btn" style={{flex:1,background:"transparent",border:`1px solid ${neon}26`,color:"#5a7a5a",borderRadius:8,padding:"10px 0",fontSize:11,fontFamily:MONO}}>{t.cancelBtn}</button>
+            <button onClick={()=>{onNewPhase(newPhaseName);setPhaseConfirm(false);setNewPhaseName("");}} className="btn" style={{flex:2,background:`${neon}22`,border:`1px solid ${neon}`,color:neon,borderRadius:8,padding:"10px 0",fontSize:12,fontWeight:700,fontFamily:MONO}}>{t.newPhaseConfirmBtn}</button>
+            <button onClick={()=>{setPhaseConfirm(false);setNewPhaseName("");}} className="btn" style={{flex:1,background:"transparent",border:`1px solid ${neon}26`,color:"#5a7a5a",borderRadius:8,padding:"10px 0",fontSize:11,fontFamily:MONO}}>{t.cancelBtn}</button>
           </div>
         </div>
       )}
@@ -1528,6 +1475,318 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
     </div>
   );
 }
+
+
+// ── Gestionnaire de notifications ──
+const NOTIF_PERMISSION_KEY = "tmt_notif_perm";
+
+async function requestPushPermission() {
+  if(!("Notification" in window)) return false;
+  if(Notification.permission === "granted") return true;
+  if(Notification.permission === "denied") return false;
+  const perm = await Notification.requestPermission();
+  return perm === "granted";
+}
+
+function scheduleLocalNotif(title, body, delayMs=0) {
+  if(Notification.permission !== "granted") return;
+  setTimeout(() => {
+    if("serviceWorker" in navigator) {
+      navigator.serviceWorker.ready.then(reg => {
+        reg.showNotification(title, {body, icon:"/favicon.ico", badge:"/favicon.ico", vibrate:[200,100,200]});
+      }).catch(() => new Notification(title, {body}));
+    } else {
+      new Notification(title, {body});
+    }
+  }, delayMs);
+}
+
+function registerSW() {
+  if("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js").catch(()=>{});
+  }
+}
+
+function InAppBanner({notifs, onDismiss, neon}) {
+  if(!notifs||!notifs.length) return null;
+  const n = notifs[0];
+  const colors = {
+    info: neon,
+    warn: "#f0b429",
+    danger: "#ff4d4d",
+    success: neon,
+  };
+  const c = colors[n.type] || neon;
+  return (
+    <div style={{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,zIndex:600,padding:"8px 12px",pointerEvents:"none"}}>
+      <div className="slide-up" style={{background:`${c}12`,border:`1px solid ${c}35`,borderLeft:`3px solid ${c}`,borderRadius:10,padding:"10px 14px",display:"flex",alignItems:"flex-start",gap:10,backdropFilter:"blur(8px)",pointerEvents:"all"}}>
+        <span style={{fontSize:16,flexShrink:0}}>{n.emoji||"◈"}</span>
+        <div style={{flex:1}}>
+          <div style={{fontSize:12,fontWeight:700,color:c,fontFamily:"'IBM Plex Mono',monospace",marginBottom:2}}>{n.title}</div>
+          <div style={{fontSize:10,color:`${c}88`,fontFamily:"'IBM Plex Mono',monospace",lineHeight:1.5}}>{n.body}</div>
+        </div>
+        <button onClick={onDismiss} style={{background:"transparent",border:"none",color:`${c}55`,fontSize:16,cursor:"pointer",flexShrink:0,marginTop:-2}}>✕</button>
+      </div>
+    </div>
+  );
+}
+
+function NotifSettingsBlock({lang, neon, pushEnabled, onTogglePush}) {
+  const fr = lang === "fr";
+  const MONO2 = "'IBM Plex Mono','Courier New',monospace";
+  const [asking, setAsking] = useState(false);
+  const perm = typeof Notification !== "undefined" ? Notification.permission : "default";
+
+  const handleToggle = async () => {
+    if(pushEnabled) { onTogglePush(false); return; }
+    setAsking(true);
+    const ok = await requestPushPermission();
+    setAsking(false);
+    if(ok) { registerSW(); onTogglePush(true); }
+    else { onTogglePush(false); }
+  };
+
+  return (
+    <div style={{marginBottom:14}}>
+      <button onClick={()=>onImport&&onImport()} className="btn" style={{width:"100%",background:`${neon}08`,border:`1px solid ${neon}22`,borderRadius:10,padding:"11px 0",color:neon,fontSize:11,fontWeight:700,fontFamily:MONO,letterSpacing:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        {lang==="fr"?"IMPORTER UN CSV (MT4/MT5/cTrader)":"IMPORT CSV (MT4/MT5/cTrader)"}
+      </button>
+    </div>
+    <div style={{background:`${neon}04`,border:`1px solid ${neon}18`,borderRadius:10,padding:14,marginBottom:14}}>
+      <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:12}}>NOTIFICATIONS</div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+        <div>
+          <div style={{fontSize:12,color:"#c8e6c8",fontFamily:MONO2,marginBottom:2}}>{fr?"Notifications push":"Push notifications"}</div>
+          <div style={{fontSize:9,color:"#3a5a3a"}}>
+            {perm==="denied"?(fr?"Bloquées dans les réglages du navigateur":"Blocked in browser settings"):
+             perm==="granted"?(fr?"Autorisées ✓":"Allowed ✓"):
+             (fr?"Rappels journal, objectif, alertes":"Journal reminders, target, alerts")}
+          </div>
+        </div>
+        <button onClick={handleToggle} disabled={asking||perm==="denied"} className="btn"
+          style={{width:44,height:24,borderRadius:12,background:pushEnabled?`${neon}30`:"#1e2a1e",border:`1px solid ${pushEnabled?neon:`${neon}22`}`,position:"relative",transition:"all 0.2s",opacity:perm==="denied"?0.4:1}}>
+          <div style={{width:16,height:16,borderRadius:"50%",background:pushEnabled?neon:"#3a5a3a",position:"absolute",top:3,left:pushEnabled?24:4,transition:"all 0.2s"}}/>
+        </button>
+      </div>
+      {pushEnabled&&<div style={{display:"flex",flexDirection:"column",gap:6}}>
+        {[
+          {emoji:"📅",label:fr?"Rappel journal quotidien":"Daily journal reminder",sub:fr?"Si aucun trade avant 20h":"If no trade before 8pm"},
+          {emoji:"🎯",label:fr?"Objectif presque atteint":"Target almost reached",sub:fr?"À 80% et 100% de l'objectif":"At 80% and 100% of target"},
+          {emoji:"🔥",label:fr?"Série de pertes détectée":"Loss streak detected",sub:fr?"3 losses consécutifs":"3 consecutive losses"},
+        ].map(({emoji,label,sub})=>(
+          <div key={label} style={{display:"flex",gap:8,alignItems:"center",padding:"6px 10px",background:`${neon}06`,borderRadius:7,border:`1px solid ${neon}10`}}>
+            <span style={{fontSize:14}}>{emoji}</span>
+            <div style={{flex:1}}>
+              <div style={{fontSize:10,color:"#c8e6c8",fontFamily:MONO2}}>{label}</div>
+              <div style={{fontSize:8,color:"#3a5a3a"}}>{sub}</div>
+            </div>
+            <div style={{width:6,height:6,borderRadius:"50%",background:neon,opacity:0.6}}/>
+          </div>
+        ))}
+      </div>}
+    </div>
+  );
+}
+
+
+function ImportCSVModal({onImport, onClose, lang, neon, config}) {
+  const fr = lang === "fr";
+  const M = "'IBM Plex Mono','Courier New',monospace";
+  const [step, setStep] = useState("upload"); // upload | preview | done
+  const [parsed, setParsed] = useState([]);
+  const [error, setError] = useState(null);
+  const [platform, setPlatform] = useState(null);
+  const fileRef = useRef();
+
+  const detectFormat = (headers) => {
+    const h = headers.map(x=>(x||"").toLowerCase().trim());
+    if(h.some(x=>x.includes("ticket")||x.includes("magic"))) return "mt4";
+    if(h.some(x=>x.includes("deal")||x.includes("entry reason"))) return "mt5";
+    if(h.some(x=>x.includes("position id")||x.includes("direction"))) return "ctrader";
+    if(h.some(x=>x.includes("order id")||x.includes("qty"))) return "generic";
+    return "unknown";
+  };
+
+  const parseMT4 = (rows, headers) => {
+    return rows.filter(r=>r.length>5).map(r=>{
+      const get = (keys) => { for(const k of keys){const i=headers.findIndex(h=>h.toLowerCase().includes(k));if(i>=0)return (r[i]||"").trim();} return ""; };
+      const profit = parseFloat(get(["profit","pnl"])) || 0;
+      const type = get(["type","action"]).toUpperCase();
+      const sym = get(["symbol","instrument","pair"]);
+      const openTime = get(["open time","opentime","open"]);
+      const date = openTime ? openTime.split(" ")[0].replace(/\./g,"-") : "";
+      const time = openTime ? (openTime.split(" ")[1]||"").slice(0,5) : "";
+      if(!sym||!date) return null;
+      const dir = type.includes("BUY")||type==="0"?"BUY":type.includes("SELL")||type==="1"?"SELL":"BUY";
+      const result = profit>0?"WIN":profit<0?"LOSS":"BE";
+      return {id:Date.now()+Math.random(),date,time,asset:sym,direction:dir,result,pnlPct:profit.toFixed(2),setupScore:0,checklistMax:config.items?.length||7,checklist:[],conforming:false,isRevenge:false,notes:`Import MT4`};
+    }).filter(Boolean);
+  };
+
+  const parseMT5 = (rows, headers) => {
+    return rows.filter(r=>r.length>5).map(r=>{
+      const get = (keys) => { for(const k of keys){const i=headers.findIndex(h=>h.toLowerCase().includes(k));if(i>=0)return (r[i]||"").trim();} return ""; };
+      const profit = parseFloat(get(["profit","commission","balance"])) || 0;
+      const type = get(["type","action","deal type"]).toUpperCase();
+      const sym = get(["symbol","instrument"]);
+      const time = get(["time","open time","deal time"]);
+      const date = time ? time.split(" ")[0].replace(/\./g,"-") : "";
+      const timeStr = time ? (time.split(" ")[1]||"").slice(0,5) : "";
+      if(!sym||!date) return null;
+      const dir = type.includes("BUY")||type==="IN"?"BUY":type.includes("SELL")||type==="OUT"?"SELL":"BUY";
+      const result = profit>0?"WIN":profit<0?"LOSS":"BE";
+      return {id:Date.now()+Math.random(),date,time:timeStr,asset:sym,direction:dir,result,pnlPct:profit.toFixed(2),setupScore:0,checklistMax:config.items?.length||7,checklist:[],conforming:false,isRevenge:false,notes:`Import MT5`};
+    }).filter(Boolean);
+  };
+
+  const parseCTrader = (rows, headers) => {
+    return rows.filter(r=>r.length>5).map(r=>{
+      const get = (keys) => { for(const k of keys){const i=headers.findIndex(h=>h.toLowerCase().includes(k));if(i>=0)return (r[i]||"").trim();} return ""; };
+      const profit = parseFloat(get(["net profit","profit","pnl","gain"])) || 0;
+      const dir = get(["direction","trade side","type"]).toUpperCase();
+      const sym = get(["symbol","instrument"]);
+      const openTime = get(["open time","entry time","time"]);
+      const date = openTime ? openTime.split("T")[0].split(" ")[0] : "";
+      const timeStr = openTime ? (openTime.split("T")[1]||openTime.split(" ")[1]||"").slice(0,5) : "";
+      if(!sym||!date) return null;
+      const direction = dir.includes("BUY")?"BUY":dir.includes("SELL")?"SELL":"BUY";
+      const result = profit>0?"WIN":profit<0?"LOSS":"BE";
+      return {id:Date.now()+Math.random(),date,time:timeStr,asset:sym,direction,result,pnlPct:profit.toFixed(2),setupScore:0,checklistMax:config.items?.length||7,checklist:[],conforming:false,isRevenge:false,notes:`Import cTrader`};
+    }).filter(Boolean);
+  };
+
+  const parseGeneric = (rows, headers) => {
+    return rows.filter(r=>r.length>=4).map(r=>{
+      const get = (keys) => { for(const k of keys){const i=headers.findIndex(h=>h.toLowerCase().includes(k));if(i>=0)return (r[i]||"").trim();} return ""; };
+      const profit = parseFloat(get(["profit","pnl","gain","return","%"])) || 0;
+      const sym = get(["symbol","instrument","asset","pair","market"]) || "UNKNOWN";
+      const dir = get(["direction","side","type","action"]).toUpperCase();
+      const date = get(["date","time","open"]).split(" ")[0].replace(/\./g,"-") || new Date().toISOString().split("T")[0];
+      const direction = dir.includes("BUY")||dir==="LONG"?"BUY":dir.includes("SELL")||dir==="SHORT"?"SELL":"BUY";
+      const result = profit>0?"WIN":profit<0?"LOSS":"BE";
+      return {id:Date.now()+Math.random(),date,time:"",asset:sym,direction,result,pnlPct:profit.toFixed(2),setupScore:0,checklistMax:config.items?.length||7,checklist:[],conforming:false,isRevenge:false,notes:"Import CSV"};
+    }).filter(Boolean);
+  };
+
+  const handleFile = (file) => {
+    if(!file) return;
+    setError(null);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target.result;
+        const lines = text.split(/\r?\n/).filter(l=>l.trim());
+        if(lines.length < 2) { setError(fr?"Fichier vide ou invalide":"Empty or invalid file"); return; }
+        // Détecter séparateur
+        const sep = lines[0].includes(";") ? ";" : lines[0].includes("\t") ? "\t" : ",";
+        const headers = lines[0].split(sep).map(h=>h.replace(/["\']/g,"").trim());
+        const rows = lines.slice(1).map(l=>l.split(sep).map(c=>c.replace(/["\']/g,"").trim()));
+        const fmt = detectFormat(headers);
+        setPlatform(fmt);
+        let trades = [];
+        if(fmt==="mt4") trades = parseMT4(rows, headers);
+        else if(fmt==="mt5") trades = parseMT5(rows, headers);
+        else if(fmt==="ctrader") trades = parseCTrader(rows, headers);
+        else trades = parseGeneric(rows, headers);
+        if(!trades.length) { setError(fr?"Aucun trade valide trouvé":"No valid trades found"); return; }
+        setParsed(trades);
+        setStep("preview");
+      } catch(err) { setError(`Erreur: ${err.message}`); }
+    };
+    reader.readAsText(file);
+  };
+
+  const platformLabel = {mt4:"MetaTrader 4",mt5:"MetaTrader 5",ctrader:"cTrader",generic:"Format générique",unknown:"Format inconnu"};
+  const platformColor = {mt4:neon,mt5:neon,ctrader:"#00d4ff",generic:"#f0b429",unknown:"#ff4d4d"};
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
+      <div className="slide-up" style={{background:"#0a140a",border:`1px solid ${neon}28`,borderRadius:"20px 20px 0 0",width:"100%",maxWidth:480,maxHeight:"85vh",overflowY:"auto",paddingBottom:32}} onClick={e=>e.stopPropagation()}>
+        <div style={{height:3,background:neon,opacity:0.7}}/>
+        <div style={{padding:"16px 20px",borderBottom:`1px solid ${neon}10`}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{fontSize:14,fontWeight:700,color:neon,fontFamily:M}}>
+              {fr?"◈ IMPORT CSV":"◈ CSV IMPORT"}
+            </div>
+            <button onClick={onClose} style={{background:"transparent",border:"none",color:`${neon}44`,fontSize:20,cursor:"pointer"}}>✕</button>
+          </div>
+          <div style={{fontSize:9,color:`${neon}33`,marginTop:3,fontFamily:M}}>MT4 · MT5 · cTrader · Format générique</div>
+        </div>
+
+        <div style={{padding:"16px 20px"}}>
+          {step==="upload"&&(
+            <>
+              <div style={{fontSize:11,color:"#5a7a5a",lineHeight:1.7,marginBottom:16,fontFamily:M}}>
+                {fr?"Exporte ton historique depuis ta plateforme (Rapports → Historique) et importe le fichier CSV ou TSV ici."
+                   :"Export your history from your platform (Reports → History) and import the CSV or TSV file here."}
+              </div>
+              <input ref={fileRef} type="file" accept=".csv,.tsv,.txt" onChange={e=>handleFile(e.target.files[0])} style={{display:"none"}}/>
+              <button onClick={()=>fileRef.current?.click()} className="btn"
+                style={{width:"100%",background:`${neon}0d`,border:`2px dashed ${neon}30`,borderRadius:12,padding:"24px 0",color:neon,fontSize:12,fontWeight:700,fontFamily:M,letterSpacing:1,display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                {fr?"Choisir un fichier CSV":"Choose a CSV file"}
+              </button>
+              {error&&<div style={{marginTop:12,background:"rgba(255,77,77,0.08)",border:"1px solid rgba(255,77,77,0.2)",borderRadius:8,padding:"10px 14px",fontSize:11,color:"#ff4d4d",fontFamily:M}}>{error}</div>}
+              <div style={{marginTop:16,display:"flex",flexDirection:"column",gap:6}}>
+                {["MetaTrader 4","MetaTrader 5","cTrader"].map(p=>(
+                  <div key={p} style={{display:"flex",gap:8,alignItems:"center",padding:"8px 12px",background:`${neon}06`,borderRadius:8,border:`1px solid ${neon}10`}}>
+                    <div style={{width:6,height:6,borderRadius:"50%",background:neon,opacity:0.6,flexShrink:0}}/>
+                    <span style={{fontSize:10,color:"#5a7a5a",fontFamily:M}}>{p} — {fr?`Rapports → Détail du compte`:`Reports → Account history`}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {step==="preview"&&(
+            <>
+              <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:14}}>
+                <span style={{fontSize:10,padding:"3px 10px",borderRadius:6,background:`${platformColor[platform]||neon}14`,color:platformColor[platform]||neon,fontFamily:M,fontWeight:700,border:`1px solid ${platformColor[platform]||neon}28`}}>
+                  {platformLabel[platform]||"Inconnu"} ✓
+                </span>
+                <span style={{fontSize:10,color:`${neon}55`,fontFamily:M}}>{parsed.length} {fr?"trades détectés":"trades detected"}</span>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:16,maxHeight:280,overflowY:"auto"}}>
+                {parsed.slice(0,8).map((t,i)=>(
+                  <div key={i} style={{background:`${t.result==="WIN"?neon:"#ff4d4d"}08`,border:`1px solid ${t.result==="WIN"?neon:"#ff4d4d"}18`,borderRadius:8,padding:"8px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <div>
+                      <div style={{fontSize:11,fontWeight:700,color:"#c8e6c8",fontFamily:M}}>{t.asset} · {t.direction}</div>
+                      <div style={{fontSize:9,color:`${neon}44`,fontFamily:M}}>{t.date}{t.time?" · "+t.time:""}</div>
+                    </div>
+                    <div style={{textAlign:"right"}}>
+                      <div style={{fontSize:12,fontWeight:700,color:t.result==="WIN"?neon:"#ff4d4d",fontFamily:M}}>{t.result}</div>
+                      <div style={{fontSize:10,color:parseFloat(t.pnlPct)>=0?neon:"#ff4d4d",fontFamily:M}}>{parseFloat(t.pnlPct)>=0?"+":""}{t.pnlPct}%</div>
+                    </div>
+                  </div>
+                ))}
+                {parsed.length>8&&<div style={{fontSize:10,color:`${neon}33`,textAlign:"center",fontFamily:M}}>+{parsed.length-8} {fr?"autres trades":"more trades"}</div>}
+              </div>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={()=>setStep("upload")} className="btn" style={{flex:1,background:"transparent",border:`1px solid ${neon}22`,color:`${neon}55`,borderRadius:10,padding:"12px 0",fontSize:11,fontFamily:M}}>
+                  {fr?"Annuler":"Cancel"}
+                </button>
+                <button onClick={()=>{onImport(parsed);setStep("done");}} className="btn" style={{flex:2,background:`${neon}20`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:"12px 0",fontSize:12,fontWeight:700,fontFamily:M,letterSpacing:1}}>
+                  {fr?`Importer ${parsed.length} trades`:`Import ${parsed.length} trades`}
+                </button>
+              </div>
+            </>
+          )}
+
+          {step==="done"&&(
+            <div style={{textAlign:"center",padding:"24px 0"}}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={neon} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{marginBottom:16}}><circle cx="12" cy="12" r="9"/><polyline points="7.5,12.5 10.5,15.5 17,8.5"/></svg>
+              <div style={{fontSize:14,fontWeight:700,color:neon,fontFamily:M,marginBottom:6}}>{fr?"Import réussi !":"Import successful!"}</div>
+              <div style={{fontSize:11,color:`${neon}55`,fontFamily:M,marginBottom:20}}>{parsed.length} {fr?"trades ajoutés à ton journal":"trades added to your journal"}</div>
+              <button onClick={onClose} className="btn" style={{background:`${neon}18`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:"12px 32px",fontSize:12,fontWeight:700,fontFamily:M}}>{fr?"Voir l'historique":"View history"}</button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function ExportModal({trades,onClose,lang,neon}) {
   const t=T[lang];
@@ -1571,6 +1830,10 @@ export default function App() {
   const [showShare,setShowShare]=useState(false);
   const [shareTarget,setShareTarget]=useState(null);
   const [showStats,setShowStats]=useState(false);
+  const [showImport,setShowImport]=useState(false);
+  const [pushEnabled,setPushEnabled]=useState(false);
+  const [inAppNotifs,setInAppNotifs]=useState([]);
+  const [histSearch,setHistSearch]=useState("");
   const [view,setView]=useState("dashboard");
   const [form,setForm]=useState(emptyForm());
   const [editingId,setEditingId]=useState(null);
@@ -1626,13 +1889,15 @@ export default function App() {
   // Phase uses trade.id (timestamp) not date — trades before phase creation excluded even if date is today
   const currentPhaseTs=phases.length>0?phases[phases.length-1].id:0;
   const getPhaseKey=useCallback(tradeId=>{if(phases.length===0)return 0;for(let i=phases.length-1;i>=0;i--){if(tradeId>phases[i].id)return i+1;}return 0;},[phases]);
-  const handleNewPhase=()=>{
+  const handleNewPhase=(phaseName="")=>{
     const num=phases.length+2;
     const newPhases=[...phases,{id:Date.now(),date:today()}];
     setPhases(newPhases);setStatsMode("phase");
     setObjectif({pnl:"",wr:"",trades:"",editMode:false});
-    setNotif({txt:lang==="fr"?`Phase ${num} démarrée.\nStats remises à zéro instantanément.`:`Phase ${num} started.\nStats reset instantly.`,color:neon,icon:"ok",lang});
-    if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{phases:newPhases});
+    const newCfg={...config,phaseName:phaseName||`Phase ${num}`};
+    setConfig(newCfg);
+    setNotif({txt:lang==="fr"?`${phaseName||`Phase ${num}`} démarrée.\nStats remises à zéro.`:`${phaseName||`Phase ${num}`} started.\nStats reset.`,color:neon,icon:"ok",lang});
+    if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{phases:newPhases,config:newCfg});
   };
 
   const pf=statsMode==="phase"?trades.filter(x=>x.id>currentPhaseTs):trades;
@@ -1685,7 +1950,19 @@ export default function App() {
     if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{trades:[],noTrades:[],phases:[]});
   };
 
-  const histFiltered=trades.filter(x=>(histFilter==="ALL"||x.result===histFilter)&&(histAsset==="ALL"||x.asset===histAsset));
+  const histFiltered=trades.filter(x=>{
+    const matchResult=histFilter==="ALL"||x.result===histFilter;
+    const matchAsset=histAsset==="ALL"||x.asset===histAsset;
+    const q=(histSearch||"").toLowerCase().trim();
+    const matchSearch=!q||
+      (x.asset||"").toLowerCase().includes(q)||
+      (x.result||"").toLowerCase().includes(q)||
+      (x.direction||"").toLowerCase().includes(q)||
+      (x.notes||"").toLowerCase().includes(q)||
+      (x.date||"").includes(q)||
+      (x.checkin?.humeur||"").toLowerCase().includes(q);
+    return matchResult&&matchAsset&&matchSearch;
+  });
   const mergedHistory=[...histFiltered.map(x=>({...x,_type:"trade"})),...(showNoTrades?noTrades.map(x=>({...x,_type:"notrade"})):[])].sort((a,b)=>new Date(b.date)-new Date(a.date)||b.id-a.id);
   const editingTrade=editingId!==null?trades.find(x=>x.id===editingId):null;
   const allAssets=config.customAssets||PRESET_ASSETS;
@@ -1721,6 +1998,20 @@ export default function App() {
       if(Object.keys(config).length) setConfig(c=>({...c,...config}));
       if(userData.lang) setLang(userData.lang);
       setPhase("app");
+      // Vérifications bannières in-app
+      setTimeout(()=>{
+        const notifs_=[];
+        const config_=parseObj(userData.config);
+        const trades_=parseSafe(userData.trades);
+        if(trades_.length>=3){
+          const last=trades_[0];
+          const days=last?Math.floor((Date.now()-new Date(last.date))/86400000):999;
+          if(days>=3) notifs_.push({type:"info",emoji:"📅",title:lang==="fr"?"Journal en pause":"Journal paused",body:lang==="fr"?`${days} jours sans trade. Pense à journaliser !`:`${days} days without a trade. Time to journal!`});
+          const revStreak=trades_.slice(0,3).filter(x=>x.isRevenge).length;
+          if(revStreak>=2) notifs_.push({type:"warn",emoji:"🔥",title:lang==="fr"?"Attention — Revenge":"Warning — Revenge",body:lang==="fr"?"Plusieurs revenge trades récents. Fais une pause.":"Multiple recent revenge trades. Take a break."});
+        }
+        if(notifs_.length) setInAppNotifs(notifs_);
+      },2000);
     } else {
       if(u.lang) setLang(u.lang);
       // Nouveau compte → onboarding puis setup
@@ -1741,25 +2032,42 @@ export default function App() {
     <div ref={pageRef} className="grid-bg" style={{background:"#080f08",minHeight:"100vh",color:"#c8e6c8",fontFamily:MONO,maxWidth:480,margin:"0 auto",paddingBottom:80,overflowY:"auto",height:"100vh"}}>
       <CSS neon={neon}/>
       {notif&&<NotifCard notif={notif} onClose={()=>setNotif(null)}/>}
+      <InAppBanner notifs={inAppNotifs} onDismiss={()=>setInAppNotifs(n=>n.slice(1))} neon={neon}/>
+      {showImport&&<ImportCSVModal onImport={imported=>{const merged=[...imported,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);setTrades(merged);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{trades:merged});}} onClose={()=>setShowImport(false)} lang={lang} neon={neon} config={config}/>}
       {showWeeklyRecap&&<WeeklyRecapModal trades={trades} lang={lang} neon={neon} onClose={()=>setShowWeeklyRecap(false)} onShareWeek={()=>{setShareTarget(null);setShowShare(true);}}/>}
 
       <div style={{padding:"16px 20px 10px",borderBottom:`1px solid ${neon}1a`,background:"rgba(8,15,8,0.7)",backdropFilter:"blur(8px)"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div><Logo size="sm" neon={neon}/><div style={{fontSize:10,color:"#3a5a3a",marginTop:4}}>{config.strategyName}</div></div>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
-            {total>0&&!objectif.pnl&&<div style={{textAlign:"right"}}><div style={{fontSize:12,color:winRate>=50?neon:"#ff4d4d",fontWeight:700,fontFamily:MONO}}>{winRate}% WR</div><div style={{fontSize:11,color:totalPnl>=0?neon:"#ff4d4d",fontFamily:MONO}}>{fmtPct(totalPnl)}</div></div>}
-            <button onClick={()=>setView("eco")} className="btn" style={{background:view==="eco"?`${neon}1a`:`${neon}08`,border:`1px solid ${view==="eco"?neon:`${neon}22`}`,borderRadius:8,padding:"7px 10px",color:view==="eco"?neon:`${neon}66`,display:"flex",alignItems:"center",justifyContent:"center"}}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-                <line x1="8" y1="14" x2="8" y2="14" strokeWidth="2.5"/><line x1="12" y1="14" x2="12" y2="14" strokeWidth="2.5"/><line x1="16" y1="14" x2="16" y2="14" strokeWidth="2.5"/>
-                <line x1="8" y1="18" x2="8" y2="18" strokeWidth="2.5"/><line x1="12" y1="18" x2="12" y2="18" strokeWidth="2.5"/>
-              </svg>
-            </button>
-            <button onClick={()=>setShowExport(true)} className="btn" style={{background:`${neon}0f`,border:`1px solid ${neon}26`,borderRadius:8,padding:"7px 11px",color:`${neon}99`,fontSize:13}}>↓</button>
+            {total>0&&<div style={{textAlign:"right"}}>
+              {config.phaseName&&<div style={{fontSize:9,color:`${neon}44`,fontFamily:MONO,marginBottom:1,letterSpacing:1}}>{config.phaseName}</div>}
+              <div style={{fontSize:12,color:winRate>=50?neon:"#ff4d4d",fontWeight:700,fontFamily:MONO}}>{winRate}% WR</div>
+              <div style={{fontSize:11,color:totalPnl>=0?neon:"#ff4d4d",fontFamily:MONO}}>{fmtPct(totalPnl)}</div>
+            </div>}            <button onClick={()=>setShowExport(true)} className="btn" style={{background:`${neon}0f`,border:`1px solid ${neon}26`,borderRadius:8,padding:"7px 11px",color:`${neon}99`,fontSize:13}}>↓</button>
           </div>
         </div>
       </div>
 
+      {/* Barre objectif option A — fine, sous le header */}
+      {objectif.pnl&&(()=>{
+        const cur=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
+        const target=parseFloat(objectif.pnl)||1;
+        const pct=Math.min(100,Math.max(0,cur/target*100));
+        return <div style={{background:"rgba(8,15,8,0.5)"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 20px 2px"}}>
+            <span style={{fontSize:8,color:`${neon}44`,fontFamily:MONO,letterSpacing:2}}>
+              {config.phaseName?config.phaseName:(lang==="fr"?"OBJECTIF P&L":"P&L TARGET")} · +{objectif.pnl}%
+            </span>
+            <span style={{fontSize:10,fontWeight:700,color:neon,fontFamily:MONO}}>
+              {cur>=0?"+":""}{cur.toFixed(1)}%
+            </span>
+          </div>
+          <div style={{height:2,background:`${neon}0e`}}>
+            <div style={{width:`${Math.min(100,pct)}%`,height:"100%",background:neon,transition:"width 0.6s ease",boxShadow:`0 0 6px ${neon}55`}}/>
+          </div>
+        </div>;
+      })()}
       <div style={{display:"flex",gap:6,padding:"10px 20px",borderBottom:`1px solid ${neon}14`}}>
         {[["dashboard",t.stats],["log",editingId?t.editLabel:`+ ${t.addTrade.replace("+ ","")}`],["history",t.history],["settings",t.settings]].map(([v,l])=>(
           <button key={v} className="btn" onClick={()=>{if(editingId&&v!=="log")cancelEdit();else{setView(v);scrollToTop();}}}
@@ -1767,30 +2075,7 @@ export default function App() {
         ))}
       </div>
 
-      {/* Barre objectif P&L — pleine largeur */}
-      {objectif.pnl&&(()=>{
-        const cur=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
-        const target=parseFloat(objectif.pnl)||1;
-        const pct=Math.min(100,Math.max(0,cur/target*100));
-        const pctRound=Math.round(pct);
-        return (
-          <div style={{borderBottom:`1px solid ${neon}0a`,background:"rgba(8,15,8,0.6)"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 20px 3px"}}>
-              <span style={{fontSize:9,color:`${neon}44`,fontFamily:MONO,letterSpacing:1}}>
-                {lang==="fr"?"OBJECTIF P&L":"P&L TARGET"} +{objectif.pnl}%
-              </span>
-              <span style={{fontSize:10,fontWeight:700,color:neon,fontFamily:MONO}}>
-                {cur>=0?"+":""}{cur.toFixed(1)}%
-              </span>
-            </div>
-            <div style={{height:3,background:`${neon}10`,width:"100%",position:"relative"}}>
-              <div style={{height:"100%",width:`${pct}%`,background:neon,transition:"width 0.6s ease",boxShadow:pct>0?`0 0 6px ${neon}66`:"none"}}/>
-              <div style={{position:"absolute",right:0,top:-2,width:1,height:7,background:`${neon}33`}}/>
-            </div>
-          </div>
-        );
-      })()}
-
+      
       {view==="dashboard"&&(
         <div className="fi" style={{padding:20}}>
           <StreakBadge trades={pf} neon={neon} lang={lang}/>
@@ -1988,6 +2273,13 @@ export default function App() {
             <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,textTransform:"uppercase"}}>{t.histTitle} · {trades.length} {t.trades}</div>
             {noTrades.length>0&&<button onClick={()=>setShowNoTrades(v=>!v)} className="btn" style={{background:"transparent",border:`1px solid ${neon}18`,color:"#5a7a5a",borderRadius:6,padding:"4px 10px",fontSize:10,fontFamily:MONO}}>{showNoTrades?t.hideBtn:t.showBtn}</button>}
           </div>
+          <div style={{position:"relative",marginBottom:10}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3a5a3a" strokeWidth="2" strokeLinecap="round" style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}} aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input value={histSearch} onChange={e=>setHistSearch(e.target.value)}
+              placeholder={lang==="fr"?"Rechercher par actif, date, notes…":"Search by asset, date, notes…"}
+              style={{width:"100%",background:"#0d1a0d",border:`1px solid ${histSearch?neon:`${neon}22`}`,borderRadius:8,color:"#c8e6c8",padding:"9px 32px 9px 32px",fontSize:11,fontFamily:MONO,outline:"none"}}/>
+            {histSearch&&<button onClick={()=>setHistSearch("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"transparent",border:"none",color:`${neon}55`,cursor:"pointer",fontSize:14}}>✕</button>}
+          </div>
           {trades.length>0&&<>
             <div style={{display:"flex",gap:6,marginBottom:8}}>
               {[["ALL",t.allLabel],["WIN","WIN"],["LOSS","LOSS"],["BE","BE"]].map(([v,l])=>(
@@ -2056,12 +2348,7 @@ export default function App() {
         </div>
       )}
 
-      {view==="eco"&&(
-        <div className="fi view-in" style={{padding:20}}>
-          <div style={{fontSize:9,color:`${neon}44`,letterSpacing:2,textTransform:"uppercase",marginBottom:16,fontFamily:MONO}}>{lang==="fr"?"CALENDRIER ÉCONOMIQUE":"ECONOMIC CALENDAR"}</div>
-          <EcoCalendar neon={neon} lang={lang}/>
-        </div>
-      )}
+      
       {view==="settings"&&<SettingsView config={config} onSave={cfg=>{
         const newCfg={...config,...cfg};
         setConfig(newCfg);
@@ -2074,7 +2361,7 @@ export default function App() {
       }} onReset={()=>setShowReset(true)} onNewPhase={handleNewPhase} lang={lang} onLangChange={l=>{
         setLang(l);
         if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{lang:l});
-      }} neon={neon} phases={phases} onObjectifChange={obj=>setObjectif(obj)}/>}
+      }} neon={neon} phases={phases} onObjectifChange={obj=>setObjectif(obj)} onImport={()=>setShowImport(true)} pushEnabled={pushEnabled} onPushChange={v=>setPushEnabled(v)}/>}
 
       <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(8,15,8,0.97)",backdropFilter:"blur(12px)",borderTop:`1px solid ${neon}18`,padding:"10px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div style={{fontSize:9,color:`${neon}22`,fontFamily:"'IBM Plex Mono',monospace"}}>◈ TrackMyTrade</div>
