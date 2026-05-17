@@ -840,6 +840,11 @@ function SplashScreen({onDone,neon}) {
   const canvasRef=useRef();
   const rafRef=useRef();
   const startRef=useRef(null);
+  const isMobile=window.innerWidth<600;
+  const boxSize=isMobile?64:110;
+  const svgSize=isMobile?36:64;
+  const fontSize=isMobile?28:52;
+  const gap=isMobile?14:26;
 
   useEffect(()=>{
     const done=setTimeout(onDone,2700);
@@ -934,19 +939,19 @@ function SplashScreen({onDone,neon}) {
         style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",zIndex:1,maxWidth:"100%"}}/>
 
       {/* Logo — zIndex 10, toujours devant */}
-      <div style={{position:"relative",zIndex:10,display:"flex",alignItems:"center",gap:22,animation:"slideFromLeft 0.95s cubic-bezier(0.34,1.3,0.64,1) 0.15s both"}}>
-        <div style={{width:100,height:100,borderRadius:24,background:`linear-gradient(135deg,${neon}22,${neon}08)`,border:`1.5px solid ${neon}65`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 50px ${neon}55,0 0 18px ${neon}22,inset 0 1px 0 ${neon}35`,position:"relative",overflow:"hidden",animation:"logoBoxGlow 3s ease-in-out infinite",flexShrink:0}}>
+      <div style={{position:"relative",zIndex:10,display:"flex",alignItems:"center",gap,animation:"slideFromLeft 0.95s cubic-bezier(0.34,1.3,0.64,1) 0.15s both"}}>
+        <div style={{width:boxSize,height:boxSize,borderRadius:isMobile?16:24,background:`linear-gradient(135deg,${neon}22,${neon}08)`,border:`1.5px solid ${neon}65`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 50px ${neon}55,0 0 18px ${neon}22,inset 0 1px 0 ${neon}35`,position:"relative",overflow:"hidden",animation:"logoBoxGlow 3s ease-in-out infinite",flexShrink:0}}>
           <div style={{position:"absolute",top:-4,left:-4,width:"55%",height:"55%",background:`linear-gradient(135deg,${neon}20,transparent 70%)`,borderRadius:"0 0 60% 0"}}/>
-          <svg width="58" height="58" viewBox="0 0 24 24" fill="none">
+          <svg width={svgSize} height={svgSize} viewBox="0 0 24 24" fill="none">
             <polygon points="12,2 22,12 12,22 2,12" fill={`${neon}22`} stroke={neon} strokeWidth="1.5" strokeLinejoin="round"/>
             <polygon points="12,7 17,12 12,17 7,12" fill={neon} style={{filter:`drop-shadow(0 0 7px ${neon})`}}/>
           </svg>
         </div>
         <div style={{animation:"slideFromRight 0.95s cubic-bezier(0.34,1.3,0.64,1) 0.15s both"}}>
-          <div style={{fontSize:44,fontWeight:900,letterSpacing:-2,lineHeight:1,whiteSpace:"nowrap",textShadow:`0 0 50px ${neon}55`}}>
+          <div style={{fontSize,fontWeight:900,letterSpacing:-2,lineHeight:1,whiteSpace:"nowrap",textShadow:`0 0 50px ${neon}55`}}>
             <b style={{color:neon}}>Track</b><span style={{color:"#ffffff1a",fontWeight:300}}>My</span><b style={{color:neon}}>Trade</b>
           </div>
-          <div style={{fontSize:9,color:`${neon}55`,letterSpacing:6,marginTop:10,animation:"fadeInSlow 0.6s ease 0.8s both"}}>JOURNAL DE TRADING</div>
+          <div style={{fontSize:isMobile?8:10,color:`${neon}55`,letterSpacing:isMobile?4:6,marginTop:10,animation:"fadeInSlow 0.6s ease 0.8s both"}}>JOURNAL DE TRADING</div>
         </div>
       </div>
 
