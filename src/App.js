@@ -2059,9 +2059,15 @@ export default function App() {
     if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{trades:[],noTrades:[],phases:[]});
   };
 
+  const [histPhase,setHistPhase]=useState("ALL");
   const histFiltered=trades.filter(x=>{
     const matchResult=histFilter==="ALL"||x.result===histFilter;
     const matchAsset=histAsset==="ALL"||x.asset===histAsset;
+    const matchPhase=histPhase==="ALL"||(()=>{
+      if(phases.length===0)return histPhase==="0";
+      const pk=getPhaseKey(x.id);
+      return String(pk)===histPhase;
+    })();
     const q=(histSearch||"").toLowerCase().trim();
     const matchSearch=!q||
       (x.asset||"").toLowerCase().includes(q)||
@@ -2070,7 +2076,7 @@ export default function App() {
       (x.notes||"").toLowerCase().includes(q)||
       (x.date||"").includes(q)||
       (x.checkin?.humeur||"").toLowerCase().includes(q);
-    return matchResult&&matchAsset&&matchSearch;
+    return matchResult&&matchAsset&&matchSearch&&matchPhase;
   });
   const mergedHistory=[...histFiltered.map(x=>({...x,_type:"trade"})),...(showNoTrades?noTrades.map(x=>({...x,_type:"notrade"})):[])].sort((a,b)=>new Date(b.date)-new Date(a.date)||b.id-a.id);
   const editingTrade=editingId!==null?trades.find(x=>x.id===editingId):null;
@@ -2416,6 +2422,11 @@ export default function App() {
                 <button key={v} className="btn" onClick={()=>setHistFilter(v)} style={{flex:1,background:histFilter===v?(v==="ALL"?`${neon}26`:`${rc(v,neon)}22`):"transparent",border:`1px solid ${histFilter===v?(v==="ALL"?neon:rc(v,neon)):`${neon}26`}`,color:histFilter===v?(v==="ALL"?neon:rc(v,neon)):"#ffffffaa",borderRadius:6,padding:"6px 0",fontSize:11,fontWeight:700,fontFamily:MONO}}>{l}</button>
               ))}
             </div>
+            {phases.length>0&&<div style={{display:"flex",gap:4,marginBottom:8,overflowX:"auto",paddingBottom:2}}>
+              {[["ALL",lang==="fr"?"Toutes phases":"All phases"],...phases.map((_,i)=>[String(i+1),`Phase ${i+1}`]),["0",lang==="fr"?"Phase 1":"Phase 1"]].filter(([v])=>v==="ALL"||(v==="0"&&phases.length===0)||(v!=="0")).slice(0,phases.length+2).map(([v,l])=>(
+                <button key={v} className="btn" onClick={()=>setHistPhase(v)} style={{background:histPhase===v?`${neon}1a`:"transparent",border:`1px solid ${histPhase===v?neon:`${neon}1a`}`,color:histPhase===v?neon:"#ffffffaa",borderRadius:5,padding:"4px 10px",fontSize:9,fontWeight:700,fontFamily:MONO,whiteSpace:"nowrap"}}>{l}</button>
+              ))}
+            </div>}
             {usedAssets.length>1&&<div style={{display:"flex",gap:4,marginBottom:14,overflowX:"auto",paddingBottom:4}}>
               {["ALL",...usedAssets].map(a=><button key={a} className="btn" onClick={()=>setHistAsset(a)} style={{background:histAsset===a?`${neon}1a`:"transparent",border:`1px solid ${histAsset===a?`${neon}55`:`${neon}1a`}`,color:histAsset===a?neon:"#ffffffaa",borderRadius:5,padding:"4px 8px",fontSize:9,fontWeight:700,fontFamily:MONO,whiteSpace:"nowrap"}}>{a}</button>)}
             </div>}
