@@ -1913,6 +1913,9 @@ function ExportModal({trades,onClose,lang,neon}) {
 }
 
 export default function App() {
+  const [winW,setWinW]=useState(typeof window!=="undefined"?window.innerWidth:375);
+  useEffect(()=>{const h=()=>setWinW(window.innerWidth);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
+  const isDesktop=winW>=769;
   const [phase,setPhase]=useState("splash");
   const [lang,setLang]=useState("fr");
   const [trades,setTrades]=useState([]);
@@ -2145,19 +2148,64 @@ export default function App() {
   }} lang={lang}/></>;
 
   return (
-    <div ref={pageRef} className="grid-bg" style={{background:"#0c0c12",minHeight:"100vh",color:"#ffffff",fontFamily:MONO,maxWidth:480,margin:"0 auto",paddingBottom:80,overflowY:"auto",height:"100vh"}}>
+    <div style={{display:"flex",background:"#0c0c12",minHeight:"100vh",color:"#ffffff",fontFamily:MONO}}>
       <CSS neon={neon}/>
       {notif&&<NotifCard notif={notif} onClose={()=>setNotif(null)}/>}
       <InAppBanner notifs={inAppNotifs} onDismiss={()=>setInAppNotifs(n=>n.slice(1))} neon={neon}/>
       {showImport&&<ImportCSVModal onImport={imported=>{const merged=[...imported,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);setTrades(merged);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{trades:merged});}} onClose={()=>setShowImport(false)} lang={lang} neon={neon} config={config}/>}
       {showWeeklyRecap&&<WeeklyRecapModal trades={trades} lang={lang} neon={neon} onClose={()=>setShowWeeklyRecap(false)} onShareWeek={()=>{setShareTarget(null);setShowShare(true);}}/>}
 
-      <div style={{padding:"16px 20px 10px",borderBottom:`1px solid ${neon}1a`,background:"linear-gradient(180deg,#111118 0%,#0c0c12 100%)",backdropFilter:"blur(8px)"}}>
+      {/* ── SIDEBAR PC ── */}
+      {isDesktop&&(
+        <div style={{width:240,minWidth:240,background:"#09090f",borderRight:"1px solid #ffffff0a",display:"flex",flexDirection:"column",height:"100vh",position:"sticky",top:0,flexShrink:0}}>
+          <div style={{padding:"22px 18px 18px",borderBottom:"1px solid #ffffff08"}}>
+            <Logo size="sm" neon={neon}/>
+            <div style={{fontSize:9,color:"#ffffff33",marginTop:4,letterSpacing:1}}>{config.strategyName}</div>
+          </div>
+          {(objectif.pnl||config.capital)&&(()=>{
+            const cur=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
+            const pct=objectif.pnl?Math.min(100,Math.max(0,cur/(parseFloat(objectif.pnl)||1)*100)):0;
+            return <div style={{padding:"10px 18px",borderBottom:"1px solid #ffffff08"}}>
+              <div style={{fontSize:9,color:neon,fontWeight:700,marginBottom:4}}>{config.phaseName||"PHASE"}{config.capital?` · ${parseInt(config.capital).toLocaleString()}${config.devise||"€"}`:""}</div>
+              {objectif.pnl&&<div style={{height:3,background:"#ffffff10",borderRadius:3,marginBottom:4}}><div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${neon}66,${neon})`,borderRadius:3,boxShadow:`0 0 6px ${neon}55`}}/></div>}
+              <div style={{display:"flex",justifyContent:"space-between"}}>
+                <span style={{fontSize:8,color:"#ffffff44"}}>{lang==="fr"?"Phase en cours":"Current phase"}</span>
+                <span style={{fontSize:10,fontWeight:700,color:cur>=0?neon:"#ff4d4d"}}>{cur>=0?"+":""}{cur.toFixed(1)}%{objectif.pnl?<span style={{fontSize:8,color:"#ffffff44",fontWeight:400}}> / +{objectif.pnl}%</span>:null}</span>
+              </div>
+            </div>;
+          })()}
+          {total>0&&<div style={{padding:"12px 18px",borderBottom:"1px solid #ffffff08"}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+              <div><div style={{fontSize:7,color:"#ffffff44",letterSpacing:2,marginBottom:4}}>WIN RATE</div><div style={{fontSize:20,fontWeight:900,color:"#ffffff",textShadow:`0 0 20px ${neon}55`}}>{winRate}%</div></div>
+              <div style={{textAlign:"right"}}><div style={{fontSize:7,color:"#ffffff44",letterSpacing:2,marginBottom:4}}>P&L</div><div style={{fontSize:20,fontWeight:900,color:totalPnl>=0?neon:"#ff4d4d"}}>{fmtPct(totalPnl)}</div></div>
+            </div>
+            <div style={{fontSize:9,color:"#ffffff33"}}>{wins}W · {losses}L · {total} {lang==="fr"?"trades":"trades"}</div>
+          </div>}
+          <div style={{padding:"10px 10px",flex:1,display:"flex",flexDirection:"column",gap:3}}>
+            {[["dashboard","◈",lang==="fr"?"Statistiques":"Statistics"],["log","+",(editingId?lang==="fr"?"✏ Édition":"✏ Edit":lang==="fr"?"Nouveau trade":"New trade")],["history","≡",lang==="fr"?"Historique":"History"],["settings","⚙",lang==="fr"?"Paramètres":"Settings"]].map(([v,icon,label])=>(
+              <button key={v} onClick={()=>{if(editingId&&v!=="log")cancelEdit();else{setView(v);if(pageRef.current)pageRef.current.scrollTo({top:0});scrollToTop();}}} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:view===v?(editingId&&v==="log"?"rgba(240,180,41,0.12)":`${neon}12`):"transparent",border:`1px solid ${view===v?(editingId&&v==="log"?"#f0b42940":`${neon}30`):"transparent"}`,borderRadius:9,color:view===v?(editingId&&v==="log"?"#f0b429":"#ffffff"):"#ffffff66",fontFamily:MONO,fontSize:12,fontWeight:view===v?700:400,cursor:"pointer",textAlign:"left",width:"100%",transition:"all 0.15s"}}>
+                <span style={{color:view===v?(editingId&&v==="log"?"#f0b429":neon):"#ffffff33",fontSize:14,width:18,textAlign:"center"}}>{icon}</span>
+                {label}
+              </button>
+            ))}
+          </div>
+          <div style={{padding:"10px 14px",borderTop:"1px solid #ffffff08",display:"flex",gap:8}}>
+            <button onClick={()=>setShowExport(true)} style={{flex:1,padding:"8px 0",background:`${neon}0f`,border:`1px solid ${neon}26`,borderRadius:8,color:neon,fontFamily:MONO,fontSize:10,cursor:"pointer"}}>↓ Export</button>
+            <button onClick={()=>setShowNewPhase(true)} style={{padding:"8px 10px",background:"transparent",border:`1px solid ${neon}20`,borderRadius:8,color:`${neon}88`,fontFamily:MONO,fontSize:10,cursor:"pointer"}}>▶</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── MAIN CONTENT ── */}
+      <div ref={pageRef} className={isDesktop?"":"grid-bg"} style={{flex:1,overflowY:"auto",height:"100vh",maxWidth:isDesktop?"none":480,margin:isDesktop?0:"0 auto",paddingBottom:isDesktop?0:80,minWidth:0}}>
+        <div style={{maxWidth:isDesktop?960:480,margin:"0 auto"}}>
+
+      {!isDesktop&&<div style={{padding:"16px 20px 10px",borderBottom:`1px solid ${neon}1a`,background:"linear-gradient(180deg,#111118 0%,#0c0c12 100%)",backdropFilter:"blur(8px)"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div><Logo size="sm" neon={neon}/><div style={{fontSize:10,color:"#ffffff44",marginTop:4}}>{config.strategyName}</div></div>
           <button onClick={()=>setShowExport(true)} className="btn" style={{background:`${neon}0f`,border:`1px solid ${neon}26`,borderRadius:8,padding:"7px 11px",color:`${neon}99`,fontSize:13}}>↓</button>
         </div>
-      </div>
+      </div>}
 
       {(objectif.pnl||config.capital)&&(()=>{
         const cur=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
@@ -2179,12 +2227,20 @@ export default function App() {
           </div>
         </div>;
       })()}
-      <div style={{display:"flex",gap:6,padding:"10px 20px",borderBottom:`1px solid ${neon}14`}}>
+      {!isDesktop&&<div style={{display:"flex",gap:6,padding:"10px 20px",borderBottom:`1px solid ${neon}14`}}>
         {[["dashboard",t.stats],["log",editingId?t.editLabel:`+ ${t.addTrade.replace("+ ","")}`],["history",t.history],["settings",t.settings]].map(([v,l])=>(
           <button key={v} className="btn" onClick={()=>{if(editingId&&v!=="log")cancelEdit();else{setView(v);scrollToTop();}}}
             style={{background:view===v?(editingId&&v==="log"?"rgba(240,180,41,0.15)":neon):"transparent",border:`1px solid ${view===v?(editingId&&v==="log"?"#f0b429":neon):`${neon}26`}`,color:view===v?(editingId&&v==="log"?"#f0b429":"#000"):"#ffffffaa",borderRadius:6,padding:v==="settings"?"7px 12px":"7px 0",fontSize:11,fontWeight:700,letterSpacing:1,fontFamily:MONO,flex:v==="settings"?0:1}}>{l}</button>
         ))}
-      </div>
+      </div>}
+
+      {isDesktop&&<div style={{padding:"20px 32px 16px",borderBottom:"1px solid #ffffff08",background:"linear-gradient(180deg,#111118,#0c0c12)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div>
+          <div style={{fontSize:18,fontWeight:800,color:"#ffffff"}}>{view==="dashboard"?(lang==="fr"?"Statistiques":"Statistics"):view==="log"?(editingId?lang==="fr"?"✏ Édition":"✏ Edit":lang==="fr"?"Nouveau trade":"New trade"):view==="history"?(lang==="fr"?"Historique":"History"):lang==="fr"?"Paramètres":"Settings"}</div>
+          <div style={{fontSize:10,color:"#ffffff33",marginTop:2}}>{config.strategyName}{total>0?` · ${total} trades`:""}</div>
+        </div>
+        {view==="dashboard"&&<button onClick={()=>setShowNewPhase(true)} style={{padding:"7px 14px",background:`${neon}10`,border:`1px solid ${neon}25`,borderRadius:8,fontSize:10,color:neon,fontFamily:MONO,cursor:"pointer"}}>▶ {lang==="fr"?"Nouvelle phase":"New phase"}</button>}
+      </div>}
 
       
       {view==="dashboard"&&(
@@ -2201,7 +2257,7 @@ export default function App() {
             </div>
           )}
           {total>0&&(
-            <div style={{display:"flex",gap:10,marginBottom:12}}>
+            <div style={{display:isDesktop?"grid":"flex",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:12}}>
               <div style={{flex:1,background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:14,padding:"14px 16px",boxShadow:`0 4px 24px ${winRate>=50?neon+"18":"#ff4d4d18"}, inset 0 1px 0 ${neon}15`}}>
                 <div style={{fontSize:9,color:"#ffffffbb",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>{t.winRate}</div>
                 <div style={{fontSize:32,fontWeight:900,fontFamily:MONO,lineHeight:1,textShadow:`0 0 32px ${winRate>=50?neon+"aa":"#ff4d4daa"}`,color:"#ffffff"}}>{winRate}%</div>
@@ -2501,11 +2557,9 @@ export default function App() {
         if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{lang:l});
       }} neon={neon} phases={phases} onObjectifChange={obj=>{setObjectif(obj);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{objectif:obj});}} onImport={()=>setShowImport(true)}/>}
 
-      <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(9,9,16,0.97)",backdropFilter:"blur(12px)",borderTop:`1px solid ${neon}18`,padding:"10px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      {!isDesktop&&<div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(9,9,16,0.97)",backdropFilter:"blur(12px)",borderTop:`1px solid ${neon}18`,padding:"10px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div style={{fontSize:9,color:`${neon}22`,fontFamily:"'Geist Mono','IBM Plex Mono',monospace"}}>◈ TrackMyTrade</div>
-
-        
-      </div>
+      </div>}
 
       {detailTrade&&<TradeDetailModal trade={detailTrade} config={config} onClose={()=>setDetailTrade(null)} onEdit={startEdit} onShare={t=>{setShareTarget(t);setShowShare(true);}} lang={lang} neon={neon}/>}
       {showExport&&<ExportModal trades={trades} onClose={()=>setShowExport(false)} lang={lang} neon={neon}/>}
@@ -2513,7 +2567,9 @@ export default function App() {
       {showShare&&<ShareModal trade={shareTarget} trades={trades} lang={lang} neon={neon} config={config} onClose={()=>{setShowShare(false);setShareTarget(null);}}/> }
       {showReset&&<ResetModal trades={trades} onReset={handleReset} onClose={()=>setShowReset(false)} lang={lang} neon={neon}/>}
       {showNewPhase&&<NewPhaseModal onConfirm={data=>{handleNewPhase(data);setShowNewPhase(false);}} onClose={()=>setShowNewPhase(false)} lang={lang} neon={neon} phases={phases} config={config}/>}
-    </div>
+      </div>{/* end maxWidth wrapper */}
+      </div>{/* end main content */}
+    </div>{/* end flex root */}
   );
 }
 
