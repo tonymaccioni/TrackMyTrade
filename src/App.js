@@ -211,6 +211,7 @@ const CSS = ({neon="#00ff9d"}) => (
     @keyframes p2{0%{opacity:0.25;transform:scale(0.93)}50%{opacity:0.05;transform:scale(1.05)}100%{opacity:0.25;transform:scale(0.93)}}
     @keyframes fadeInSlow{0%{opacity:0}100%{opacity:1}}
     @keyframes logoBoxGlow{0%,100%{box-shadow:0 0 8px ${neon}22}50%{box-shadow:0 0 20px ${neon}55,0 0 6px ${neon}33}}
+    @keyframes dotPulse{0%,40%,100%{width:6px;background:${neon}22;box-shadow:none}50%{width:22px;background:${neon};box-shadow:0 0 12px ${neon}99}}
     @keyframes icoCheck{from{stroke-dashoffset:30}to{stroke-dashoffset:0}}
     @keyframes icoX{from{stroke-dashoffset:22}to{stroke-dashoffset:0}}
     @keyframes icoRadar{0%{r:3;opacity:0.7}100%{r:14;opacity:0}}
@@ -835,67 +836,103 @@ function LoginScreen({onLogin,lang,setLang}) {
 }
 
 function SplashScreen({onDone,neon}) {
-  const [tick,setTick]=useState(0);
-  const rafRef=useRef();const startRef=useRef(null);
+  const canvasRef=useRef();
+  const rafRef=useRef();
+  const startRef=useRef(null);
+
   useEffect(()=>{
     const done=setTimeout(onDone,2700);
-    const animate=ts=>{if(!startRef.current)startRef.current=ts;setTick((ts-startRef.current)/1000);rafRef.current=requestAnimationFrame(animate);};
+    const canvas=canvasRef.current;
+    if(!canvas)return;
+    const ctx=canvas.getContext("2d");
+    const W=canvas.width,H=canvas.height;
+    const cols=11,rows=19,cw=W/cols,rh=H/rows;
+    const hex=neon; // "#00ff9d"
+    const PTS=[[52,88],[248,65],[32,215],[268,192],[142,35],[72,335],[232,305],[25,445],[275,382],[115,488],[195,452],[45,532],[255,515],[128,148],[185,348],[88,188],[218,162],[158,545],[38,308],[262,458]];
+
+    const animate=ts=>{
+      if(!startRef.current)startRef.current=ts;
+      const t=(ts-startRef.current)/1000;
+      ctx.clearRect(0,0,W,H);
+
+      // Grille pulsante
+      for(let r=0;r<=rows;r++){
+        for(let c=0;c<=cols;c++){
+          const cx=c*cw,cy=r*rh;
+          const dist=Math.hypot(cx-W/2,cy-H/2)/185;
+          const wave=Math.sin(t*1.5-dist*4.5)*0.5+0.5;
+          const op=wave*(1-Math.min(1,dist*0.75))*0.42;
+          if(op<0.02)continue;
+          ctx.beginPath();
+          ctx.arc(cx,cy,1.4,0,Math.PI*2);
+          ctx.fillStyle=`${hex}${Math.round(op*255).toString(16).padStart(2,"0")}`;
+          ctx.fill();
+          // Lignes grille vers droite et bas
+          if(r<rows&&c<cols){
+            const lineOp=wave*(1-Math.min(1,dist*0.85))*0.1;
+            if(lineOp>0.01){
+              ctx.strokeStyle=`${hex}${Math.round(lineOp*255).toString(16).padStart(2,"0")}`;
+              ctx.lineWidth=0.4;
+              ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+cw,cy);ctx.stroke();
+              ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx,cy+rh);ctx.stroke();
+            }
+          }
+        }
+      }
+
+      // Particules flottantes
+      const pts=PTS.map(([x,y],i)=>({
+        x:x+Math.sin(t*1.05+i*1.4)*9,
+        y:y+Math.cos(t*0.88+i*0.75)*7,
+        op:0.35+Math.sin(t*1.4+i*0.9)*0.18,
+        r:1.2+(i%4)*0.55,
+      }));
+
+      // Connexions
+      for(let i=0;i<pts.length;i++){
+        for(let j=i+1;j<pts.length;j++){
+          const d=Math.hypot(pts[i].x-pts[j].x,pts[i].y-pts[j].y);
+          if(d>110)continue;
+          const lineOp=(1-d/110)*0.18;
+          ctx.strokeStyle=`${hex}${Math.round(lineOp*255).toString(16).padStart(2,"0")}`;
+          ctx.lineWidth=0.5;
+          ctx.beginPath();ctx.moveTo(pts[i].x,pts[i].y);ctx.lineTo(pts[j].x,pts[j].y);ctx.stroke();
+        }
+      }
+
+      // Halos + points
+      for(let i=0;i<pts.length;i++){
+        const p=pts[i];
+        // Halo flou
+        const grad=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r+4);
+        grad.addColorStop(0,`${hex}${Math.round(p.op*0.3*255).toString(16).padStart(2,"0")}`);
+        grad.addColorStop(1,"transparent");
+        ctx.beginPath();ctx.arc(p.x,p.y,p.r+4,0,Math.PI*2);
+        ctx.fillStyle=grad;ctx.fill();
+        // Point net
+        ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+        ctx.fillStyle=`${hex}${Math.round(p.op*255).toString(16).padStart(2,"0")}`;
+        ctx.fill();
+      }
+
+      rafRef.current=requestAnimationFrame(animate);
+    };
     rafRef.current=requestAnimationFrame(animate);
     return()=>{clearTimeout(done);cancelAnimationFrame(rafRef.current);};
   },[]);
-  const t=tick;
-  const cols=11,rows=19,cw=300/cols,rh=580/rows;
-  const PTS=[[52,88],[248,65],[32,215],[268,192],[142,35],[72,335],[232,305],[25,445],[275,382],[115,488],[195,452],[45,532],[255,515],[128,148],[185,348],[88,188],[218,162],[158,545],[38,308],[262,458]];
-  const pts=PTS.map(([x,y],i)=>({x:x+Math.sin(t*1.05+i*1.4)*9,y:y+Math.cos(t*0.88+i*0.75)*7,op:0.35+Math.sin(t*1.4+i*0.9)*0.18,r:1.2+(i%4)*0.55}));
-  const dotActive=Math.floor(t/0.55)%4;
+
   return (
     <div style={{background:"#07070d",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Geist Mono','IBM Plex Mono',monospace",overflow:"hidden",position:"relative"}}>
       <CSS neon={neon}/>
 
-      {/* ── FOND RADIAL ── */}
+      {/* Fond radial fixe */}
       <div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse 75% 60% at 50% 50%,${neon}12,transparent 68%)`,pointerEvents:"none",zIndex:1}}/>
 
-      {/* ── GRILLE + PARTICULES — zIndex 1 (derrière) ── */}
-      <svg style={{position:"absolute",inset:0,zIndex:1}} width="100%" height="100%" viewBox="0 0 300 580" preserveAspectRatio="xMidYMid slice">
-        <defs>
-          <filter id="glow"><feGaussianBlur stdDeviation="1.8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-        </defs>
-        {/* Grille pulsante */}
-        {Array.from({length:rows+1}).map((_,r)=>Array.from({length:cols+1}).map((_,c)=>{
-          const cx=c*cw,cy=r*rh;
-          const dist=Math.hypot(cx-150,cy-290)/185;
-          const wave=Math.sin(t*1.5-dist*4.5)*0.5+0.5;
-          const op=wave*(1-Math.min(1,dist*0.75))*0.42;
-          if(op<0.02)return null;
-          return <circle key={`${r}-${c}`} cx={cx} cy={cy} r={1.4} fill={neon} opacity={op}/>;
-        }))}
-        {/* Lignes grille */}
-        {Array.from({length:rows}).map((_,r)=>Array.from({length:cols}).map((_,c)=>{
-          const cx=c*cw,cy=r*rh;
-          const dist=Math.hypot(cx-150,cy-290)/185;
-          const wave=Math.sin(t*1.5-dist*4.5)*0.5+0.5;
-          const op=wave*(1-Math.min(1,dist*0.85))*0.1;
-          if(op<0.01)return null;
-          return <g key={`l${r}-${c}`}>
-            <line x1={cx} y1={cy} x2={cx+cw} y2={cy} stroke={neon} strokeWidth="0.4" opacity={op}/>
-            <line x1={cx} y1={cy} x2={cx} y2={cy+rh} stroke={neon} strokeWidth="0.4" opacity={op}/>
-          </g>;
-        }))}
-        {/* Connexions particules */}
-        {pts.map((p1,i)=>pts.slice(i+1).map((p2,j)=>{
-          const d=Math.hypot(p1.x-p2.x,p1.y-p2.y);
-          if(d>110)return null;
-          return <line key={`c${i}-${j}`} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke={neon} strokeWidth="0.5" opacity={(1-d/110)*0.18}/>;
-        }))}
-        {/* Halos particules */}
-        <g filter="url(#glow)">
-          {pts.map((p,i)=><circle key={i} cx={p.x} cy={p.y} r={p.r+2.5} fill={neon} opacity={p.op*0.25}/>)}
-        </g>
-        {/* Points nets */}
-        {pts.map((p,i)=><circle key={i} cx={p.x} cy={p.y} r={p.r} fill={neon} opacity={p.op}/>)}
-      </svg>
+      {/* Canvas — zIndex 1, derrière le logo */}
+      <canvas ref={canvasRef} width={300} height={580}
+        style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",zIndex:1,maxWidth:"100%"}}/>
 
-      {/* ── LOGO — zIndex 10, toujours devant ── */}
+      {/* Logo — zIndex 10, toujours devant */}
       <div style={{position:"relative",zIndex:10,display:"flex",alignItems:"center",gap:18,animation:"slideFromLeft 0.95s cubic-bezier(0.34,1.3,0.64,1) 0.15s both"}}>
         <div style={{width:78,height:78,borderRadius:18,background:`linear-gradient(135deg,${neon}22,${neon}08)`,border:`1.5px solid ${neon}65`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 36px ${neon}55,0 0 12px ${neon}22,inset 0 1px 0 ${neon}35`,position:"relative",overflow:"hidden",animation:"logoBoxGlow 3s ease-in-out infinite",flexShrink:0}}>
           <div style={{position:"absolute",top:-4,left:-4,width:"55%",height:"55%",background:`linear-gradient(135deg,${neon}20,transparent 70%)`,borderRadius:"0 0 60% 0"}}/>
@@ -912,11 +949,11 @@ function SplashScreen({onDone,neon}) {
         </div>
       </div>
 
-      {/* Dots */}
+      {/* Dots CSS — pas de state */}
       <div style={{position:"absolute",bottom:44,display:"flex",gap:8,zIndex:10}}>
-        {[0,1,2,3].map(i=>{const active=dotActive===i;return(
-          <div key={i} style={{width:active?22:6,height:6,borderRadius:3,background:active?neon:`${neon}18`,boxShadow:active?`0 0 12px ${neon}99`:"none",transition:"all 0.35s cubic-bezier(0.34,1.5,0.64,1)"}}/>
-        );})}
+        {[0,1,2,3].map(i=>(
+          <div key={i} style={{width:6,height:6,borderRadius:3,background:`${neon}22`,animation:`dotPulse 2.2s ease-in-out ${i*0.55}s infinite`}}/>
+        ))}
       </div>
     </div>
   );
