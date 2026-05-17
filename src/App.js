@@ -2567,9 +2567,9 @@ export default function App() {
       {showShare&&<ShareModal trade={shareTarget} trades={trades} lang={lang} neon={neon} config={config} onClose={()=>{setShowShare(false);setShareTarget(null);}}/> }
       {showReset&&<ResetModal trades={trades} onReset={handleReset} onClose={()=>setShowReset(false)} lang={lang} neon={neon}/>}
       {showNewPhase&&<NewPhaseModal onConfirm={data=>{handleNewPhase(data);setShowNewPhase(false);}} onClose={()=>setShowNewPhase(false)} lang={lang} neon={neon} phases={phases} config={config}/>}
-      </div>{/* end maxWidth wrapper */}
-      </div>{/* end main content */}
-    </div>{/* end flex root */}
+      </div>
+      </div>
+    </div>
   );
 }
 
