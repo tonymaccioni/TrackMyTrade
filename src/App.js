@@ -837,6 +837,7 @@ function LoginScreen({onLogin,lang,setLang}) {
 function SplashScreen({onDone,neon}) {
   const [tick,setTick]=useState(0);
   const rafRef=useRef();const startRef=useRef(null);
+  useEffect(()=>{
     const done=setTimeout(onDone,2700);
     const animate=ts=>{if(!startRef.current)startRef.current=ts;setTick((ts-startRef.current)/1000);rafRef.current=requestAnimationFrame(animate);};
     rafRef.current=requestAnimationFrame(animate);
