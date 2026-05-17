@@ -249,6 +249,47 @@ function Logo({size="sm",neon="#00ff9d"}) {
   );
 }
 
+function StreakBadge({trades,neon,lang}) {
+  const t=T[lang];
+  if(trades.length<2) return null;
+  let streak=1,type=trades[0].result;
+  for(let i=1;i<trades.length;i++){if(trades[i].result===type)streak++;else break;}
+  if(streak<2||type==="BE") return null;
+  const color=type==="WIN"?neon:"#ff4d4d";
+  return <div style={{background:`${color}12`,border:`1px solid ${color}35`,borderRadius:10,padding:"8px 14px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between",boxShadow:`0 2px 12px ${color}18`}}><span style={{fontSize:12,color,fontWeight:700,fontFamily:MONO,textShadow:`0 0 10px ${color}88`}}>{streak} {type==="WIN"?t.streakWin:t.streakLoss}</span>{type==="LOSS"&&<span style={{fontSize:10,color:"#5a7a5a"}}>{t.checkRules}</span>}</div>;
+}
+
+
+function AdvancedStats({trades,neon,lang}) {
+  const t=T[lang];
+  if(trades.length<3) return null;
+  const wins=trades.filter(x=>x.result==="WIN");
+  const losses=trades.filter(x=>x.result==="LOSS");
+  const avgWin=wins.length?wins.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0)/wins.length:0;
+  const avgLoss=losses.length?Math.abs(losses.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0)/losses.length):0;
+  const wr=trades.length?wins.length/trades.length:0;
+  const exp=(wr*avgWin)-((1-wr)*avgLoss);
+  const aMap={};
+  trades.forEach(x=>{if(!aMap[x.asset])aMap[x.asset]={w:0,t:0};aMap[x.asset].t++;if(x.result==="WIN")aMap[x.asset].w++;});
+  const best=Object.entries(aMap).filter(([,v])=>v.t>=2).sort((a,b)=>(b[1].w/b[1].t)-(a[1].w/a[1].t))[0];
+  const revs=trades.filter(x=>x.isRevenge);
+  return (
+    <div style={{background:`${neon}04`,border:`1px solid ${neon}18`,borderRadius:10,padding:16,marginBottom:12}}>
+      <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>{t.statsTitle}</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+        <div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#5a7a5a",marginBottom:4}}>{t.expectancy}</div><div style={{fontSize:16,fontWeight:700,color:exp>=0?neon:"#ff4d4d",fontFamily:MONO,textShadow:`0 0 14px ${exp>=0?neon:"#ff4d4d"}99`}}>{fmtPct(exp)}</div></div>
+        {best&&<div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#5a7a5a",marginBottom:4}}>{t.bestAsset}</div><div style={{fontSize:14,fontWeight:700,color:neon,fontFamily:MONO}}>{best[0]}</div><div style={{fontSize:10,color:"#5a7a5a"}}>{Math.round(best[1].w/best[1].t*100)}% WR</div></div>}
+        <div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#5a7a5a",marginBottom:4}}>{t.avgWin}</div><div style={{fontSize:16,fontWeight:700,color:neon,fontFamily:MONO,textShadow:`0 0 14px ${neon}99`}}>{fmtPct(avgWin)}</div></div>
+        <div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#5a7a5a",marginBottom:4}}>{t.avgLoss}</div><div style={{fontSize:16,fontWeight:700,color:"#ff4d4d",fontFamily:MONO,textShadow:"0 0 14px #ff4d4d99"}}>-{avgLoss%1===0?avgLoss.toFixed(0):avgLoss.toFixed(1)}%</div></div>
+        {wins.length>0&&losses.length>0&&(()=>{const r=avgWin/avgLoss;return<div style={{background:`${neon}08`,borderRadius:8,padding:10,gridColumn:"1/-1"}}><div style={{fontSize:9,color:"#5a7a5a",marginBottom:4}}>{t.ratio}</div><div style={{fontSize:16,fontWeight:700,color:r>=1?neon:"#f0b429",fontFamily:MONO}}>{r.toFixed(2)}</div></div>;})()}
+        {revs.length>0&&<div style={{background:"rgba(255,77,77,0.06)",border:"1px solid rgba(255,77,77,0.15)",borderRadius:8,padding:10,gridColumn:"1/-1"}}><div style={{fontSize:9,color:"#ff4d4d",marginBottom:4}}>REVENGE TRADES</div><div style={{fontSize:14,fontWeight:700,color:"#ff4d4d",fontFamily:MONO}}>{revs.length} · {Math.round(revs.filter(x=>x.result==="LOSS").length/revs.length*100)}% LOSS</div></div>}
+      </div>
+    </div>
+  );
+}
+
+
+
 function ScoreRing({score,max=8,size=52,threshold=6,neon="#00ff9d"}) {
   const r=(size-8)/2,circ=2*Math.PI*r;
   const color=score>=threshold?neon:score>=threshold-1?"#f0b429":"#ff4d4d";
