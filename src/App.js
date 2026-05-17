@@ -1117,8 +1117,6 @@ function StatsInsightsModal({trades,lang,neon,onClose}) {
             );
           })}
         </div>
-      </div>
-    </div>
         {/* Bouton partager résumé */}
         <div style={{padding:"0 20px 16px",marginTop:4}}>
           <button onClick={()=>{
