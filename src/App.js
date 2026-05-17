@@ -2112,6 +2112,7 @@ export default function App() {
       if(phases.length) setPhases(phases);
       if(Object.keys(config).length) setConfig(c=>({...c,...config}));
       if(userData.lang) setLang(userData.lang);
+      if(userData.objectif&&typeof userData.objectif==="object") setObjectif(o=>({...o,...userData.objectif}));
       setPhase("app");
       // Vérifications bannières in-app
       setTimeout(()=>{
@@ -2498,7 +2499,7 @@ export default function App() {
       }} onReset={()=>setShowReset(true)} onNewPhase={handleNewPhase} lang={lang} onLangChange={l=>{
         setLang(l);
         if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{lang:l});
-      }} neon={neon} phases={phases} onObjectifChange={obj=>setObjectif(obj)} onImport={()=>setShowImport(true)}/>}
+      }} neon={neon} phases={phases} onObjectifChange={obj=>{setObjectif(obj);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{objectif:obj});}} onImport={()=>setShowImport(true)}/>}
 
       <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(9,9,16,0.97)",backdropFilter:"blur(12px)",borderTop:`1px solid ${neon}18`,padding:"10px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div style={{fontSize:9,color:`${neon}22`,fontFamily:"'Geist Mono','IBM Plex Mono',monospace"}}>◈ TrackMyTrade</div>
