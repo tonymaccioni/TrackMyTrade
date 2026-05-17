@@ -51,14 +51,14 @@ const DEFAULT_CRITERIA = ["HA M5 claire (pas de doji)","MM20 bien orientée","BB
 const MONO = "'Geist Mono','IBM Plex Mono',monospace";
 const PNL_PRESETS = ["-1","-0.5","0","+1","+2","+3","+4","+5"];
 const NEON_COLORS = [{name:"Vert",value:"#00ff9d"},{name:"Bleu",value:"#00d4ff"},{name:"Violet",value:"#bf00ff"},{name:"Rose",value:"#ff00aa"},{name:"Or",value:"#f0b429"}];
-const HUMEUR_PILLS = {fr:["🎯 Focus","😐 Neutre","😤 Tendu","😴 Fatigué"],en:["🎯 Focus","😐 Neutral","😤 Tense","😴 Tired"]};
+const HUMEUR_PILLS = {fr:["Focus","Neutre","Tendu","Fatigué"],en:["Focus","Neutral","Tense","Tired"]};
 const BIAIS_PILLS = {fr:["↑ Haussier","→ Range","↓ Baissier"],en:["↑ Bullish","→ Range","↓ Bearish"]};
 const NTR = {fr:["Pas de setup valide","Hors fenêtre","Marché difficile","Journée chargée","Jour de repos"],en:["No valid setup","Out of window","Difficult market","Busy day","Rest day"]};
 const today = () => new Date().toISOString().split("T")[0];
 const rc = (r, neon="#00ff9d") => r==="WIN"?neon:r==="LOSS"?"#ff4d4d":"#f0b429";
 const fmtPct = v => { if(v===""||v===null||v===undefined) return "—"; const n=Number(v),abs=Math.abs(n); const s=abs%1===0?abs.toFixed(0):abs*10%1===0?abs.toFixed(1):abs.toFixed(2); return `${n>=0?"+":""}${n<0?"-":""}${s}%`; };
 const calcDisc = list => { if(!list||!list.length) return null; return Math.round((list.filter(x=>x.conforming).length/list.length*0.6+list.filter(x=>!x.isRevenge).length/list.length*0.4)*10); };
-const emptyForm = (asset="XAU/USD") => ({date:today(),asset,direction:"BUY",checklist:[],result:"WIN",pnlPreset:"",pnlManual:"",notes:"",rejetScore:0,time:"",timeframe:"M5",screenshot:"",isRevenge:false,slDirection:"",checkin:{humeur:"",biais:""}});
+const emptyForm = (asset="XAU/USD", tf="M5") => ({date:today(),asset,direction:"BUY",checklist:[],result:"WIN",pnlPreset:"",pnlManual:"",notes:"",rejetScore:0,time:"",timeframe:tf,screenshot:"",isRevenge:false,slDirection:"",checkin:{humeur:"",biais:""}});
 const mkInput = neon => ({width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:8,color:"#ffffff",padding:"12px 14px",fontSize:13,fontFamily:MONO,marginBottom:10,outline:"none"});
 // Auth handled by Firebase Auth
 
@@ -295,7 +295,7 @@ function ScoreRing({score,max=8,size=52,threshold=6,neon="#00ff9d"}) {
   const color=score>=threshold?neon:score>=threshold-1?"#f0b429":"#ff4d4d";
   return (
     <svg width={size} height={size}>
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#1e2a1e" strokeWidth={5}/>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#ffffff12" strokeWidth={5}/>
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={5}
         strokeDasharray={`${circ*(score/max)} ${circ}`} strokeLinecap="round"
         style={{transform:"rotate(-90deg)",transformOrigin:"50% 50%",transition:"stroke-dasharray 0.4s"}}/>
@@ -309,7 +309,7 @@ function Dots({total,current,neon="#00ff9d"}) {
   return (
     <div style={{display:"flex",gap:6,justifyContent:"center"}}>
       {Array.from({length:total}).map((_,i)=>(
-        <div key={i} style={{width:i===current?22:7,height:7,borderRadius:4,background:i===current?neon:i<current?`${neon}55`:"#1e2a1e",transition:"all 0.3s"}}/>
+        <div key={i} style={{width:i===current?22:7,height:7,borderRadius:4,background:i===current?neon:i<current?`${neon}55`:"#ffffff15",transition:"all 0.3s"}}/>
       ))}
     </div>
   );
@@ -409,7 +409,7 @@ function WeeklyRecapModal({trades,lang,neon,onClose,onShareWeek}) {
                       <span style={{fontSize:8,color:"#ffffffaa",fontFamily:MONO}}>{l}</span>
                       <span style={{fontSize:9,fontWeight:700,color:c,fontFamily:MONO}}>{v}%</span>
                     </div>
-                    <div style={{height:3,background:"#1e2a1e",borderRadius:2}}><div style={{width:`${v}%`,height:"100%",background:c,borderRadius:2}}/></div>
+                    <div style={{height:3,background:"#ffffff10",borderRadius:2}}><div style={{width:`${v}%`,height:"100%",background:c,borderRadius:2}}/></div>
                   </div>
                 ))}
               </div>
@@ -509,11 +509,11 @@ function ConformityBar({trades,threshold,maxItems,neon,lang}) {
   return (
     <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:16,marginBottom:12}}>
       <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>{t.conformityTitle} {threshold}/{maxItems}</div>
-      <div style={{display:"flex",height:8,borderRadius:6,overflow:"hidden",marginBottom:14,background:"#1e2a1e"}}>
+      <div style={{display:"flex",height:8,borderRadius:6,overflow:"hidden",marginBottom:14,background:"#ffffff10"}}>
         <div style={{width:`${cPct}%`,background:neon,transition:"width 0.5s"}}/><div style={{flex:1,background:"#ff4d4d44"}}/>
       </div>
       <div style={{display:"flex",gap:10}}>
-        <div style={{flex:1,background:`${neon}0e`,border:`1px solid ${neon}28`,borderRadius:8,padding:12}}>
+        <div style={{flex:1,background:"#ffffff10",border:`1px solid ${neon}28`,borderRadius:8,padding:12}}>
           <div style={{fontSize:9,color:neon,letterSpacing:1,marginBottom:8}}>{t.conformShort}</div>
           <div style={{fontSize:22,fontWeight:800,color:neon,fontFamily:MONO,textShadow:`0 0 20px ${neon}cc, 0 2px 6px rgba(0,0,0,0.6)`}}>{conf.length}</div>
           {cWR!==null&&<div style={{marginTop:8,padding:"4px 8px",background:`${neon}18`,borderRadius:6}}><span style={{fontSize:14,fontWeight:700,color:neon,textShadow:`0 0 12px ${neon}99`}}>{cWR}%</span><span style={{fontSize:10,color:"#ffffffaa",marginLeft:6}}>{t.winRateLabel}</span></div>}
@@ -1453,7 +1453,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
   const Toggle=({label,val,set})=>(
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${neonColor}0d`}}>
       <span style={{fontSize:12,color:"#ffffff",fontFamily:MONO}}>{label}</span>
-      <button onClick={()=>set(!val)} className="btn" style={{width:44,height:24,borderRadius:12,background:val?`${neonColor}33`:"#1e2a1e",border:`1px solid ${val?neonColor:`${neonColor}30`}`,position:"relative",transition:"all 0.2s"}}>
+      <button onClick={()=>set(!val)} className="btn" style={{width:44,height:24,borderRadius:12,background:val?`${neonColor}33`:"#ffffff12",border:`1px solid ${val?neonColor:`${neonColor}30`}`,position:"relative",transition:"all 0.2s"}}>
         <div style={{width:16,height:16,borderRadius:"50%",background:val?neonColor:"#ffffffaa",position:"absolute",top:3,left:val?24:4,transition:"all 0.2s"}}/>
       </button>
     </div>
@@ -1845,7 +1845,7 @@ export default function App() {
   const [inAppNotifs,setInAppNotifs]=useState([]);
   const [histSearch,setHistSearch]=useState("");
   const [view,setView]=useState("dashboard");
-  const [form,setForm]=useState(emptyForm());
+  const [form,setForm]=useState(emptyForm("XAU/USD","M5"));
   const [editingId,setEditingId]=useState(null);
   const [checkinOpen,setCheckinOpen]=useState(false);
   const [saved,setSaved]=useState(false);
@@ -1935,7 +1935,7 @@ export default function App() {
     else{const trade={...form,pnlPct:pnl,id:Date.now(),setupScore:score,conforming,isRevenge,checklistMax:config.items.length};ut=trade;updated=[trade,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);}
     setTrades(updated);
     if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{trades:updated});
-    setForm(emptyForm(config.defaultAsset||"XAU/USD"));setEditingId(null);setCheckinOpen(false);
+    setForm(emptyForm(config.defaultAsset||"XAU/USD",config.lastTimeframe||"M5"));setEditingId(null);setCheckinOpen(false);
     // Conseil biais/direction incohérents
     const biaisCheck=form.checkin?.biais||"";
     const isBullish=biaisCheck.includes("Haussier")||biaisCheck.includes("Bullish");
@@ -1959,7 +1959,7 @@ export default function App() {
   };
 
   const startEdit=x=>{setForm({date:x.date,asset:x.asset,direction:x.direction,checklist:[...x.checklist],result:x.result,pnlPreset:PNL_PRESETS.includes(x.pnlPct)?x.pnlPct:"",pnlManual:PNL_PRESETS.includes(x.pnlPct)?"":x.pnlPct,notes:x.notes||"",rejetScore:x.rejetScore||0,time:x.time||"",screenshot:x.screenshot||"",isRevenge:x.isRevenge||false,slDirection:x.slDirection||"",checkin:x.checkin||{humeur:"",biais:""}});setEditingId(x.id);setView("log");};
-  const cancelEdit=()=>{setForm(emptyForm(config.defaultAsset||"XAU/USD"));setEditingId(null);setView("history");scrollToTop();};
+  const cancelEdit=()=>{setForm(emptyForm(config.defaultAsset||"XAU/USD",config.lastTimeframe||"M5"));setEditingId(null);setView("history");scrollToTop();};
   const deleteTrade=id=>{
     const updated=trades.filter(x=>x.id!==id);
     setTrades(updated);setConfirmDeleteId(null);
@@ -2081,7 +2081,7 @@ export default function App() {
               {cur>=0?"+":""}{cur.toFixed(1)}%{curEuro!==null?<span style={{fontSize:8,color:"#ffffff44",marginLeft:3}}> ({curEuro>=0?"+":""}{curEuro}{config.devise||"€"})</span>:null}
             </span>
           </div>
-          {objectif.pnl&&<div style={{height:2,background:`${neon}0e`,margin:"0 18px 2px"}}>
+          {objectif.pnl&&<div style={{height:2,background:"#ffffff10",margin:"0 18px 2px"}}>
             <div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${neon}88,${neon})`,transition:"width 0.6s ease",boxShadow:`0 0 6px ${neon}55`}}/>
           </div>}
           {(objectif.pnl||objectif.drawdown)&&<div style={{display:"flex",justifyContent:"space-between",padding:"0 18px 4px"}}>
@@ -2127,18 +2127,21 @@ export default function App() {
             </div>
           )}
           {total>=2&&discScore!==null&&(
-            <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${scoreColor}30`,borderRadius:14,padding:"14px 16px",marginBottom:12,boxShadow:`0 8px 32px ${scoreColor}12,inset 0 1px 0 ${scoreColor}18`}}>
+            <div style={{background:`linear-gradient(145deg,${scoreColor}12,${scoreColor}05)`,border:`1px solid ${scoreColor}30`,borderRadius:14,padding:"14px 16px",marginBottom:12,boxShadow:`0 8px 32px ${scoreColor}12,inset 0 1px 0 ${scoreColor}18`}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div>
                   <div style={{fontSize:9,color:"#ffffffaa",letterSpacing:2,fontFamily:MONO,marginBottom:4}}>{t.disciplineLabel}</div>
-                  <div style={{fontSize:42,fontWeight:900,fontFamily:MONO,lineHeight:1,textShadow:`0 0 40px ${scoreColor}cc, 0 0 8px ${scoreColor}88, 0 2px 10px rgba(0,0,0,0.7)`,color:scoreColor}}>{discScore}<span style={{fontSize:15,color:"#ffffff44",textShadow:"none"}}>/10</span></div>
-                  <div style={{fontSize:9,color:scoreColor,marginTop:3,letterSpacing:1}}>{discScore>=8?t.disciplineExcellent:discScore>=6?t.disciplineGood:discScore>=4?t.disciplineWork:t.disciplinePoor}</div>
+                  <div style={{fontSize:42,fontWeight:900,fontFamily:MONO,lineHeight:1,textShadow:`0 0 40px ${scoreColor}cc, 0 0 8px ${scoreColor}88, 0 2px 10px rgba(0,0,0,0.7)`,color:"#ffffff"}}>{discScore}<span style={{fontSize:15,color:"#ffffff44",textShadow:"none"}}>/10</span></div>
+                  <div style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:6,background:`${scoreColor}15`,borderRadius:20,padding:"3px 10px",border:`1px solid ${scoreColor}30`}}>
+                    <div style={{width:5,height:5,borderRadius:"50%",background:scoreColor,boxShadow:`0 0 6px ${scoreColor}`}}/>
+                    <span style={{fontSize:8,color:scoreColor,fontWeight:700,letterSpacing:1}}>{discScore>=8?t.disciplineExcellent:discScore>=6?t.disciplineGood:discScore>=4?t.disciplineWork:t.disciplinePoor}</span>
+                  </div>
                 </div>
                 <div style={{display:"flex",flexDirection:"column",gap:8,minWidth:130}}>
                   {[{l:t.conformiteLabel,v:Math.round(pf.filter(x=>x.conforming).length/total*100),c:neon},{l:t.sansRevengeLabel,v:Math.round(pf.filter(x=>!x.isRevenge).length/total*100),c:pf.filter(x=>x.isRevenge).length===0?neon:"#f0b429"}].map(({l,v,c})=>(
                     <div key={l}>
-                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:8,color:"#ffffffaa",fontFamily:MONO}}>{l}</span><span style={{fontSize:9,fontWeight:700,color:c,fontFamily:MONO}}>{v}%</span></div>
-                      <div style={{height:3,background:"#1e2a1e",borderRadius:2}}><div style={{width:`${v}%`,height:"100%",background:`linear-gradient(90deg,${c}99,${c})`,borderRadius:2,transition:"width 0.5s",boxShadow:`0 0 8px ${c}55`}}/></div>
+                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:8,color:"#ffffffaa",fontFamily:MONO}}>{l}</span><span style={{fontSize:9,fontWeight:700,color:"#ffffff",fontFamily:MONO}}>{v}%</span></div>
+                      <div style={{height:3,background:"#ffffff10",borderRadius:2}}><div style={{width:`${v}%`,height:"100%",background:`linear-gradient(90deg,${c}99,${c})`,borderRadius:2,transition:"width 0.5s",boxShadow:`0 0 8px ${c}55`}}/></div>
                     </div>
                   ))}
                 </div>
@@ -2201,15 +2204,20 @@ export default function App() {
                 <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
                   {humeurPills.map(h=>(
                     <button key={h} onClick={()=>setForm(f=>({...f,checkin:{...f.checkin,humeur:f.checkin.humeur===h?"":h}}))} className="btn"
-                      style={{background:form.checkin.humeur===h?`${neon}22`:"#131318",border:`1px solid ${form.checkin.humeur===h?neon:`${neon}26`}`,color:form.checkin.humeur===h?neon:"#ffffffbb",borderRadius:8,padding:"7px 12px",fontSize:12,fontFamily:MONO}}>{h}</button>
+                      style={{background:form.checkin.humeur===h?`${neon}18`:"#131318",border:`1px solid ${form.checkin.humeur===h?neon:"#ffffff15"}`,color:form.checkin.humeur===h?"#ffffff":"#ffffffbb",borderRadius:8,padding:"7px 12px",fontSize:11,fontFamily:MONO,fontWeight:form.checkin.humeur===h?700:400}}>{h}</button>
                   ))}
                 </div>
                 <input value={humeurPills.includes(form.checkin.humeur)?"":form.checkin.humeur} onChange={e=>setForm(f=>({...f,checkin:{...f.checkin,humeur:e.target.value}}))} placeholder={t.humeurPlaceholder} style={{...inSt,marginBottom:12,fontSize:12}}/>
                 <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.biaisLabel}</div>
                 <div style={{display:"flex",gap:6}}>
                   {biaisPills.map(b=>(
-                    <button key={b} onClick={()=>setForm(f=>({...f,checkin:{...f.checkin,biais:f.checkin.biais===b?"":b}}))} className="btn"
-                      style={{flex:1,background:form.checkin.biais===b?`${neon}22`:"#131318",border:`1px solid ${form.checkin.biais===b?neon:`${neon}26`}`,color:form.checkin.biais===b?neon:"#ffffffbb",borderRadius:8,padding:"8px 0",fontSize:12,fontFamily:MONO}}>{b}</button>
+                    {biaisPills.map(b=>{
+                      const isUp=b.startsWith("↑");const isDown=b.startsWith("↓");
+                      const bc=isUp?neon:isDown?"#ff4d4d":"#ffffffbb";
+                      const activeBg=isUp?`${neon}18`:isDown?"rgba(255,77,77,0.12)":"rgba(255,255,255,0.08)";
+                      return <button key={b} onClick={()=>setForm(f=>({...f,checkin:{...f.checkin,biais:f.checkin.biais===b?"":b}}))} className="btn"
+                        style={{flex:1,background:form.checkin.biais===b?activeBg:"#131318",border:`1px solid ${form.checkin.biais===b?bc:"#ffffff12"}`,color:form.checkin.biais===b?bc:"#ffffffbb",borderRadius:8,padding:"9px 0",fontSize:12,fontFamily:MONO,fontWeight:700}}>{b}</button>;
+                    })}
                   ))}
                 </div>
               </div>
@@ -2229,7 +2237,7 @@ export default function App() {
             <div style={{fontSize:8,color:"#ffffff33",letterSpacing:2,marginBottom:6}}>TIMEFRAME</div>
             <div style={{display:"flex",gap:4}}>
               {["M1","M5","M15","H1","H4","D1"].map(tf=>(
-                <button key={tf} onClick={()=>setForm({...form,timeframe:tf})} className="btn"
+                <button key={tf} onClick={()=>{setForm({...form,timeframe:tf});const nc={...config,lastTimeframe:tf};setConfig(nc);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:nc});}} className="btn"
                   style={{flex:1,padding:"7px 0",background:form.timeframe===tf?`${neon}18`:"#131318",border:`1px solid ${form.timeframe===tf?neon:"#ffffff0d"}`,borderRadius:7,fontSize:9,fontWeight:700,color:form.timeframe===tf?neon:"#ffffffbb",fontFamily:MONO}}>
                   {tf}
                 </button>
@@ -2238,7 +2246,7 @@ export default function App() {
           </div>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",background:"rgba(255,77,77,0.06)",border:"1px solid rgba(255,77,77,0.15)",borderRadius:8,marginBottom:10}}>
             <span style={{fontSize:12,color:form.isRevenge||isRevengeNow?"#ff4d4d":"#ffffffbb",fontFamily:MONO}}>{t.revengeLabel} {(form.isRevenge||isRevengeNow)?"⚠️":""}</span>
-            <button onClick={()=>setForm({...form,isRevenge:!form.isRevenge})} className="btn" style={{width:44,height:24,borderRadius:12,background:(form.isRevenge||isRevengeNow)?"rgba(255,77,77,0.3)":"#1e2a1e",border:`1px solid ${(form.isRevenge||isRevengeNow)?"#ff4d4d":"rgba(255,77,77,0.2)"}`,position:"relative",transition:"all 0.2s"}}>
+            <button onClick={()=>setForm({...form,isRevenge:!form.isRevenge})} className="btn" style={{width:44,height:24,borderRadius:12,background:(form.isRevenge||isRevengeNow)?"rgba(255,77,77,0.3)":"#ffffff12",border:`1px solid ${(form.isRevenge||isRevengeNow)?"#ff4d4d":"rgba(255,77,77,0.2)"}`,position:"relative",transition:"all 0.2s"}}>
               <div style={{width:16,height:16,borderRadius:"50%",background:(form.isRevenge||isRevengeNow)?"#ff4d4d":"#ffffffaa",position:"absolute",top:3,left:(form.isRevenge||isRevengeNow)?24:4,transition:"all 0.2s"}}/>
             </button>
           </div>
@@ -2261,7 +2269,7 @@ export default function App() {
             </div>
             <div style={{display:"flex",gap:3}}>
               {[1,2,3,4,5,6,7,8,9,10].map(n=>(
-                <button key={n} onClick={()=>setForm({...form,rejetScore:form.rejetScore===n?0:n})} className="btn" style={{flex:1,padding:"6px 0",borderRadius:5,fontSize:11,fontWeight:700,fontFamily:MONO,background:form.rejetScore>=n?(n>=8?`${neon}33`:n>=5?"rgba(240,180,41,0.2)":"rgba(255,77,77,0.2)"):"#131318",border:`1px solid ${form.rejetScore>=n?(n>=8?neon:n>=5?"#f0b429":"#ff4d4d"):`${neon}10`}`,color:form.rejetScore>=n?(n>=8?neon:n>=5?"#f0b429":"#ff4d4d"):"#2a3a2a"}}>{n}</button>
+                <button key={n} onClick={()=>setForm({...form,rejetScore:form.rejetScore===n?0:n})} className="btn" style={{flex:1,padding:"6px 0",borderRadius:5,fontSize:11,fontWeight:700,fontFamily:MONO,background:form.rejetScore>=n?(n>=8?`${neon}33`:n>=5?"rgba(240,180,41,0.2)":"rgba(255,77,77,0.2)"):"#131318",border:`1px solid ${form.rejetScore>=n?(n>=8?neon:n>=5?"#f0b429":"#ff4d4d"):"#ffffff12"}`,color:form.rejetScore>=n?(n>=8?neon:n>=5?"#f0b429":"#ff4d4d"):"#2a3a2a"}}>{n}</button>
               ))}
             </div>
           </div>
