@@ -933,19 +933,19 @@ function SplashScreen({onDone,neon}) {
         style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",zIndex:1,maxWidth:"100%"}}/>
 
       {/* Logo — zIndex 10, toujours devant */}
-      <div style={{position:"relative",zIndex:10,display:"flex",alignItems:"center",gap:18,animation:"slideFromLeft 0.95s cubic-bezier(0.34,1.3,0.64,1) 0.15s both"}}>
-        <div style={{width:78,height:78,borderRadius:18,background:`linear-gradient(135deg,${neon}22,${neon}08)`,border:`1.5px solid ${neon}65`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 36px ${neon}55,0 0 12px ${neon}22,inset 0 1px 0 ${neon}35`,position:"relative",overflow:"hidden",animation:"logoBoxGlow 3s ease-in-out infinite",flexShrink:0}}>
+      <div style={{position:"relative",zIndex:10,display:"flex",alignItems:"center",gap:22,animation:"slideFromLeft 0.95s cubic-bezier(0.34,1.3,0.64,1) 0.15s both"}}>
+        <div style={{width:100,height:100,borderRadius:24,background:`linear-gradient(135deg,${neon}22,${neon}08)`,border:`1.5px solid ${neon}65`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 50px ${neon}55,0 0 18px ${neon}22,inset 0 1px 0 ${neon}35`,position:"relative",overflow:"hidden",animation:"logoBoxGlow 3s ease-in-out infinite",flexShrink:0}}>
           <div style={{position:"absolute",top:-4,left:-4,width:"55%",height:"55%",background:`linear-gradient(135deg,${neon}20,transparent 70%)`,borderRadius:"0 0 60% 0"}}/>
-          <svg width="46" height="46" viewBox="0 0 24 24" fill="none">
+          <svg width="58" height="58" viewBox="0 0 24 24" fill="none">
             <polygon points="12,2 22,12 12,22 2,12" fill={`${neon}22`} stroke={neon} strokeWidth="1.5" strokeLinejoin="round"/>
-            <polygon points="12,7 17,12 12,17 7,12" fill={neon} style={{filter:`drop-shadow(0 0 5px ${neon})`}}/>
+            <polygon points="12,7 17,12 12,17 7,12" fill={neon} style={{filter:`drop-shadow(0 0 7px ${neon})`}}/>
           </svg>
         </div>
         <div style={{animation:"slideFromRight 0.95s cubic-bezier(0.34,1.3,0.64,1) 0.15s both"}}>
-          <div style={{fontSize:36,fontWeight:800,letterSpacing:-1,lineHeight:1,whiteSpace:"nowrap",textShadow:`0 0 40px ${neon}44`}}>
+          <div style={{fontSize:44,fontWeight:900,letterSpacing:-2,lineHeight:1,whiteSpace:"nowrap",textShadow:`0 0 50px ${neon}55`}}>
             <b style={{color:neon}}>Track</b><span style={{color:"#ffffff1a",fontWeight:300}}>My</span><b style={{color:neon}}>Trade</b>
           </div>
-          <div style={{fontSize:9,color:`${neon}55`,letterSpacing:5,marginTop:9,animation:"fadeInSlow 0.6s ease 0.8s both"}}>JOURNAL DE TRADING</div>
+          <div style={{fontSize:9,color:`${neon}55`,letterSpacing:6,marginTop:10,animation:"fadeInSlow 0.6s ease 0.8s both"}}>JOURNAL DE TRADING</div>
         </div>
       </div>
 
@@ -2158,9 +2158,17 @@ export default function App() {
       {/* ── SIDEBAR PC ── */}
       {isDesktop&&(
         <div style={{width:240,minWidth:240,background:"#09090f",borderRight:"1px solid #ffffff0a",display:"flex",flexDirection:"column",height:"100vh",position:"sticky",top:0,flexShrink:0}}>
-          <div style={{padding:"22px 18px 18px",borderBottom:"1px solid #ffffff08"}}>
-            <Logo size="sm" neon={neon}/>
-            <div style={{fontSize:9,color:"#ffffff33",marginTop:4,letterSpacing:1}}>{config.strategyName}</div>
+          <div style={{padding:"24px 18px 20px",borderBottom:"1px solid #ffffff08"}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
+              <div style={{width:36,height:36,borderRadius:9,background:`${neon}18`,border:`1px solid ${neon}55`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 16px ${neon}33`,flexShrink:0}}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <polygon points="12,2 22,12 12,22 2,12" fill={`${neon}22`} stroke={neon} strokeWidth="1.6" strokeLinejoin="round"/>
+                  <polygon points="12,7 17,12 12,17 7,12" fill={neon}/>
+                </svg>
+              </div>
+              <span style={{fontSize:18,fontWeight:800}}><b style={{color:neon}}>Track</b><span style={{color:"#ffffff15"}}>My</span><b style={{color:neon}}>Trade</b></span>
+            </div>
+            <div style={{fontSize:10,color:"#ffffff33",letterSpacing:1}}>{config.strategyName}</div>
           </div>
           {(objectif.pnl||config.capital)&&(()=>{
             const cur=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
@@ -2207,12 +2215,10 @@ export default function App() {
         </div>
       </div>}
 
-      {(objectif.pnl||config.capital)&&(()=>{
+      {!isDesktop&&(objectif.pnl||config.capital)&&(()=>{
         const cur=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
         const target=parseFloat(objectif.pnl)||1;
         const pct=objectif.pnl?Math.min(100,Math.max(0,cur/target*100)):0;
-        const cap=parseFloat(config.capital)||0;
-        const curEuro=cap?Math.round(cap*cur/100):null;
         return <div style={{background:"rgba(9,9,16,0.6)",borderBottom:`1px solid #ffffff06`,padding:"7px 18px 6px"}}>
           {objectif.pnl&&<div style={{height:3,background:"#ffffff10",borderRadius:3,marginBottom:6}}>
             <div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${neon}66,${neon})`,borderRadius:3,transition:"width 0.6s ease",boxShadow:`0 0 8px ${neon}55`}}/>
@@ -2234,12 +2240,12 @@ export default function App() {
         ))}
       </div>}
 
-      {isDesktop&&<div style={{padding:"20px 32px 16px",borderBottom:"1px solid #ffffff08",background:"linear-gradient(180deg,#111118,#0c0c12)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      {isDesktop&&<div style={{padding:"24px 32px 20px",borderBottom:"1px solid #ffffff08",background:"linear-gradient(180deg,#111118,#0c0c12)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div>
-          <div style={{fontSize:18,fontWeight:800,color:"#ffffff"}}>{view==="dashboard"?(lang==="fr"?"Statistiques":"Statistics"):view==="log"?(editingId?lang==="fr"?"✏ Édition":"✏ Edit":lang==="fr"?"Nouveau trade":"New trade"):view==="history"?(lang==="fr"?"Historique":"History"):lang==="fr"?"Paramètres":"Settings"}</div>
-          <div style={{fontSize:10,color:"#ffffff33",marginTop:2}}>{config.strategyName}{total>0?` · ${total} trades`:""}</div>
+          <div style={{fontSize:26,fontWeight:900,color:"#ffffff",letterSpacing:-0.5}}>{view==="dashboard"?(lang==="fr"?"Statistiques":"Statistics"):view==="log"?(editingId?lang==="fr"?"✏ Édition":"✏ Edit":lang==="fr"?"Nouveau trade":"New trade"):view==="history"?(lang==="fr"?"Historique":"History"):lang==="fr"?"Paramètres":"Settings"}</div>
+          <div style={{fontSize:10,color:"#ffffff33",marginTop:4}}>{config.strategyName}{total>0?` · ${total} trades`:""}</div>
         </div>
-        {view==="dashboard"&&<button onClick={()=>setShowNewPhase(true)} style={{padding:"7px 14px",background:`${neon}10`,border:`1px solid ${neon}25`,borderRadius:8,fontSize:10,color:neon,fontFamily:MONO,cursor:"pointer"}}>▶ {lang==="fr"?"Nouvelle phase":"New phase"}</button>}
+        {view==="dashboard"&&<button onClick={()=>setShowNewPhase(true)} style={{padding:"9px 18px",background:`${neon}10`,border:`1px solid ${neon}25`,borderRadius:10,fontSize:11,color:neon,fontFamily:MONO,cursor:"pointer",fontWeight:700}}>▶ {lang==="fr"?"Nouvelle phase":"New phase"}</button>}
       </div>}
 
       
