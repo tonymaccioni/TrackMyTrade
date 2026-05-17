@@ -188,6 +188,7 @@ const CSS = ({neon="#00ff9d"}) => (
     body{background:#0c0c12}
     input,select,textarea{outline:none;font-family:${MONO};font-size:16px}
     input[type=checkbox]{accent-color:${neon};width:16px;height:16px;cursor:pointer}
+    input[type=date],input[type=time]{color-scheme:dark}
     input[type=file]{display:none}
     .btn{transition:all 0.15s;cursor:pointer}
     .btn:hover{opacity:0.85;transform:translateY(-1px)}
@@ -743,8 +744,8 @@ function ResetModal({trades,onReset,onClose,lang,neon}) {
   );
 }
 
-function LoginScreen({onLogin,lang,setLang}) {
-  const t=T[lang];const neon="#00ff9d";
+function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
+  const t=T[lang];
   const fr=lang==="fr";
   const [mode,setMode]=useState("login");
   const [email,setEmail]=useState("");const [pwd,setPwd]=useState("");
@@ -1916,6 +1917,8 @@ export default function App() {
   const [winW,setWinW]=useState(typeof window!=="undefined"?window.innerWidth:375);
   useEffect(()=>{const h=()=>setWinW(window.innerWidth);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
   const isDesktop=winW>=769;
+  // Forcer le fond sombre dès le premier rendu — évite le flash blanc
+  useEffect(()=>{document.body.style.background="#07070d";document.body.style.margin="0";},[]);
   const [phase,setPhase]=useState("splash");
   const [lang,setLang]=useState("fr");
   const [trades,setTrades]=useState([]);
@@ -2140,7 +2143,7 @@ export default function App() {
 
   if(phase==="splash") return <SplashScreen onDone={()=>setPhase("login")} neon={neon}/>;
   if(phase==="onboarding") return <><CSS neon={neon}/><Onboarding onDone={l=>{setLang(l);setPhase("login");}}/></>;
-  if(phase==="login") return <LoginScreen onLogin={handleLogin} lang={lang} setLang={setLang}/>;
+  if(phase==="login") return <LoginScreen onLogin={handleLogin} lang={lang} setLang={setLang} neon={neon}/>;
   if(phase==="setup") return <><CSS neon={neon}/><GuidedSetup onDone={async cfg=>{
     const newCfg={...config,...cfg};
     setConfig(newCfg);setForm(emptyForm(cfg.defaultAsset||"XAU/USD"));setPhase("app");
@@ -2374,7 +2377,7 @@ export default function App() {
           </div>
 
           <div style={{marginBottom:14}}>
-            <div style={{display:"flex",gap:8}}><input type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} style={{...inSt,marginBottom:0,flex:2}}/><input type="time" value={form.time} onChange={e=>setForm({...form,time:e.target.value})} style={{...inSt,marginBottom:0,flex:1,color:form.time?"#ffffff":"#ffffffaa"}}/></div>
+            <div style={{display:"flex",gap:8}}><input type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} style={{...inSt,marginBottom:0,flex:2,colorScheme:"dark",color:"#ffffffcc"}}/><input type="time" value={form.time} onChange={e=>setForm({...form,time:e.target.value})} style={{...inSt,marginBottom:0,flex:1,colorScheme:"dark",color:form.time?"#ffffffcc":"#ffffff66"}}/></div>
             <div style={{fontSize:9,color:"#ffffffaa",marginTop:5}}>{t.entryTime}</div>
           </div>
           <div style={{display:"flex",gap:8,marginBottom:10}}>
