@@ -693,7 +693,7 @@ function NoTradeButton({onSave,alreadyDone,lang,neon}) {
     <div style={{background:"rgba(90,90,90,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:14,marginBottom:12}}>
       <div style={{fontSize:10,color:"#ffffffaa",letterSpacing:2,marginBottom:10,fontFamily:MONO}}>{t.noTradeReason}</div>
       <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
-        {ntr.map(r=><button key={r} onClick={()=>setReason(reason===r?"":r)} className="btn" style={{background:reason===r?"rgba(255,255,255,0.1)":"#0d1a0d",border:`1px solid ${reason===r?"rgba(255,255,255,0.25)":"rgba(255,255,255,0.08)"}`,color:reason===r?"#c8e6c8":"#ffffffbb",borderRadius:6,padding:"5px 10px",fontSize:11,fontFamily:MONO}}>{r}</button>)}
+        {ntr.map(r=><button key={r} onClick={()=>setReason(reason===r?"":r)} className="btn" style={{background:reason===r?"rgba(255,255,255,0.1)":"#131318",border:`1px solid ${reason===r?"rgba(255,255,255,0.25)":"rgba(255,255,255,0.08)"}`,color:reason===r?"#c8e6c8":"#ffffffbb",borderRadius:6,padding:"5px 10px",fontSize:11,fontFamily:MONO}}>{r}</button>)}
       </div>
       <div style={{display:"flex",gap:8}}>
         <button onClick={()=>{onSave({id:Date.now(),date:today(),reason});setOpen(false);setReason("");}} className="btn" style={{flex:1,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.15)",color:"#ffffff",borderRadius:8,padding:10,fontSize:12,fontWeight:700,fontFamily:MONO}}>{t.confirmBtn}</button>
@@ -1406,9 +1406,9 @@ function GuidedSetup({onDone,lang}) {
   const inSt=mkInput(neon);
   const renderContent=()=>{
     if(step===0) return <input value={stratName} onChange={e=>setStratName(e.target.value)} placeholder="Ex: XAU/USD Scalping BB" style={{...inSt,fontSize:14,padding:14}} autoFocus/>;
-    if(step===1) return <div><div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:10}}>{allAssets.map(a=><button key={a} onClick={()=>setSelAssets(p=>p.includes(a)?p.filter(x=>x!==a):[...p,a])} className="btn" style={{background:selAssets.includes(a)?`${neon}26`:"#0d1a0d",border:`1px solid ${selAssets.includes(a)?neon:`${neon}22`}`,color:selAssets.includes(a)?neon:"#ffffffaa",borderRadius:8,padding:"9px 14px",fontSize:12,fontWeight:700,fontFamily:MONO}}>{a}</button>)}</div><div style={{display:"flex",gap:8}}><input value={customAsset} onChange={e=>setCustomAsset(e.target.value)} placeholder={t.customAsset} onKeyDown={e=>{if(e.key==="Enter"&&customAsset.trim()){setSelAssets(p=>[...p,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} style={{...inSt,marginBottom:0,flex:1}}/><button onClick={()=>{if(customAsset.trim()){setSelAssets(p=>[...p,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} className="btn" style={{background:`${neon}1a`,border:`1px solid ${neon}55`,color:neon,borderRadius:8,padding:"0 16px",fontSize:18}}>+</button></div></div>;
+    if(step===1) return <div><div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:10}}>{allAssets.map(a=><button key={a} onClick={()=>setSelAssets(p=>p.includes(a)?p.filter(x=>x!==a):[...p,a])} className="btn" style={{background:selAssets.includes(a)?`${neon}26`:"#131318",border:`1px solid ${selAssets.includes(a)?neon:`${neon}22`}`,color:selAssets.includes(a)?neon:"#ffffffaa",borderRadius:8,padding:"9px 14px",fontSize:12,fontWeight:700,fontFamily:MONO}}>{a}</button>)}</div><div style={{display:"flex",gap:8}}><input value={customAsset} onChange={e=>setCustomAsset(e.target.value)} placeholder={t.customAsset} onKeyDown={e=>{if(e.key==="Enter"&&customAsset.trim()){setSelAssets(p=>[...p,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} style={{...inSt,marginBottom:0,flex:1}}/><button onClick={()=>{if(customAsset.trim()){setSelAssets(p=>[...p,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} className="btn" style={{background:`${neon}1a`,border:`1px solid ${neon}55`,color:neon,borderRadius:8,padding:"0 16px",fontSize:18}}>+</button></div></div>;
     if(step===2) return <div>{criteria.map((c,i)=><div key={i} style={{display:"flex",gap:8,marginBottom:8}}><input value={c} onChange={e=>{const n=[...criteria];n[i]=e.target.value;setCriteria(n);}} style={{...inSt,marginBottom:0,flex:1}}/><button onClick={()=>setCriteria(criteria.filter((_,idx)=>idx!==i))} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d",borderRadius:6,padding:"8px 10px",cursor:"pointer"}}>✕</button></div>)}<div style={{display:"flex",gap:8}}><input value={newItem} onChange={e=>setNewItem(e.target.value)} placeholder={lang==="fr"?"Ajouter…":"Add…"} onKeyDown={e=>{if(e.key==="Enter"&&newItem.trim()){setCriteria([...criteria,newItem.trim()]);setNewItem("");}}} style={{...inSt,marginBottom:0,flex:1}}/><button onClick={()=>{if(newItem.trim()){setCriteria([...criteria,newItem.trim()]);setNewItem("");}}} className="btn" style={{background:`${neon}1a`,border:`1px solid ${neon}55`,color:neon,borderRadius:8,padding:"0 16px",fontSize:18}}>+</button></div></div>;
-    return <div><div style={{display:"flex",gap:8,marginBottom:20}}>{Array.from({length:Math.min(7,criteria.length-1)},(_,i)=>i+2).map(n=><button key={n} onClick={()=>setThreshold(n)} className="btn" style={{flex:1,padding:"12px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:threshold===n?`${neon}33`:"#0d1a0d",border:`1px solid ${threshold===n?neon:`${neon}22`}`,color:threshold===n?neon:"#ffffffaa"}}>{n}</button>)}</div><div style={{background:`${neon}0d`,border:`1px solid ${neon}22`,borderRadius:10,padding:16}}><div style={{fontSize:12,color:neon,marginBottom:4}}>✓ {threshold}/{criteria.length}</div><div style={{fontSize:10,color:"#ffffff44"}}>{threshold/criteria.length>=0.875?`↑ ${t.highStd}`:threshold/criteria.length>=0.6?`· ${t.balanced}`:`↓ ${t.lowStd}`}</div></div></div>;
+    return <div><div style={{display:"flex",gap:8,marginBottom:20}}>{Array.from({length:Math.min(7,criteria.length-1)},(_,i)=>i+2).map(n=><button key={n} onClick={()=>setThreshold(n)} className="btn" style={{flex:1,padding:"12px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:threshold===n?`${neon}33`:"#131318",border:`1px solid ${threshold===n?neon:`${neon}22`}`,color:threshold===n?neon:"#ffffffaa"}}>{n}</button>)}</div><div style={{background:`${neon}0d`,border:`1px solid ${neon}22`,borderRadius:10,padding:16}}><div style={{fontSize:12,color:neon,marginBottom:4}}>✓ {threshold}/{criteria.length}</div><div style={{fontSize:10,color:"#ffffff44"}}>{threshold/criteria.length>=0.875?`↑ ${t.highStd}`:threshold/criteria.length>=0.6?`· ${t.balanced}`:`↓ ${t.lowStd}`}</div></div></div>;
   };
   return (
     <div style={{background:"#0c0c12",minHeight:"100vh",fontFamily:MONO,maxWidth:480,margin:"0 auto",display:"flex",flexDirection:"column"}}>
@@ -1462,17 +1462,17 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
     <div className="fi" style={{padding:20}}>
       <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
         <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.langLabel}</div>
-        <div style={{display:"flex",gap:8}}>{[["fr","Français"],["en","English"]].map(([l,label])=><button key={l} onClick={()=>onLangChange(l)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:lang===l?`${neonColor}26`:"#0d1a0d",border:`1px solid ${lang===l?neonColor:`${neonColor}22`}`,color:lang===l?neonColor:"#ffffffbb"}}>{label}</button>)}</div>
+        <div style={{display:"flex",gap:8}}>{[["fr","Français"],["en","English"]].map(([l,label])=><button key={l} onClick={()=>onLangChange(l)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:lang===l?`${neonColor}26`:"#131318",border:`1px solid ${lang===l?neonColor:`${neonColor}22`}`,color:lang===l?neonColor:"#ffffffbb"}}>{label}</button>)}</div>
       </div>
       <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
         <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.colorLabel}</div>
-        <div style={{display:"flex",gap:8}}>{NEON_COLORS.map(c=><button key={c.value} onClick={()=>setNeonColor(c.value)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,background:neonColor===c.value?`${c.value}26`:"#0d1a0d",border:`2px solid ${neonColor===c.value?c.value:"transparent"}`,cursor:"pointer"}}><div style={{width:16,height:16,borderRadius:"50%",background:c.value,margin:"0 auto",boxShadow:neonColor===c.value?`0 0 8px ${c.value}`:"none"}}/></button>)}</div>
+        <div style={{display:"flex",gap:8}}>{NEON_COLORS.map(c=><button key={c.value} onClick={()=>setNeonColor(c.value)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,background:neonColor===c.value?`${c.value}26`:"#131318",border:`2px solid ${neonColor===c.value?c.value:"transparent"}`,cursor:"pointer"}}><div style={{width:16,height:16,borderRadius:"50%",background:c.value,margin:"0 auto",boxShadow:neonColor===c.value?`0 0 8px ${c.value}`:"none"}}/></button>)}</div>
       </div>
       <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
         <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.maxTradesLabel}</div>
         <div style={{display:"flex",gap:6}}>
-          {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setMaxTrades(n)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:maxTrades===n?`${neonColor}26`:"#0d1a0d",border:`1px solid ${maxTrades===n?neonColor:`${neonColor}22`}`,color:maxTrades===n?neonColor:"#ffffffbb"}}>{n}</button>)}
-          <button onClick={()=>setMaxTrades(0)} className="btn" style={{flex:1.4,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:maxTrades===0?`${neonColor}26`:"#0d1a0d",border:`1px solid ${maxTrades===0?neonColor:`${neonColor}22`}`,color:maxTrades===0?neonColor:"#ffffffaa"}}>∞</button>
+          {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setMaxTrades(n)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:maxTrades===n?`${neonColor}26`:"#131318",border:`1px solid ${maxTrades===n?neonColor:`${neonColor}22`}`,color:maxTrades===n?neonColor:"#ffffffbb"}}>{n}</button>)}
+          <button onClick={()=>setMaxTrades(0)} className="btn" style={{flex:1.4,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:maxTrades===0?`${neonColor}26`:"#131318",border:`1px solid ${maxTrades===0?neonColor:`${neonColor}22`}`,color:maxTrades===0?neonColor:"#ffffffaa"}}>∞</button>
         </div>
       </div>
       <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>ACTIFS</div>
@@ -1490,7 +1490,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
       <input value={stratName} onChange={e=>setStratName(e.target.value)} style={inSt}/>
       <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.thresholdLabel}</div>
       <div style={{display:"flex",gap:6,marginBottom:16}}>
-        {[4,5,6,7,8].map(n=><button key={n} onClick={()=>setThreshold(n)} className="btn" style={{flex:1,padding:8,borderRadius:8,fontSize:13,fontWeight:700,fontFamily:MONO,background:threshold===n?`${neonColor}33`:"#080f08",border:`1px solid ${threshold===n?neonColor:`${neonColor}22`}`,color:threshold===n?neonColor:"#ffffffbb"}}>{n}</button>)}
+        {[4,5,6,7,8].map(n=><button key={n} onClick={()=>setThreshold(n)} className="btn" style={{flex:1,padding:8,borderRadius:8,fontSize:13,fontWeight:700,fontFamily:MONO,background:threshold===n?`${neonColor}33`:"#131318",border:`1px solid ${threshold===n?neonColor:`${neonColor}22`}`,color:threshold===n?neonColor:"#ffffffbb"}}>{n}</button>)}
       </div>
       <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.criteriaLabel} ({items.length})</div>
       {items.map((item,i)=>{
@@ -1519,7 +1519,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
         <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>TYPE DE COMPTE</div>
         <div style={{display:"flex",gap:6}}>
           {[["prop","Prop Firm"],["perso","Perso"],["demo","Démo"]].map(([v,l])=>(
-            <button key={v} onClick={()=>setAccountType(v)} className="btn" style={{flex:1,padding:"9px 0",background:accountType===v?`${neonColor}18`:"#0d1a0d",border:`1px solid ${accountType===v?neonColor:`${neonColor}22`}`,borderRadius:8,fontSize:10,fontWeight:700,color:accountType===v?neonColor:"#ffffffaa",fontFamily:MONO}}>{l}</button>
+            <button key={v} onClick={()=>setAccountType(v)} className="btn" style={{flex:1,padding:"9px 0",background:accountType===v?`${neonColor}18`:"#131318",border:`1px solid ${accountType===v?neonColor:`${neonColor}22`}`,borderRadius:8,fontSize:10,fontWeight:700,color:accountType===v?neonColor:"#ffffffaa",fontFamily:MONO}}>{l}</button>
           ))}
         </div>
       </div>
@@ -1532,7 +1532,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
           <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>DEVISE</div>
           <div style={{display:"flex",flexDirection:"column",gap:3}}>
             {["€","$","£","CHF"].map(d=>(
-              <button key={d} onClick={()=>setDevise(d)} className="btn" style={{padding:"5px 0",background:devise===d?`${neonColor}18`:"#0d1a0d",border:`1px solid ${devise===d?neonColor:`${neonColor}22`}`,borderRadius:6,fontSize:11,fontWeight:800,color:devise===d?neonColor:"#ffffffaa",fontFamily:MONO}}>{d}</button>
+              <button key={d} onClick={()=>setDevise(d)} className="btn" style={{padding:"5px 0",background:devise===d?`${neonColor}18`:"#131318",border:`1px solid ${devise===d?neonColor:`${neonColor}22`}`,borderRadius:6,fontSize:11,fontWeight:800,color:devise===d?neonColor:"#ffffffaa",fontFamily:MONO}}>{d}</button>
             ))}
           </div>
         </div>
@@ -2105,7 +2105,7 @@ export default function App() {
             <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
               <div style={{flex:1,display:"flex",gap:4,background:"#0f0f14",borderRadius:8,padding:3}}>
                 {[["phase",t.phaseEnCours],["all",t.toutHistorique]].map(([m,l])=>(
-                  <button key={m} onClick={()=>setStatsMode(m)} className="btn" style={{flex:1,padding:"7px 0",borderRadius:6,fontSize:10,fontWeight:700,fontFamily:MONO,background:statsMode===m?neon:"transparent",color:statsMode===m?"#080f08":"#ffffffaa",border:"none",transition:"all 0.2s"}}>{l}</button>
+                  <button key={m} onClick={()=>setStatsMode(m)} className="btn" style={{flex:1,padding:"7px 0",borderRadius:6,fontSize:10,fontWeight:700,fontFamily:MONO,background:statsMode===m?neon:"transparent",color:statsMode===m?"#131318":"#ffffffaa",border:"none",transition:"all 0.2s"}}>{l}</button>
                 ))}
               </div>
               <button onClick={()=>setShowNewPhase(true)} className="btn" style={{padding:"7px 10px",background:`${neon}10`,border:`1px solid ${neon}30`,borderRadius:8,fontSize:9,fontWeight:700,color:neon,whiteSpace:"nowrap",flexShrink:0}}>▶ Phase</button>
@@ -2127,7 +2127,7 @@ export default function App() {
             </div>
           )}
           {total>=2&&discScore!==null&&(
-            <div style={{background:"linear-gradient(145deg,#151f18,#0f1612)",border:`1px solid ${scoreColor}30`,borderRadius:14,padding:"14px 16px",marginBottom:12,boxShadow:`0 8px 32px ${scoreColor}12,inset 0 1px 0 ${scoreColor}18`}}>
+            <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${scoreColor}30`,borderRadius:14,padding:"14px 16px",marginBottom:12,boxShadow:`0 8px 32px ${scoreColor}12,inset 0 1px 0 ${scoreColor}18`}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div>
                   <div style={{fontSize:9,color:"#ffffffaa",letterSpacing:2,fontFamily:MONO,marginBottom:4}}>{t.disciplineLabel}</div>
@@ -2201,7 +2201,7 @@ export default function App() {
                 <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
                   {humeurPills.map(h=>(
                     <button key={h} onClick={()=>setForm(f=>({...f,checkin:{...f.checkin,humeur:f.checkin.humeur===h?"":h}}))} className="btn"
-                      style={{background:form.checkin.humeur===h?`${neon}22`:"#080f08",border:`1px solid ${form.checkin.humeur===h?neon:`${neon}26`}`,color:form.checkin.humeur===h?neon:"#ffffffbb",borderRadius:8,padding:"7px 12px",fontSize:12,fontFamily:MONO}}>{h}</button>
+                      style={{background:form.checkin.humeur===h?`${neon}22`:"#131318",border:`1px solid ${form.checkin.humeur===h?neon:`${neon}26`}`,color:form.checkin.humeur===h?neon:"#ffffffbb",borderRadius:8,padding:"7px 12px",fontSize:12,fontFamily:MONO}}>{h}</button>
                   ))}
                 </div>
                 <input value={humeurPills.includes(form.checkin.humeur)?"":form.checkin.humeur} onChange={e=>setForm(f=>({...f,checkin:{...f.checkin,humeur:e.target.value}}))} placeholder={t.humeurPlaceholder} style={{...inSt,marginBottom:12,fontSize:12}}/>
@@ -2209,7 +2209,7 @@ export default function App() {
                 <div style={{display:"flex",gap:6}}>
                   {biaisPills.map(b=>(
                     <button key={b} onClick={()=>setForm(f=>({...f,checkin:{...f.checkin,biais:f.checkin.biais===b?"":b}}))} className="btn"
-                      style={{flex:1,background:form.checkin.biais===b?`${neon}22`:"#080f08",border:`1px solid ${form.checkin.biais===b?neon:`${neon}26`}`,color:form.checkin.biais===b?neon:"#ffffffbb",borderRadius:8,padding:"8px 0",fontSize:12,fontFamily:MONO}}>{b}</button>
+                      style={{flex:1,background:form.checkin.biais===b?`${neon}22`:"#131318",border:`1px solid ${form.checkin.biais===b?neon:`${neon}26`}`,color:form.checkin.biais===b?neon:"#ffffffbb",borderRadius:8,padding:"8px 0",fontSize:12,fontFamily:MONO}}>{b}</button>
                   ))}
                 </div>
               </div>
@@ -2261,17 +2261,17 @@ export default function App() {
             </div>
             <div style={{display:"flex",gap:3}}>
               {[1,2,3,4,5,6,7,8,9,10].map(n=>(
-                <button key={n} onClick={()=>setForm({...form,rejetScore:form.rejetScore===n?0:n})} className="btn" style={{flex:1,padding:"6px 0",borderRadius:5,fontSize:11,fontWeight:700,fontFamily:MONO,background:form.rejetScore>=n?(n>=8?`${neon}33`:n>=5?"rgba(240,180,41,0.2)":"rgba(255,77,77,0.2)"):"#0d1a0d",border:`1px solid ${form.rejetScore>=n?(n>=8?neon:n>=5?"#f0b429":"#ff4d4d"):`${neon}10`}`,color:form.rejetScore>=n?(n>=8?neon:n>=5?"#f0b429":"#ff4d4d"):"#2a3a2a"}}>{n}</button>
+                <button key={n} onClick={()=>setForm({...form,rejetScore:form.rejetScore===n?0:n})} className="btn" style={{flex:1,padding:"6px 0",borderRadius:5,fontSize:11,fontWeight:700,fontFamily:MONO,background:form.rejetScore>=n?(n>=8?`${neon}33`:n>=5?"rgba(240,180,41,0.2)":"rgba(255,77,77,0.2)"):"#131318",border:`1px solid ${form.rejetScore>=n?(n>=8?neon:n>=5?"#f0b429":"#ff4d4d"):`${neon}10`}`,color:form.rejetScore>=n?(n>=8?neon:n>=5?"#f0b429":"#ff4d4d"):"#2a3a2a"}}>{n}</button>
               ))}
             </div>
           </div>
-          <div style={{display:"flex",gap:8,marginBottom:10}}>{["WIN","LOSS","BE"].map(r=><button key={r} onClick={()=>setForm({...form,result:r,slDirection:r!=="LOSS"?"":form.slDirection})} className="btn" style={{flex:1,background:form.result===r?`${rc(r,neon)}22`:"#0d1a0d",border:`1px solid ${form.result===r?rc(r,neon):`${neon}26`}`,color:form.result===r?rc(r,neon):"#ffffffbb",borderRadius:8,padding:10,fontSize:12,fontWeight:700,fontFamily:MONO}}>{r}</button>)}</div>
+          <div style={{display:"flex",gap:8,marginBottom:10}}>{["WIN","LOSS","BE"].map(r=><button key={r} onClick={()=>setForm({...form,result:r,slDirection:r!=="LOSS"?"":form.slDirection})} className="btn" style={{flex:1,background:form.result===r?`${rc(r,neon)}22`:"#131318",border:`1px solid ${form.result===r?rc(r,neon):`${neon}26`}`,color:form.result===r?rc(r,neon):"#ffffffbb",borderRadius:8,padding:10,fontSize:12,fontWeight:700,fontFamily:MONO}}>{r}</button>)}</div>
           {form.result==="LOSS"&&(
             <div style={{background:"rgba(255,77,77,0.06)",border:"1px solid rgba(255,77,77,0.15)",borderRadius:8,padding:"10px 12px",marginBottom:10}}>
               <div style={{fontSize:9,color:"#ff4d4d",letterSpacing:2,marginBottom:8}}>{t.slDirectionLabel} <span style={{color:"#ffffffaa"}}>{t.optional}</span></div>
               <div style={{display:"flex",gap:8}}>
                 {[["with",t.slWith,neon],["against",t.slAgainst,"#ff4d4d"]].map(([v,l,c])=>(
-                  <button key={v} onClick={()=>setForm({...form,slDirection:form.slDirection===v?"":v})} className="btn" style={{flex:1,padding:"8px 0",borderRadius:7,fontSize:11,fontFamily:MONO,fontWeight:700,background:form.slDirection===v?`${c}22`:"#0d1a0d",border:`1px solid ${form.slDirection===v?c:`${c}26`}`,color:form.slDirection===v?c:"#ffffffaa"}}>{l}</button>
+                  <button key={v} onClick={()=>setForm({...form,slDirection:form.slDirection===v?"":v})} className="btn" style={{flex:1,padding:"8px 0",borderRadius:7,fontSize:11,fontFamily:MONO,fontWeight:700,background:form.slDirection===v?`${c}22`:"#131318",border:`1px solid ${form.slDirection===v?c:`${c}26`}`,color:form.slDirection===v?c:"#ffffffaa"}}>{l}</button>
                 ))}
               </div>
             </div>
@@ -2280,9 +2280,9 @@ export default function App() {
             <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.pnl}</div>
             <div style={{display:"flex",gap:4,alignItems:"center"}}>
               {PNL_PRESETS.map(v=>(
-                <button key={v} onClick={()=>setForm({...form,pnlPreset:v,pnlManual:""})} className="btn" style={{padding:"8px 0",borderRadius:6,fontSize:11,fontWeight:700,fontFamily:MONO,flex:1,background:form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?`${neon}33`:parseFloat(v)<0?"rgba(255,77,77,0.2)":"rgba(240,180,41,0.2)"):"#0d1a0d",border:`1px solid ${form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?neon:parseFloat(v)<0?"#ff4d4d":"#f0b429"):`${neon}14`}`,color:form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?neon:parseFloat(v)<0?"#ff4d4d":"#f0b429"):"#ffffffaa"}}>{v}%</button>
+                <button key={v} onClick={()=>setForm({...form,pnlPreset:v,pnlManual:""})} className="btn" style={{padding:"8px 0",borderRadius:6,fontSize:11,fontWeight:700,fontFamily:MONO,flex:1,background:form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?`${neon}33`:parseFloat(v)<0?"rgba(255,77,77,0.2)":"rgba(240,180,41,0.2)"):"#131318",border:`1px solid ${form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?neon:parseFloat(v)<0?"#ff4d4d":"#f0b429"):`${neon}14`}`,color:form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?neon:parseFloat(v)<0?"#ff4d4d":"#f0b429"):"#ffffffaa"}}>{v}%</button>
               ))}
-              <input type="number" step="0.1" placeholder={t.manualPnl} value={form.pnlManual} onChange={e=>setForm({...form,pnlManual:e.target.value,pnlPreset:""})} style={{width:52,background:form.pnlManual?"#0d2a0d":"#0d1a0d",border:`1px solid ${form.pnlManual?`${neon}66`:`${neon}14`}`,borderRadius:6,color:form.pnlManual?(parseFloat(form.pnlManual)>=0?neon:"#ff4d4d"):"#ffffffaa",padding:"8px 4px",fontSize:10,fontFamily:MONO,outline:"none",textAlign:"center",flexShrink:0}}/>
+              <input type="number" step="0.1" placeholder={t.manualPnl} value={form.pnlManual} onChange={e=>setForm({...form,pnlManual:e.target.value,pnlPreset:""})} style={{width:52,background:form.pnlManual?"#131318":"#131318",border:`1px solid ${form.pnlManual?`${neon}66`:`${neon}14`}`,borderRadius:6,color:form.pnlManual?(parseFloat(form.pnlManual)>=0?neon:"#ff4d4d"):"#ffffffaa",padding:"8px 4px",fontSize:10,fontFamily:MONO,outline:"none",textAlign:"center",flexShrink:0}}/>
             </div>
             {pnlVal!==""&&<div style={{fontSize:11,color:parseFloat(pnlVal)>=0?neon:"#ff4d4d",fontFamily:MONO,fontWeight:700,marginTop:5,textAlign:"right"}}>{fmtPct(parseFloat(pnlVal))}</div>}
           </div>
