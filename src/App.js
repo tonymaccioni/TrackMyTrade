@@ -51,7 +51,7 @@ const DEFAULT_CRITERIA = ["HA M5 claire (pas de doji)","MM20 bien orientée","BB
 const MONO = "'Geist Mono','IBM Plex Mono',monospace";
 const PNL_PRESETS = ["-1","-0.5","0","+1","+2","+3","+4","+5"];
 const NEON_COLORS = [{name:"Vert",value:"#00ff9d"},{name:"Bleu",value:"#00d4ff"},{name:"Violet",value:"#bf00ff"},{name:"Rose",value:"#ff00aa"},{name:"Or",value:"#f0b429"}];
-const HUMEUR_PILLS = {fr:["Focus","Neutre","Tendu","Fatigué"],en:["Focus","Neutral","Tense","Tired"]};
+const HUMEUR_PILLS = {fr:["◎ Focus","◌ Neutre","△ Tendu","◷ Fatigué"],en:["◎ Focus","◌ Neutral","△ Tense","◷ Tired"]};
 const BIAIS_PILLS = {fr:["↑ Haussier","→ Range","↓ Baissier"],en:["↑ Bullish","→ Range","↓ Bearish"]};
 const NTR = {fr:["Pas de setup valide","Hors fenêtre","Marché difficile","Journée chargée","Jour de repos"],en:["No valid setup","Out of window","Difficult market","Busy day","Rest day"]};
 const today = () => new Date().toISOString().split("T")[0];
@@ -487,8 +487,8 @@ function TradeDetailModal({trade,config,onClose,onEdit,onShare,lang,neon}) {
           <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.checklistDetail}</div>
           {config.items.map((item,i)=>(
             <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:"1px solid #ffffff06"}}>
-              <span style={{fontSize:13,color:(trade.checklist||[]).includes(i)?neon:"#2a3a2a"}}>{(trade.checklist||[]).includes(i)?"✓":"✗"}</span>
-              <span style={{fontSize:11,color:(trade.checklist||[]).includes(i)?"#c8e6c8":"#ffffffaa"}}>{item}</span>
+              <span style={{fontSize:13,color:(trade.checklist||[]).includes(i)?neon:"#ffffff44"}}>{(trade.checklist||[]).includes(i)?"✓":"✗"}</span>
+              <span style={{fontSize:11,color:(trade.checklist||[]).includes(i)?"#ffffff":"#ffffffaa"}}>{item}</span>
             </div>
           ))}
         </div>
@@ -693,7 +693,7 @@ function NoTradeButton({onSave,alreadyDone,lang,neon}) {
     <div style={{background:"rgba(90,90,90,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:14,marginBottom:12}}>
       <div style={{fontSize:10,color:"#ffffffaa",letterSpacing:2,marginBottom:10,fontFamily:MONO}}>{t.noTradeReason}</div>
       <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
-        {ntr.map(r=><button key={r} onClick={()=>setReason(reason===r?"":r)} className="btn" style={{background:reason===r?"rgba(255,255,255,0.1)":"#131318",border:`1px solid ${reason===r?"rgba(255,255,255,0.25)":"rgba(255,255,255,0.08)"}`,color:reason===r?"#c8e6c8":"#ffffffbb",borderRadius:6,padding:"5px 10px",fontSize:11,fontFamily:MONO}}>{r}</button>)}
+        {ntr.map(r=><button key={r} onClick={()=>setReason(reason===r?"":r)} className="btn" style={{background:reason===r?"rgba(255,255,255,0.1)":"#131318",border:`1px solid ${reason===r?"rgba(255,255,255,0.25)":"rgba(255,255,255,0.08)"}`,color:reason===r?"#ffffff":"#ffffffbb",borderRadius:6,padding:"5px 10px",fontSize:11,fontFamily:MONO}}>{r}</button>)}
       </div>
       <div style={{display:"flex",gap:8}}>
         <button onClick={()=>{onSave({id:Date.now(),date:today(),reason});setOpen(false);setReason("");}} className="btn" style={{flex:1,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.15)",color:"#ffffff",borderRadius:8,padding:10,fontSize:12,fontWeight:700,fontFamily:MONO}}>{t.confirmBtn}</button>
@@ -1098,11 +1098,11 @@ function StatsInsightsModal({trades,lang,neon,onClose}) {
 
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:400,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
-      <div className="slide-up" style={{background:"#0a140a",border:`1px solid ${neon}28`,borderRadius:"20px 20px 0 0",width:"100%",maxWidth:480,maxHeight:"88vh",overflowY:"auto",paddingBottom:40}} onClick={e=>e.stopPropagation()}>
+      <div className="slide-up" style={{background:"#0f0f18",border:`1px solid ${neon}28`,borderRadius:"20px 20px 0 0",width:"100%",maxWidth:480,maxHeight:"88vh",overflowY:"auto",paddingBottom:40}} onClick={e=>e.stopPropagation()}>
         {/* Barre top */}
         <div style={{height:3,background:neon,opacity:0.7,borderRadius:"20px 20px 0 0"}}/>
         {/* Header sticky */}
-        <div style={{position:"sticky",top:0,background:"#0a140a",padding:"16px 20px 12px",borderBottom:`1px solid ${neon}10`,zIndex:1}}>
+        <div style={{position:"sticky",top:0,background:"#0f0f18",padding:"16px 20px 12px",borderBottom:`1px solid ${neon}10`,zIndex:1}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
               <IcoDiamond neon={neon} size={22}/>
@@ -1246,7 +1246,7 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
 
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.94)",zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",padding:16,overflowY:"auto"}} onClick={onClose}>
-      <div className="slide-up" style={{width:"100%",maxWidth:360,background:"#0a140a",borderRadius:20,overflow:"hidden",border:`1px solid ${neon}28`}} onClick={e=>e.stopPropagation()}>
+      <div className="slide-up" style={{width:"100%",maxWidth:360,background:"#0f0f18",borderRadius:20,overflow:"hidden",border:`1px solid ${neon}28`}} onClick={e=>e.stopPropagation()}>
         <div style={{height:4,background:`linear-gradient(90deg,${neon},${neon}55)`}}/>
         <div style={{padding:"18px 18px 0"}}>
           {/* Header */}
@@ -1297,8 +1297,8 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
             <div style={{background:`${neon}05`,border:`1px solid ${neon}10`,borderRadius:10,padding:"10px 12px",marginBottom:10}}>
               {configItems.slice(0,7).map((item,i)=>(
                 <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0",borderBottom:i<Math.min(configItems.length,7)-1?`1px solid ${neon}08`:"none"}}>
-                  <span style={{fontSize:11,color:tChecklist.includes(i)?neon:"#2a3a2a",flexShrink:0}}>{tChecklist.includes(i)?"✓":"✗"}</span>
-                  <span style={{fontSize:10,color:tChecklist.includes(i)?"#c8e6c8":"#ffffffaa",fontFamily:M}}>{item}</span>
+                  <span style={{fontSize:11,color:tChecklist.includes(i)?neon:"#ffffff44",flexShrink:0}}>{tChecklist.includes(i)?"✓":"✗"}</span>
+                  <span style={{fontSize:10,color:tChecklist.includes(i)?"#ffffff":"#ffffffaa",fontFamily:M}}>{item}</span>
                 </div>
               ))}
             </div>
@@ -1423,7 +1423,7 @@ function GuidedSetup({onDone,lang}) {
         </div>
       </div>
       <div style={{padding:"16px 24px 36px",borderTop:`1px solid ${neon}14`}}>
-        <button onClick={()=>canNext&&(step<TOTAL-1?setStep(step+1):launch())} className="btn" style={{width:"100%",background:canNext?`${neon}22`:`${neon}06`,border:`1px solid ${canNext?neon:`${neon}18`}`,color:canNext?neon:"#2a3a2a",borderRadius:12,padding:16,fontSize:14,fontWeight:700,fontFamily:MONO,marginBottom:12,boxShadow:canNext?`0 0 20px ${neon}33, 0 4px 12px rgba(0,0,0,0.4)`:"none",textShadow:canNext?`0 0 10px ${neon}88`:"none"}}>{step===TOTAL-1?t.launch:t.continue}</button>
+        <button onClick={()=>canNext&&(step<TOTAL-1?setStep(step+1):launch())} className="btn" style={{width:"100%",background:canNext?`${neon}22`:`${neon}06`,border:`1px solid ${canNext?neon:`${neon}18`}`,color:canNext?neon:"#ffffff44",borderRadius:12,padding:16,fontSize:14,fontWeight:700,fontFamily:MONO,marginBottom:12,boxShadow:canNext?`0 0 20px ${neon}33, 0 4px 12px rgba(0,0,0,0.4)`:"none",textShadow:canNext?`0 0 10px ${neon}88`:"none"}}>{step===TOTAL-1?t.launch:t.continue}</button>
         {step>0&&<button onClick={()=>setStep(step-1)} className="btn" style={{width:"100%",background:"transparent",border:"none",color:"#ffffff44",fontSize:12,fontFamily:MONO}}>{t.prevStep}</button>}
       </div>
     </div>
@@ -1497,7 +1497,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
           const isE=(eliminatoires||[]).includes(i);
           return <div key={i} style={{display:"flex",gap:6,marginBottom:8,alignItems:"center"}}>
             <input value={item} onChange={e=>{const n=[...items];n[i]=e.target.value;setItems(n);}} style={{...inSt,marginBottom:0,flex:1}}/>
-            <button onClick={()=>setEliminatoires(p=>isE?p.filter(x=>x!==i):[...p,i])} title={isE?"Retirer éliminatoire":"Marquer éliminatoire"} style={{background:isE?"rgba(255,77,77,0.15)":"transparent",border:`1px solid ${isE?"#ff4d4d":"rgba(255,77,77,0.25)"}`,color:isE?"#ff4d4d":"#5a3a3a",borderRadius:6,padding:"6px 8px",cursor:"pointer",fontSize:10,fontWeight:700,flexShrink:0}}>⚡</button>
+            <button onClick={()=>setEliminatoires(p=>isE?p.filter(x=>x!==i):[...p,i])} title={isE?"Retirer éliminatoire":"Marquer éliminatoire"} style={{background:isE?"rgba(255,77,77,0.15)":"transparent",border:`1px solid ${isE?"#ff4d4d":"rgba(255,77,77,0.25)"}`,color:isE?"#ff4d4d":"#ffffff44",borderRadius:6,padding:"6px 8px",cursor:"pointer",fontSize:10,fontWeight:700,flexShrink:0}}>⚡</button>
             <button onClick={()=>setItems(items.filter((_,idx)=>idx!==i))} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d",borderRadius:6,padding:"8px 10px",cursor:"pointer",flexShrink:0}}>✕</button>
           </div>;
         })}
@@ -1712,7 +1712,7 @@ function ImportCSVModal({onImport, onClose, lang, neon, config}) {
 
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
-      <div className="slide-up" style={{background:"#0a140a",border:`1px solid ${neon}28`,borderRadius:"20px 20px 0 0",width:"100%",maxWidth:480,maxHeight:"85vh",overflowY:"auto",paddingBottom:32}} onClick={e=>e.stopPropagation()}>
+      <div className="slide-up" style={{background:"#0f0f18",border:`1px solid ${neon}28`,borderRadius:"20px 20px 0 0",width:"100%",maxWidth:480,maxHeight:"85vh",overflowY:"auto",paddingBottom:32}} onClick={e=>e.stopPropagation()}>
         <div style={{height:3,background:neon,opacity:0.7}}/>
         <div style={{padding:"16px 20px",borderBottom:`1px solid ${neon}10`}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -2223,7 +2223,7 @@ export default function App() {
           </div>
 
           <div style={{marginBottom:14}}>
-            <div style={{display:"flex",gap:8}}><input type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} style={{...inSt,marginBottom:0,flex:2}}/><input type="time" value={form.time} onChange={e=>setForm({...form,time:e.target.value})} style={{...inSt,marginBottom:0,flex:1,color:form.time?"#c8e6c8":"#ffffffaa"}}/></div>
+            <div style={{display:"flex",gap:8}}><input type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} style={{...inSt,marginBottom:0,flex:2}}/><input type="time" value={form.time} onChange={e=>setForm({...form,time:e.target.value})} style={{...inSt,marginBottom:0,flex:1,color:form.time?"#ffffff":"#ffffffaa"}}/></div>
             <div style={{fontSize:9,color:"#ffffffaa",marginTop:5}}>{t.entryTime}</div>
           </div>
           <div style={{display:"flex",gap:8,marginBottom:10}}>
@@ -2256,7 +2256,7 @@ export default function App() {
             {config.items.map((item,i)=>(
               <label key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:`1px solid ${neon}08`,cursor:"pointer"}}>
                 <input type="checkbox" checked={form.checklist.includes(i)} onChange={e=>setForm({...form,checklist:e.target.checked?[...form.checklist,i]:form.checklist.filter(x=>x!==i)})}/>
-                <span style={{fontSize:12,color:form.checklist.includes(i)?"#c8e6c8":"#ffffffaa"}}>{item}</span>
+                <span style={{fontSize:12,color:form.checklist.includes(i)?"#ffffff":"#ffffffaa"}}>{item}</span>
               </label>
             ))}
           </div>
@@ -2267,7 +2267,7 @@ export default function App() {
             </div>
             <div style={{display:"flex",gap:3}}>
               {[1,2,3,4,5,6,7,8,9,10].map(n=>(
-                <button key={n} onClick={()=>setForm({...form,rejetScore:form.rejetScore===n?0:n})} className="btn" style={{flex:1,padding:"6px 0",borderRadius:5,fontSize:11,fontWeight:700,fontFamily:MONO,background:form.rejetScore>=n?(n>=8?`${neon}33`:n>=5?"rgba(240,180,41,0.2)":"rgba(255,77,77,0.2)"):"#131318",border:`1px solid ${form.rejetScore>=n?(n>=8?neon:n>=5?"#f0b429":"#ff4d4d"):"#ffffff12"}`,color:form.rejetScore>=n?(n>=8?neon:n>=5?"#f0b429":"#ff4d4d"):"#2a3a2a"}}>{n}</button>
+                <button key={n} onClick={()=>setForm({...form,rejetScore:form.rejetScore===n?0:n})} className="btn" style={{flex:1,padding:"6px 0",borderRadius:5,fontSize:11,fontWeight:700,fontFamily:MONO,background:form.rejetScore>=n?(n>=8?`${neon}33`:n>=5?"rgba(240,180,41,0.2)":"rgba(255,77,77,0.2)"):"#131318",border:`1px solid ${form.rejetScore>=n?(n>=8?neon:n>=5?"#f0b429":"#ff4d4d"):"#ffffff12"}`,color:form.rejetScore>=n?(n>=8?neon:n>=5?"#f0b429":"#ff4d4d"):"#ffffffbb"}}>{n}</button>
               ))}
             </div>
           </div>
