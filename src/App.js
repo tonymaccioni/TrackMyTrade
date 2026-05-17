@@ -1478,33 +1478,6 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
 // ── Gestionnaire de notifications ──
 const NOTIF_PERMISSION_KEY = "tmt_notif_perm";
 
-async function requestPushPermission() {
-  if(!("Notification" in window)) return false;
-  if(Notification.permission === "granted") return true;
-  if(Notification.permission === "denied") return false;
-  const perm = await Notification.requestPermission();
-  return perm === "granted";
-}
-
-function scheduleLocalNotif(title, body, delayMs=0) {
-  if(Notification.permission !== "granted") return;
-  setTimeout(() => {
-    if("serviceWorker" in navigator) {
-      navigator.serviceWorker.ready.then(reg => {
-        reg.showNotification(title, {body, icon:"/favicon.ico", badge:"/favicon.ico", vibrate:[200,100,200]});
-      }).catch(() => new Notification(title, {body}));
-    } else {
-      new Notification(title, {body});
-    }
-  }, delayMs);
-}
-
-function registerSW() {
-  if("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/sw.js").catch(()=>{});
-  }
-}
-
 function InAppBanner({notifs, onDismiss, neon}) {
   if(!notifs||!notifs.length) return null;
   const n = notifs[0];
@@ -1528,65 +1501,6 @@ function InAppBanner({notifs, onDismiss, neon}) {
     </div>
   );
 }
-
-function NotifSettingsBlock({lang, neon, pushEnabled, onTogglePush}) {
-  const fr = lang === "fr";
-  const MONO2 = "'IBM Plex Mono','Courier New',monospace";
-  const [asking, setAsking] = useState(false);
-  const perm = typeof Notification !== "undefined" ? Notification.permission : "default";
-
-  const handleToggle = async () => {
-    if(pushEnabled) { onTogglePush(false); return; }
-    setAsking(true);
-    const ok = await requestPushPermission();
-    setAsking(false);
-    if(ok) { registerSW(); onTogglePush(true); }
-    else { onTogglePush(false); }
-  };
-
-  return (
-    <div style={{marginBottom:14}}>
-      <button onClick={()=>onImport&&onImport()} className="btn" style={{width:"100%",background:`${neon}08`,border:`1px solid ${neon}22`,borderRadius:10,padding:"11px 0",color:neon,fontSize:11,fontWeight:700,fontFamily:MONO,letterSpacing:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        {lang==="fr"?"IMPORTER UN CSV (MT4/MT5/cTrader)":"IMPORT CSV (MT4/MT5/cTrader)"}
-      </button>
-    </div>
-    <div style={{background:`${neon}04`,border:`1px solid ${neon}18`,borderRadius:10,padding:14,marginBottom:14}}>
-      <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:12}}>NOTIFICATIONS</div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-        <div>
-          <div style={{fontSize:12,color:"#c8e6c8",fontFamily:MONO2,marginBottom:2}}>{fr?"Notifications push":"Push notifications"}</div>
-          <div style={{fontSize:9,color:"#3a5a3a"}}>
-            {perm==="denied"?(fr?"Bloquées dans les réglages du navigateur":"Blocked in browser settings"):
-             perm==="granted"?(fr?"Autorisées ✓":"Allowed ✓"):
-             (fr?"Rappels journal, objectif, alertes":"Journal reminders, target, alerts")}
-          </div>
-        </div>
-        <button onClick={handleToggle} disabled={asking||perm==="denied"} className="btn"
-          style={{width:44,height:24,borderRadius:12,background:pushEnabled?`${neon}30`:"#1e2a1e",border:`1px solid ${pushEnabled?neon:`${neon}22`}`,position:"relative",transition:"all 0.2s",opacity:perm==="denied"?0.4:1}}>
-          <div style={{width:16,height:16,borderRadius:"50%",background:pushEnabled?neon:"#3a5a3a",position:"absolute",top:3,left:pushEnabled?24:4,transition:"all 0.2s"}}/>
-        </button>
-      </div>
-      {pushEnabled&&<div style={{display:"flex",flexDirection:"column",gap:6}}>
-        {[
-          {emoji:"📅",label:fr?"Rappel journal quotidien":"Daily journal reminder",sub:fr?"Si aucun trade avant 20h":"If no trade before 8pm"},
-          {emoji:"🎯",label:fr?"Objectif presque atteint":"Target almost reached",sub:fr?"À 80% et 100% de l'objectif":"At 80% and 100% of target"},
-          {emoji:"🔥",label:fr?"Série de pertes détectée":"Loss streak detected",sub:fr?"3 losses consécutifs":"3 consecutive losses"},
-        ].map(({emoji,label,sub})=>(
-          <div key={label} style={{display:"flex",gap:8,alignItems:"center",padding:"6px 10px",background:`${neon}06`,borderRadius:7,border:`1px solid ${neon}10`}}>
-            <span style={{fontSize:14}}>{emoji}</span>
-            <div style={{flex:1}}>
-              <div style={{fontSize:10,color:"#c8e6c8",fontFamily:MONO2}}>{label}</div>
-              <div style={{fontSize:8,color:"#3a5a3a"}}>{sub}</div>
-            </div>
-            <div style={{width:6,height:6,borderRadius:"50%",background:neon,opacity:0.6}}/>
-          </div>
-        ))}
-      </div>}
-    </div>
-  );
-}
-
 
 function ImportCSVModal({onImport, onClose, lang, neon, config}) {
   const fr = lang === "fr";
