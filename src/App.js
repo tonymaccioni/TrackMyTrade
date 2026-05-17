@@ -2418,7 +2418,7 @@ export default function App() {
       {showStats&&<StatsInsightsModal trades={trades} lang={lang} neon={neon} onClose={()=>setShowStats(false)}/>}
       {showShare&&<ShareModal trade={shareTarget} trades={trades} lang={lang} neon={neon} config={config} onClose={()=>{setShowShare(false);setShareTarget(null);}}/> }
       {showReset&&<ResetModal trades={trades} onReset={handleReset} onClose={()=>setShowReset(false)} lang={lang} neon={neon}/>}
-      </div>{/* end tmt-main */}
-    </div>{/* end tmt-root */}
+      </div>
+    </div>
   );
 }
