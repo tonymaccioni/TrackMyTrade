@@ -2170,11 +2170,11 @@ export default function App() {
               {config.phaseName||"PHASE"}
               {config.capital?` · ${parseInt(config.capital).toLocaleString()}${config.devise||"€"}`:""}
             </span>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              {objectif.pnl&&<span style={{fontSize:9,color:"#ffffff55",fontFamily:MONO}}>/ +{objectif.pnl}%</span>}
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
               <span style={{fontSize:11,fontWeight:700,color:cur>=0?neon:"#ff4d4d",fontFamily:MONO}}>
-                {cur>=0?"+":""}{cur.toFixed(1)}%{curEuro!==null?<span style={{fontSize:9,color:"#ffffff44",marginLeft:4}}>({curEuro>=0?"+":""}{curEuro}{config.devise||"€"})</span>:null}
+                {cur>=0?"+":""}{cur.toFixed(1)}%
               </span>
+              {objectif.pnl&&<span style={{fontSize:9,color:"#ffffff55",fontFamily:MONO}}>/ +{objectif.pnl}%</span>}
             </div>
           </div>
           {objectif.pnl&&<div style={{height:2,background:"#ffffff10",margin:"0 18px 5px"}}>
