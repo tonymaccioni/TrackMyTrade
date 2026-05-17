@@ -2164,22 +2164,18 @@ export default function App() {
         const pct=objectif.pnl?Math.min(100,Math.max(0,cur/target*100)):0;
         const cap=parseFloat(config.capital)||0;
         const curEuro=cap?Math.round(cap*cur/100):null;
-        return <div style={{background:"rgba(9,9,16,0.6)",borderBottom:`1px solid #ffffff06`}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 18px 4px"}}>
-            <span style={{fontSize:10,color:neon,fontFamily:MONO,letterSpacing:1,fontWeight:700}}>
-              {config.phaseName||"PHASE"}
-              {config.capital?` · ${parseInt(config.capital).toLocaleString()}${config.devise||"€"}`:""}
-            </span>
-            <div style={{display:"flex",alignItems:"center",gap:6}}>
-              <span style={{fontSize:11,fontWeight:700,color:cur>=0?neon:"#ff4d4d",fontFamily:MONO}}>
-                {cur>=0?"+":""}{cur.toFixed(1)}%
-              </span>
-              {objectif.pnl&&<span style={{fontSize:9,color:"#ffffff55",fontFamily:MONO}}>/ +{objectif.pnl}%</span>}
-            </div>
-          </div>
-          {objectif.pnl&&<div style={{height:2,background:"#ffffff10",margin:"0 18px 5px"}}>
-            <div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${neon}66,${neon})`,transition:"width 0.6s ease",boxShadow:`0 0 6px ${neon}55`}}/>
+        return <div style={{background:"rgba(9,9,16,0.6)",borderBottom:`1px solid #ffffff06`,padding:"7px 18px 6px"}}>
+          {objectif.pnl&&<div style={{height:3,background:"#ffffff10",borderRadius:3,marginBottom:6}}>
+            <div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${neon}66,${neon})`,borderRadius:3,transition:"width 0.6s ease",boxShadow:`0 0 8px ${neon}55`}}/>
           </div>}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontSize:10,color:neon,fontFamily:MONO,fontWeight:700,letterSpacing:0.5}}>
+              {config.phaseName||"PHASE"}{config.capital?` · ${parseInt(config.capital).toLocaleString()}${config.devise||"€"}`:""}
+            </span>
+            <span style={{fontSize:11,fontWeight:800,color:cur>=0?neon:"#ff4d4d",fontFamily:MONO}}>
+              {cur>=0?"+":""}{cur.toFixed(1)}%{objectif.pnl?<span style={{fontSize:9,color:"#ffffff44",fontWeight:400}}> / +{objectif.pnl}%</span>:null}
+            </span>
+          </div>
         </div>;
       })()}
       <div style={{display:"flex",gap:6,padding:"10px 20px",borderBottom:`1px solid ${neon}14`}}>
