@@ -97,7 +97,7 @@ const T = {
     lastTrade:"Dernier trade",rejectStat:"rejet",highStd:"Standard élevé",balanced:"Équilibré",lowStd:"Standard faible",
     inconsistent:"incohérent avec",maxTradesLabel:"TRADES MAX PAR JOUR",
     revengeLabel:"Revenge trade",revengeWarning:"⚠️ Limite atteinte — tagué Revenge trade",
-    statsTitle:"STATISTIQUES",expectancy:"Espérance",bestAsset:"Meilleur actif",avgWin:"Gain moyen",avgLoss:"Perte moyenne",
+    statsTitle:"STATISTIQUES",expectancy:"Expectancy",bestAsset:"Meilleur actif",avgWin:"Gain moyen",avgLoss:"Perte moyenne",
     calendarTitle:"CALENDRIER",calendarToggle:"Afficher le calendrier",enableNotif:"Activer les conseils",
     addAsset:"+ Ajouter un actif",customAsset:"Nom de l'actif…",
     slDirectionLabel:"DIRECTION POST-SL",slWith:"Dans le bon sens ✓",slAgainst:"Contre moi ✗",ratio:"Ratio G/P",
@@ -421,7 +421,7 @@ function TradeDetailModal({trade,config,onClose,onEdit,onShare,lang,neon}) {
               {trade.slDirection&&<div style={{fontSize:10,marginTop:4,color:trade.slDirection==="with"?neon:"#ff4d4d"}}>{trade.slDirection==="with"?`✓ ${lang==="fr"?"Dans mon sens":"My way"}`:`✗ ${lang==="fr"?"Contre moi":"Against me"}`}</div>}
             </div>
             <div style={{textAlign:"right"}}>
-              <div style={{fontSize:22,fontWeight:800,color:rc(trade.result,neon),fontFamily:MONO,textShadow:`0 0 20px ${rc(trade.result,neon)}cc, 0 2px 6px rgba(0,0,0,0.6)`}}>{trade.result}</div>
+              <div style={{fontSize:22,fontWeight:800,color:rc(trade.result,neon),fontFamily:MONO,textShadow:`0 0 20px ${rc(trade.result,neon)}cc, 0 2px 6px rgba(0,0,0,0.6)`,display:"flex",alignItems:"center",gap:6}}>{trade.result==="WIN"&&<IcoWin neon={neon} size={22}/>}{trade.result==="LOSS"&&<IcoLoss size={22}/>}{trade.result==="BE"&&<IcoBE size={22}/>}{trade.result}</div>
               {trade.pnlPct!==""&&<div style={{fontSize:14,color:parseFloat(trade.pnlPct)>=0?neon:"#ff4d4d",fontWeight:700}}>{fmtPct(parseFloat(trade.pnlPct))}</div>}
             </div>
           </div>
@@ -487,82 +487,111 @@ function ConformityBar({trades,threshold,maxItems,neon,lang}) {
   );
 }
 
-function PerformanceChart({trades,neon,lang}) {
-  const t=T[lang];
-  const [mode,setMode]=useState("cumul");
-  if(!trades.length) return null;
-  const sorted=[...trades].reverse();
-  let cum=0;
-  const cumData=sorted.map((x,i)=>{cum+=parseFloat(x.pnlPct)||0;return{n:i+1,val:parseFloat(cum.toFixed(3)),result:x.result,date:x.date};});
-  const wk={};
-  sorted.forEach(x=>{const d=new Date(x.date),m=new Date(d);m.setDate(d.getDate()-d.getDay()+1);const k=m.toISOString().split("T")[0];if(!wk[k])wk[k]={k,pnl:0};wk[k].pnl+=parseFloat(x.pnlPct)||0;});
-  const wkData=Object.values(wk).map(w=>({...w,pnl:parseFloat(w.pnl.toFixed(3))}));
-  const TT=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0].payload,v=d.val??d.pnl;return <div style={{background:"#0d1a0d",border:`1px solid ${neon}35`,borderRadius:8,padding:"8px 12px",fontSize:11,fontFamily:MONO}}><div style={{color:"#5a7a5a"}}>{d.date||d.k}</div><div style={{color:v>=0?neon:"#ff4d4d",fontWeight:700}}>{fmtPct(v)}</div></div>;};
+function PerformanceChart({trades, neon, lang}) {
+  const fr = lang === "fr";
+  const MONO = "'IBM Plex Mono','Courier New',monospace";
+  if(!trades||trades.length<2) return null;
+
+  // Calculer P&L cumulé par trade (ordre chronologique)
+  const sorted = [...trades].sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id);
+  let cum = 0;
+  const points = sorted.map(t => {
+    cum += parseFloat(t.pnlPct)||0;
+    return {pnl: parseFloat(t.pnlPct)||0, cum: parseFloat(cum.toFixed(2)), result: t.result, date: t.date};
+  });
+
+  const W = 320, H = 130, PAD = {t:18, r:12, b:20, l:36};
+  const chartW = W - PAD.l - PAD.r;
+  const chartH = H - PAD.t - PAD.b;
+
+  const cums = points.map(p=>p.cum);
+  const minV = Math.min(0, ...cums);
+  const maxV = Math.max(0, ...cums);
+  const range = maxV - minV || 1;
+
+  const toX = i => PAD.l + (i / (points.length-1)) * chartW;
+  const toY = v => PAD.t + chartH - ((v - minV) / range) * chartH;
+  const zeroY = toY(0);
+
+  // Construire le path
+  const pathD = points.map((p,i) => `${i===0?'M':'L'}${toX(i).toFixed(1)},${toY(p.cum).toFixed(1)}`).join(' ');
+  const areaD = `${pathD} L${toX(points.length-1).toFixed(1)},${zeroY.toFixed(1)} L${toX(0).toFixed(1)},${zeroY.toFixed(1)} Z`;
+
+  // Valeur finale
+  const finalVal = points[points.length-1].cum;
+  const finalX = toX(points.length-1);
+  const finalY = toY(finalVal);
+  const color = finalVal >= 0 ? neon : "#ff4d4d";
+
+  // Labels Y
+  const yLabels = [];
+  const step = range / 3;
+  for(let i=0;i<=3;i++) {
+    const v = minV + step*i;
+    yLabels.push({v: parseFloat(v.toFixed(1)), y: toY(v)});
+  }
+
   return (
-    <div style={{background:`${neon}04`,border:`1px solid ${neon}18`,borderRadius:10,padding:16,marginBottom:12}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-        <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,textTransform:"uppercase"}}>{t.perfPnl}</div>
-        <div style={{display:"flex",gap:4}}>
-          {[["cumul",t.cumulLabel],["week",t.weeksLabel]].map(([m,l])=>(
-            <button key={m} onClick={()=>setMode(m)} style={{background:mode===m?`${neon}26`:"transparent",border:`1px solid ${mode===m?neon:`${neon}26`}`,color:mode===m?neon:"#3a5a3a",borderRadius:5,padding:"4px 8px",fontSize:9,fontFamily:MONO,cursor:"pointer"}}>{l}</button>
-          ))}
+    <div style={{background:`${neon}04`,border:`1px solid ${neon}18`,borderRadius:10,padding:"12px 14px",marginBottom:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+        <div style={{fontSize:9,color:`${neon}44`,letterSpacing:2,fontFamily:MONO}}>
+          {fr?"P&L CUMULÉ":"CUMULATIVE P&L"}
+        </div>
+        <div style={{fontSize:12,fontWeight:700,color:color,fontFamily:MONO}}>
+          {finalVal>=0?"+":""}{finalVal.toFixed(1)}%
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={130}>
-        {mode==="cumul"
-          ?<LineChart data={cumData} margin={{top:5,right:5,left:-20,bottom:0}}>
-            <XAxis dataKey="n" tick={{fontSize:9,fill:"#3a5a3a",fontFamily:MONO}} tickLine={false} axisLine={false}/>
-            <YAxis tick={{fontSize:9,fill:"#3a5a3a",fontFamily:MONO}} tickLine={false} axisLine={false} tickFormatter={v=>`${v}%`}/>
-            <Tooltip content={<TT/>}/>
-            <ReferenceLine y={0} stroke={`${neon}26`} strokeDasharray="4 4"/>
-            <Line type="monotone" dataKey="val" stroke={neon} strokeWidth={2} dot={({cx,cy,payload})=><circle cx={cx} cy={cy} r={4} fill={rc(payload.result,neon)}/>} activeDot={{r:6,fill:neon}}/>
-          </LineChart>
-          :<BarChart data={wkData} margin={{top:5,right:5,left:-20,bottom:0}}>
-            <XAxis dataKey="k" tick={{fontSize:8,fill:"#3a5a3a",fontFamily:MONO}} tickLine={false} axisLine={false} tickFormatter={v=>v.slice(5)}/>
-            <YAxis tick={{fontSize:9,fill:"#3a5a3a",fontFamily:MONO}} tickLine={false} axisLine={false} tickFormatter={v=>`${v}%`}/>
-            <Tooltip content={<TT/>}/>
-            <ReferenceLine y={0} stroke={`${neon}26`} strokeDasharray="4 4"/>
-            <Bar dataKey="pnl" radius={[3,3,0,0]}>{wkData.map((e,i)=><Cell key={i} fill={e.pnl>=0?neon:"#ff4d4d"}/>)}</Bar>
-          </BarChart>
-        }
-      </ResponsiveContainer>
-    </div>
-  );
-}
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{overflow:"visible"}}>
+        <defs>
+          <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.25"/>
+            <stop offset="100%" stopColor={color} stopOpacity="0.02"/>
+          </linearGradient>
+          <clipPath id="chartClip">
+            <rect x={PAD.l} y={PAD.t} width={chartW} height={chartH}/>
+          </clipPath>
+        </defs>
 
-function StreakBadge({trades,neon,lang}) {
-  const t=T[lang];
-  if(trades.length<2) return null;
-  let streak=1,type=trades[0].result;
-  for(let i=1;i<trades.length;i++){if(trades[i].result===type)streak++;else break;}
-  if(streak<2||type==="BE") return null;
-  const color=type==="WIN"?neon:"#ff4d4d";
-  return <div style={{background:`${color}12`,border:`1px solid ${color}35`,borderRadius:10,padding:"8px 14px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between",boxShadow:`0 2px 12px ${color}18`}}><span style={{fontSize:12,color,fontWeight:700,fontFamily:MONO,textShadow:`0 0 10px ${color}88`}}>{streak} {type==="WIN"?t.streakWin:t.streakLoss}</span>{type==="LOSS"&&<span style={{fontSize:10,color:"#5a7a5a"}}>{t.checkRules}</span>}</div>;
-}
+        {/* Grille horizontale */}
+        {yLabels.map(({v,y})=>(
+          <g key={v}>
+            <line x1={PAD.l} y1={y} x2={W-PAD.r} y2={y} stroke={neon} strokeOpacity="0.06" strokeWidth="1"/>
+            <text x={PAD.l-4} y={y+3} fontFamily={MONO} fontSize="7" fill={neon} fillOpacity="0.35" textAnchor="end">
+              {v>0?"+":""}{v}%
+            </text>
+          </g>
+        ))}
 
-function AdvancedStats({trades,neon,lang}) {
-  const t=T[lang];
-  if(trades.length<3) return null;
-  const wins=trades.filter(x=>x.result==="WIN");
-  const losses=trades.filter(x=>x.result==="LOSS");
-  const avgWin=wins.length?wins.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0)/wins.length:0;
-  const avgLoss=losses.length?Math.abs(losses.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0)/losses.length):0;
-  const wr=trades.length?wins.length/trades.length:0;
-  const exp=(wr*avgWin)-((1-wr)*avgLoss);
-  const aMap={};
-  trades.forEach(x=>{if(!aMap[x.asset])aMap[x.asset]={w:0,t:0};aMap[x.asset].t++;if(x.result==="WIN")aMap[x.asset].w++;});
-  const best=Object.entries(aMap).filter(([,v])=>v.t>=2).sort((a,b)=>(b[1].w/b[1].t)-(a[1].w/a[1].t))[0];
-  const revs=trades.filter(x=>x.isRevenge);
-  return (
-    <div style={{background:`${neon}04`,border:`1px solid ${neon}18`,borderRadius:10,padding:16,marginBottom:12}}>
-      <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>{t.statsTitle}</div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-        <div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#5a7a5a",marginBottom:4}}>{t.expectancy}</div><div style={{fontSize:16,fontWeight:700,color:exp>=0?neon:"#ff4d4d",fontFamily:MONO,textShadow:`0 0 14px ${exp>=0?neon:"#ff4d4d"}99`}}>{fmtPct(exp)}</div></div>
-        {best&&<div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#5a7a5a",marginBottom:4}}>{t.bestAsset}</div><div style={{fontSize:14,fontWeight:700,color:neon,fontFamily:MONO}}>{best[0]}</div><div style={{fontSize:10,color:"#5a7a5a"}}>{Math.round(best[1].w/best[1].t*100)}% WR</div></div>}
-        <div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#5a7a5a",marginBottom:4}}>{t.avgWin}</div><div style={{fontSize:16,fontWeight:700,color:neon,fontFamily:MONO,textShadow:`0 0 14px ${neon}99`}}>{fmtPct(avgWin)}</div></div>
-        <div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#5a7a5a",marginBottom:4}}>{t.avgLoss}</div><div style={{fontSize:16,fontWeight:700,color:"#ff4d4d",fontFamily:MONO,textShadow:"0 0 14px #ff4d4d99"}}>-{avgLoss%1===0?avgLoss.toFixed(0):avgLoss.toFixed(1)}%</div></div>
-        {wins.length>0&&losses.length>0&&(()=>{const r=avgWin/avgLoss;return<div style={{background:`${neon}08`,borderRadius:8,padding:10,gridColumn:"1/-1"}}><div style={{fontSize:9,color:"#5a7a5a",marginBottom:4}}>{t.ratio}</div><div style={{fontSize:16,fontWeight:700,color:r>=1?neon:"#f0b429",fontFamily:MONO}}>{r.toFixed(2)}</div></div>;})()}
-        {revs.length>0&&<div style={{background:"rgba(255,77,77,0.06)",border:"1px solid rgba(255,77,77,0.15)",borderRadius:8,padding:10,gridColumn:"1/-1"}}><div style={{fontSize:9,color:"#ff4d4d",marginBottom:4}}>REVENGE TRADES</div><div style={{fontSize:14,fontWeight:700,color:"#ff4d4d",fontFamily:MONO}}>{revs.length} · {Math.round(revs.filter(x=>x.result==="LOSS").length/revs.length*100)}% LOSS</div></div>}
+        {/* Ligne zéro */}
+        {minV<0&&maxV>0&&<line x1={PAD.l} y1={zeroY} x2={W-PAD.r} y2={zeroY} stroke={neon} strokeOpacity="0.18" strokeWidth="1" strokeDasharray="4,3"/>}
+
+        {/* Aire */}
+        <path d={areaD} fill="url(#areaGrad)" clipPath="url(#chartClip)"/>
+
+        {/* Courbe */}
+        <path d={pathD} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" clipPath="url(#chartClip)"/>
+
+        {/* Points WIN/LOSS */}
+        {points.map((p,i)=>(
+          <circle key={i} cx={toX(i)} cy={toY(p.cum)} r="2.5"
+            fill={p.result==="WIN"?neon:p.result==="LOSS"?"#ff4d4d":"#f0b429"}
+            opacity="0.8"/>
+        ))}
+
+        {/* Point final mis en valeur */}
+        <circle cx={finalX} cy={finalY} r="5" fill={color} opacity="0.9"/>
+        <circle cx={finalX} cy={finalY} r="8" fill="none" stroke={color} strokeOpacity="0.3" strokeWidth="1"/>
+      </svg>
+
+      {/* Légende */}
+      <div style={{display:"flex",gap:12,marginTop:4}}>
+        {[{c:neon,l:"WIN"},{c:"#ff4d4d",l:"LOSS"},{c:"#f0b429",l:"BE"}].map(({c,l})=>(
+          <div key={l} style={{display:"flex",alignItems:"center",gap:4}}>
+            <div style={{width:6,height:6,borderRadius:"50%",background:c}}/>
+            <span style={{fontSize:8,color:`${neon}33`,fontFamily:MONO}}>{l}</span>
+          </div>
+        ))}
+        <span style={{fontSize:8,color:`${neon}22`,fontFamily:MONO,marginLeft:"auto"}}>{points.length} {fr?"trades":"trades"}</span>
       </div>
     </div>
   );
@@ -1090,6 +1119,21 @@ function StatsInsightsModal({trades,lang,neon,onClose}) {
         </div>
       </div>
     </div>
+        {/* Bouton partager résumé */}
+        <div style={{padding:"0 20px 16px",marginTop:4}}>
+          <button onClick={()=>{
+            const wr_=Math.round(trades.filter(x=>x.result==="WIN").length/trades.length*100);
+            const pnl_=trades.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0).toFixed(1);
+            const text=`TrackMyTrade — ${trades.length} trades · ${wr_}% WR · ${pnl_>0?"+":""}${pnl_}% P&L`;
+            if(navigator.share)navigator.share({text,url:"https://trackmytrade.app"}).catch(()=>{});
+            else if(navigator.clipboard)navigator.clipboard.writeText(text);
+          }} className="btn" style={{width:"100%",background:`${neon}18`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:"13px 0",fontSize:12,fontWeight:700,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:2,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            {fr?"PARTAGER CE RÉSUMÉ":"SHARE SUMMARY"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1419,17 +1463,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
         <Toggle label={t.calendarToggle} val={calendarOn} set={setCalendarOn}/>
         <Toggle label={t.enableNotif} val={notifOn} set={setNotifOn}/>
       </div>
-      {/* Nom de la phase */}
-    <div style={{background:`${neon}04`,border:`1px solid ${neon}18`,borderRadius:10,padding:14,marginBottom:14}}>
-      <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:10}}>{lang==="fr"?"NOM DE LA PHASE":"PHASE NAME"}</div>
-      <input value={phaseName} onChange={e=>setPhaseName(e.target.value)}
-        placeholder={lang==="fr"?"ex: FTMO 1ère étape":"e.g. FTMO Phase 1"}
-        style={{...inSt,marginBottom:0,fontSize:13}}/>
-      {phaseName&&<div style={{fontSize:10,color:"#3a5a3a",marginTop:6,fontFamily:"'IBM Plex Mono',monospace"}}>
-        {lang==="fr"?"Affiché sous le logo dans le header":"Shown under logo in header"}
-      </div>}
-    </div>
-    {/* Phase en cours — nom + objectif liés */}
+      {/* Phase en cours — nom + objectif liés */}
     <div style={{background:`${neon}04`,border:`1px solid ${neon}18`,borderRadius:10,padding:14,marginBottom:14}}>
       <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:12}}>PHASE EN COURS</div>
       <div style={{marginBottom:10}}>
