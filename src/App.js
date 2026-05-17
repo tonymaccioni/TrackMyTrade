@@ -841,10 +841,10 @@ function SplashScreen({onDone,neon}) {
   const rafRef=useRef();
   const startRef=useRef(null);
   const isMobile=window.innerWidth<600;
-  const boxSize=isMobile?64:110;
-  const svgSize=isMobile?36:64;
-  const fontSize=isMobile?28:52;
-  const gap=isMobile?14:26;
+  const boxSize=isMobile?80:150;
+  const svgSize=isMobile?46:88;
+  const fontSize=isMobile?34:70;
+  const gap=isMobile?16:30;
 
   useEffect(()=>{
     const done=setTimeout(onDone,2700);
