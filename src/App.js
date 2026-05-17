@@ -1639,7 +1639,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
     <button onClick={save} className="btn" style={{width:"100%",background:`${neonColor}26`,border:`1px solid ${neonColor}`,color:neonColor,borderRadius:10,padding:14,fontSize:13,fontWeight:700,fontFamily:MONO,marginBottom:10}}>{savedOk?t.savedOk:t.saveBtn}</button>
       <div style={{height:1,background:`${neon}14`,margin:"14px 0"}}/>
       {!phaseConfirm?(
-        <button onClick={()=>setPhaseConfirm(true)} className="btn" style={{width:"100%",background:`${neon}0a`,border:`1px solid ${neon}28`,color:neon,borderRadius:10,padding:12,fontSize:12,fontFamily:MONO,marginBottom:10}}>{t.newPhaseBtn}{phases.length>0?` — Phase ${phases.length+1}`:""}</button>
+        <button onClick={()=>setPhaseConfirm(true)} className="btn" style={{width:"100%",background:`${neon}0a`,border:`1px solid ${neon}28`,color:neon,borderRadius:10,padding:12,fontSize:12,fontFamily:MONO,marginBottom:10}}>{t.newPhaseBtn}</button>
       ):(
         <div style={{background:`${neon}08`,border:`1px solid ${neon}30`,borderRadius:10,padding:14,marginBottom:10}}>
           <div style={{fontSize:12,fontWeight:700,color:neon,fontFamily:MONO,marginBottom:4}}>{t.newPhaseConfirmQ}</div>
@@ -2160,8 +2160,8 @@ export default function App() {
         const curEuro=cap?Math.round(cap*cur/100):null;
         return <div style={{background:"rgba(9,9,16,0.6)",borderBottom:`1px solid #ffffff06`}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 18px 4px"}}>
-            <span style={{fontSize:10,color:"#ffffffcc",fontFamily:MONO,letterSpacing:1,fontWeight:600}}>
-              {config.phaseName||"PHASE"}{config.accountType?` · ${config.accountType==="prop"?"Prop Firm":config.accountType==="demo"?"Démo":"Perso"}`:""}
+            <span style={{fontSize:10,color:neon,fontFamily:MONO,letterSpacing:1,fontWeight:700}}>
+              {config.phaseName||"PHASE"}
               {config.capital?` · ${parseInt(config.capital).toLocaleString()}${config.devise||"€"}`:""}
             </span>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
