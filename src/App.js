@@ -2210,15 +2210,13 @@ export default function App() {
                 <input value={humeurPills.includes(form.checkin.humeur)?"":form.checkin.humeur} onChange={e=>setForm(f=>({...f,checkin:{...f.checkin,humeur:e.target.value}}))} placeholder={t.humeurPlaceholder} style={{...inSt,marginBottom:12,fontSize:12}}/>
                 <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.biaisLabel}</div>
                 <div style={{display:"flex",gap:6}}>
-                  {biaisPills.map(b=>(
-                    {biaisPills.map(b=>{
-                      const isUp=b.startsWith("↑");const isDown=b.startsWith("↓");
-                      const bc=isUp?neon:isDown?"#ff4d4d":"#ffffffbb";
-                      const activeBg=isUp?`${neon}18`:isDown?"rgba(255,77,77,0.12)":"rgba(255,255,255,0.08)";
-                      return <button key={b} onClick={()=>setForm(f=>({...f,checkin:{...f.checkin,biais:f.checkin.biais===b?"":b}}))} className="btn"
-                        style={{flex:1,background:form.checkin.biais===b?activeBg:"#131318",border:`1px solid ${form.checkin.biais===b?bc:"#ffffff12"}`,color:form.checkin.biais===b?bc:"#ffffffbb",borderRadius:8,padding:"9px 0",fontSize:12,fontFamily:MONO,fontWeight:700}}>{b}</button>;
-                    })}
-                  ))}
+                  {biaisPills.map(b=>{
+                    const isUp=b.startsWith("↑");const isDown=b.startsWith("↓");
+                    const bc=isUp?neon:isDown?"#ff4d4d":"#ffffffbb";
+                    const activeBg=isUp?`${neon}18`:isDown?"rgba(255,77,77,0.12)":"rgba(255,255,255,0.08)";
+                    return <button key={b} onClick={()=>setForm(f=>({...f,checkin:{...f.checkin,biais:f.checkin.biais===b?"":b}}))} className="btn"
+                      style={{flex:1,background:form.checkin.biais===b?activeBg:"#131318",border:`1px solid ${form.checkin.biais===b?bc:"#ffffff12"}`,color:form.checkin.biais===b?bc:"#ffffffbb",borderRadius:8,padding:"9px 0",fontSize:12,fontFamily:MONO,fontWeight:700}}>{b}</button>;
+                  })}
                 </div>
               </div>
             )}
