@@ -777,13 +777,8 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
   if(signupDone) return (
     <div style={{background:"#0c0c12",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:28,fontFamily:MONO,maxWidth:480,margin:"0 auto"}}>
       <CSS neon={neon}/>
-      <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:24,width:"100%"}}>
-        <div style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",pointerEvents:"none"}}>
-          <svg width="300" height="120" viewBox="0 0 300 120">
-            <circle cx="150" cy="60" r="50" fill="none" stroke={neon} strokeWidth="0.6" style={{animation:"p1 3.5s ease-in-out infinite",transformOrigin:"150px 60px"}}/>
-            <circle cx="150" cy="60" r="38" fill="none" stroke={neon} strokeWidth="0.6" style={{animation:"p2 2.6s ease-in-out infinite 1.1s",transformOrigin:"150px 60px"}}/>
-          </svg>
-        </div>
+      <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:24,width:"100%",height:120,overflow:"hidden"}}>
+        <GridBackground neon={neon} height={120}/>
         <div style={{position:"relative",zIndex:2}}>
           <SplashLogo neon={neon}/>
         </div>
