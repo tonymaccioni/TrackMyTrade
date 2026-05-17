@@ -1347,7 +1347,7 @@ function GuidedSetup({onDone,lang}) {
   );
 }
 
-function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChange,neon,phases,onObjectifChange,onImport,pushEnabled,onPushChange}) {
+function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChange,neon,phases,onObjectifChange,onImport}) {
   const t=T[lang];const inSt=mkInput(neon);
   const [items,setItems]=useState([...config.items]);const [threshold,setThreshold]=useState(config.threshold);
   const [stratName,setStratName]=useState(config.strategyName||"");const [maxTrades,setMaxTrades]=useState(config.maxTrades||1);
@@ -1357,7 +1357,6 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
   const [savedOk,setSavedOk]=useState(false);const [phaseConfirm,setPhaseConfirm]=useState(false);
   const [newPhaseName,setNewPhaseName]=useState("");
   const [phaseName,setPhaseName]=useState(config.phaseName||"");
-  const [pushEnabled,setPushEnabled]=useState(config.pushEnabled||false);
   const [objPnl,setObjPnl]=useState(config.objPnl||"");
   const [objWr,setObjWr]=useState(config.objWr||"");
   const [objTrades,setObjTrades]=useState(config.objTrades||"");const [eliminatoires,setEliminatoires]=useState(config.eliminatoires||[]);
@@ -1830,7 +1829,6 @@ export default function App() {
   const [shareTarget,setShareTarget]=useState(null);
   const [showStats,setShowStats]=useState(false);
   const [showImport,setShowImport]=useState(false);
-  const [pushEnabled,setPushEnabled]=useState(false);
   const [inAppNotifs,setInAppNotifs]=useState([]);
   const [histSearch,setHistSearch]=useState("");
   const [view,setView]=useState("dashboard");
@@ -2360,7 +2358,7 @@ export default function App() {
       }} onReset={()=>setShowReset(true)} onNewPhase={handleNewPhase} lang={lang} onLangChange={l=>{
         setLang(l);
         if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{lang:l});
-      }} neon={neon} phases={phases} onObjectifChange={obj=>setObjectif(obj)} onImport={()=>setShowImport(true)} pushEnabled={pushEnabled} onPushChange={v=>setPushEnabled(v)}/>}
+      }} neon={neon} phases={phases} onObjectifChange={obj=>setObjectif(obj)} onImport={()=>setShowImport(true)}/>}
 
       <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(8,15,8,0.97)",backdropFilter:"blur(12px)",borderTop:`1px solid ${neon}18`,padding:"10px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div style={{fontSize:9,color:`${neon}22`,fontFamily:"'IBM Plex Mono',monospace"}}>◈ TrackMyTrade</div>
