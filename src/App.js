@@ -229,6 +229,18 @@ const CSS = ({neon="#00ff9d"}) => (
     @keyframes barFill{from{width:0}to{width:var(--bar-w)}}
     @keyframes kpiPop{0%{opacity:0;transform:scale(0.7)}70%{transform:scale(1.08)}100%{opacity:1;transform:scale(1)}}
     @keyframes ring{0%,100%{transform:scale(1);opacity:0.12}50%{transform:scale(1.08);opacity:0.22}}
+    /* ── DESKTOP LAYOUT ── */
+    @media(min-width:769px){
+      .tmt-root{display:flex!important;flex-direction:row!important;max-width:100%!important;height:100vh;overflow:hidden}
+      .tmt-sidebar{display:flex!important;flex-direction:column;width:220px;min-width:220px;background:#06100a;border-right:1px solid ${neon}14;height:100vh;position:sticky;top:0;padding:24px 0;flex-shrink:0}
+      .tmt-main{flex:1;overflow-y:auto;max-width:640px;margin:0 auto;width:100%}
+      .tmt-content{max-width:640px!important;margin:0 auto!important}
+      .tmt-bottombar{display:none!important}
+      .tmt-tabbar{display:none!important}
+    }
+    @media(max-width:768px){
+      .tmt-sidebar{display:none!important}
+    }
   `}</style>
 );
 
@@ -836,34 +848,45 @@ function LoginScreen({onLogin,lang,setLang}) {
 
 function SplashScreen({onDone,neon}) {
   useEffect(()=>{const t=setTimeout(onDone,2700);return()=>clearTimeout(t);},[]);
+  const n=neon||"#00ff9d";
   return (
-    <div style={{background:"#080f08",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'IBM Plex Mono','Courier New',monospace",overflow:"hidden"}}>
-      <CSS neon={neon}/>
-      <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center",width:"100%",padding:"0 40px"}}>
-        {/* Ellipses centrées sur le texte — plus petites */}
-        <div style={{position:"absolute",left:"calc(50% + 47px)",top:"50%",transform:"translate(-50%,-50%)",pointerEvents:"none",animation:"fadeInSlow 0.5s ease 0.5s both"}}>
-          <svg width="240" height="140" viewBox="0 0 240 140">
-            <ellipse cx="120" cy="70" rx="116" ry="64" fill="none" stroke={neon} strokeWidth="0.7" style={{animation:"p1 3.5s ease-in-out infinite",transformOrigin:"120px 70px"}}/>
-            <ellipse cx="120" cy="70" rx="86" ry="48" fill="none" stroke={neon} strokeWidth="0.7" style={{animation:"p2 2.6s ease-in-out infinite 1.1s",transformOrigin:"120px 70px"}}/>
-            <ellipse cx="120" cy="70" rx="56" ry="32" fill="none" stroke={neon} strokeWidth="0.5" style={{animation:"p1 4s ease-in-out infinite 0.5s",transformOrigin:"120px 70px"}}/>
+    <div style={{background:"#06100a",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'IBM Plex Mono','Courier New',monospace",overflow:"hidden",position:"relative"}}>
+      <CSS neon={n}/>
+      {/* Radial glow background centré */}
+      <div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse 55% 45% at 50% 50%, ${n}10 0%, transparent 70%)`,pointerEvents:"none",animation:"fadeInSlow 0.8s ease both"}}/>
+      {/* Cercles concentriques radar — centrés sur tout le logo */}
+      <div style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",pointerEvents:"none",animation:"fadeInSlow 0.5s ease 0.3s both"}}>
+        <svg width="520" height="520" viewBox="0 0 520 520" style={{overflow:"visible"}}>
+          <defs>
+            <filter id="glow"><feGaussianBlur stdDeviation="2.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          </defs>
+          {/* Cercle extérieur très léger */}
+          <circle cx="260" cy="260" r="240" fill="none" stroke={n} strokeWidth="0.5" opacity="0.12" style={{animation:"p1 5s ease-in-out infinite",transformOrigin:"260px 260px"}}/>
+          {/* Cercle 4 */}
+          <circle cx="260" cy="260" r="190" fill="none" stroke={n} strokeWidth="0.8" opacity="0.18" style={{animation:"p2 4.2s ease-in-out infinite 0.8s",transformOrigin:"260px 260px"}}/>
+          {/* Cercle 3 */}
+          <circle cx="260" cy="260" r="142" fill="none" stroke={n} strokeWidth="1.1" opacity="0.26" filter="url(#glow)" style={{animation:"p1 3.5s ease-in-out infinite 0.4s",transformOrigin:"260px 260px"}}/>
+          {/* Cercle 2 */}
+          <circle cx="260" cy="260" r="96" fill="none" stroke={n} strokeWidth="1.4" opacity="0.35" filter="url(#glow)" style={{animation:"p2 2.8s ease-in-out infinite 1.2s",transformOrigin:"260px 260px"}}/>
+          {/* Cercle intérieur le plus visible */}
+          <circle cx="260" cy="260" r="54" fill={`${n}06`} stroke={n} strokeWidth="1.6" opacity="0.5" filter="url(#glow)" style={{animation:"p1 2.2s ease-in-out infinite",transformOrigin:"260px 260px"}}/>
+        </svg>
+      </div>
+      {/* Logo horizontal — centré sur les cercles */}
+      <div style={{position:"relative",zIndex:2,display:"flex",alignItems:"center",gap:20,animation:"slideFromLeft 0.95s cubic-bezier(0.34,1.3,0.64,1) 0.15s both"}}>
+        <div style={{width:80,height:80,borderRadius:18,background:`linear-gradient(135deg,${n}28 0%,${n}0a 100%)`,border:`1.5px solid ${n}70`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 36px ${n}44, 0 0 12px ${n}22, inset 0 1px 0 ${n}30`,position:"relative",overflow:"hidden",animation:"logoBoxGlow 3s ease-in-out infinite",flexShrink:0}}>
+          <div style={{position:"absolute",top:-4,left:-4,width:"55%",height:"55%",background:`linear-gradient(135deg,${n}22 0%,transparent 70%)`,borderRadius:"0 0 60% 0"}}/>
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+            <polygon points="12,2 22,12 12,22 2,12" fill={`${n}28`} stroke={n} strokeWidth="1.5" strokeLinejoin="round"/>
+            <polygon points="12,7 17,12 12,17 7,12" fill={n} style={{filter:`drop-shadow(0 0 6px ${n})`}}/>
           </svg>
         </div>
-        {/* Logo horizontal */}
-        <div style={{position:"relative",zIndex:2,display:"flex",alignItems:"center",gap:18,animation:"slideFromLeft 0.95s cubic-bezier(0.34,1.3,0.64,1) 0.15s both"}}>
-          <div style={{width:76,height:76,borderRadius:16,background:`linear-gradient(135deg,${neon}1e 0%,${neon}08 100%)`,border:`1.5px solid ${neon}60`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 28px ${neon}33`,position:"relative",overflow:"hidden",animation:"logoBoxGlow 3s ease-in-out infinite",flexShrink:0}}>
-            <div style={{position:"absolute",top:-4,left:-4,width:"55%",height:"55%",background:`linear-gradient(135deg,${neon}16 0%,transparent 70%)`,borderRadius:"0 0 60% 0"}}/>
-            <svg width="46" height="46" viewBox="0 0 24 24" fill="none">
-              <polygon points="12,2 22,12 12,22 2,12" fill={`${neon}22`} stroke={neon} strokeWidth="1.5" strokeLinejoin="round"/>
-              <polygon points="12,7 17,12 12,17 7,12" fill={neon}/>
-            </svg>
+        <div style={{animation:"slideFromRight 0.95s cubic-bezier(0.34,1.3,0.64,1) 0.15s both"}}>
+          <div style={{fontSize:38,fontWeight:700,letterSpacing:-1,lineHeight:1,whiteSpace:"nowrap",textShadow:`0 0 40px ${n}55`}}>
+            <b style={{color:n}}>Track</b><span style={{color:n+"55",fontWeight:300}}>My</span><b style={{color:n}}>Trade</b>
           </div>
-          <div style={{animation:"slideFromRight 0.95s cubic-bezier(0.34,1.3,0.64,1) 0.15s both"}}>
-            <div style={{fontSize:36,fontWeight:700,letterSpacing:-1,lineHeight:1,whiteSpace:"nowrap"}}>
-              <b style={{color:neon}}>Track</b><span style={{color:neon+"3a",fontWeight:300}}>My</span><b style={{color:neon}}>Trade</b>
-            </div>
-            <div style={{fontSize:9,color:`${neon}44`,letterSpacing:5,marginTop:8,animation:"fadeInSlow 0.6s ease 0.8s both"}}>
-              JOURNAL DE TRADING
-            </div>
+          <div style={{fontSize:9,color:`${n}55`,letterSpacing:6,marginTop:9,animation:"fadeInSlow 0.6s ease 0.8s both",textShadow:`0 0 14px ${n}44`}}>
+            JOURNAL DE TRADING
           </div>
         </div>
       </div>
@@ -1799,6 +1822,8 @@ function ExportModal({trades,onClose,lang,neon}) {
   );
 }
 
+function useWindowWidth(){const[w,setW]=useState(typeof window!=="undefined"?window.innerWidth:375);useEffect(()=>{const h=()=>setW(window.innerWidth);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);return w;}
+
 export default function App() {
   const [phase,setPhase]=useState("splash");
   const [lang,setLang]=useState("fr");
@@ -1830,6 +1855,7 @@ export default function App() {
   const [config,setConfig]=useState({items:DEFAULT_CRITERIA,threshold:6,strategyName:"Ma Stratégie",defaultAsset:"XAU/USD",maxTrades:1,neonColor:"#00ff9d",calendarOn:true,notifOn:true,customAssets:[...PRESET_ASSETS]});
   const fileRef=useRef();const pageRef=useRef();const weeklyShownRef=useRef(false);const currentUserRef=useRef(null);
   const neon=config.neonColor||"#00ff9d";const t=T[lang];const inSt=mkInput(neon);
+  const winW=useWindowWidth();const isDesktop=winW>=769;
   // Couleurs dérivées du neon pour une cohérence visuelle complète
   const neonDim = neon+"66";   // texte secondaire
   const neonFaint = neon+"33"; // bordures légères
@@ -2013,14 +2039,42 @@ export default function App() {
   }} lang={lang}/></>;
 
   return (
-    <div ref={pageRef} className="grid-bg" style={{background:"#080f08",minHeight:"100vh",color:"#c8e6c8",fontFamily:MONO,maxWidth:480,margin:"0 auto",paddingBottom:80,overflowY:"auto",height:"100vh"}}>
+    <div className="tmt-root grid-bg" style={{background:"#080f08",minHeight:"100vh",color:"#c8e6c8",fontFamily:MONO,display:"flex",flexDirection:isDesktop?"row":"column",overflow:isDesktop?"hidden":"visible"}}>
       <CSS neon={neon}/>
+      {/* ── SIDEBAR PC ── */}
+      {isDesktop&&(
+        <div className="tmt-sidebar" style={{display:"flex",flexDirection:"column",width:220,minWidth:220,background:"#06100a",borderRight:`1px solid ${neon}14`,height:"100vh",position:"sticky",top:0,padding:"28px 0",flexShrink:0}}>
+          <div style={{padding:"0 20px 28px",borderBottom:`1px solid ${neon}0d`}}>
+            <Logo size="sm" neon={neon}/>
+            <div style={{fontSize:9,color:"#3a5a3a",marginTop:5,fontFamily:MONO}}>{config.strategyName}</div>
+            {config.phaseName&&<div style={{fontSize:8,color:`${neon}55`,marginTop:4,fontFamily:MONO,letterSpacing:2}}>▶ {config.phaseName}</div>}
+          </div>
+          {total>0&&<div style={{padding:"16px 20px",borderBottom:`1px solid ${neon}0d`}}>
+            <div style={{fontSize:22,fontWeight:800,color:winRate>=50?neon:"#ff4d4d",fontFamily:MONO,textShadow:`0 0 20px ${winRate>=50?neon:"#ff4d4d"}cc`}}>{winRate}%<span style={{fontSize:11,color:"#3a5a3a",fontWeight:400}}> WR</span></div>
+            <div style={{fontSize:14,fontWeight:700,color:totalPnl>=0?neon:"#ff4d4d",fontFamily:MONO,marginTop:2}}>{fmtPct(totalPnl)}</div>
+            <div style={{fontSize:9,color:"#3a5a3a",marginTop:4}}>{wins}W · {losses}L · {total} trades</div>
+          </div>}
+          <div style={{padding:"16px 12px",flex:1,display:"flex",flexDirection:"column",gap:4}}>
+            {[["dashboard","◈ "+t.stats],["log",editingId?"✏ "+t.editLabel.replace("✏ ÉDITION","EDITION").replace("✏ EDIT","EDIT"):`+ ${t.addTrade.replace("+ ","")}`],["history","≡ "+t.history],["settings","⚙ "+(lang==="fr"?"Paramètres":"Settings")]].map(([v,l])=>(
+              <button key={v} onClick={()=>{if(editingId&&v!=="log")cancelEdit();else{setView(v);scrollToTop();}}} className="btn"
+                style={{background:view===v?`${neon}18`:"transparent",border:`1px solid ${view===v?neon:`${neon}18`}`,color:view===v?neon:"#3a5a3a",borderRadius:8,padding:"10px 14px",fontSize:11,fontWeight:700,letterSpacing:1,fontFamily:MONO,textAlign:"left",width:"100%",transition:"all 0.2s"}}>
+                {l}
+              </button>
+            ))}
+          </div>
+          <div style={{padding:"12px 20px",borderTop:`1px solid ${neon}0d`}}>
+            <button onClick={()=>setShowExport(true)} className="btn" style={{background:`${neon}0f`,border:`1px solid ${neon}26`,borderRadius:8,padding:"8px 14px",color:`${neon}99`,fontSize:11,fontFamily:MONO,width:"100%"}}>↓ {lang==="fr"?"Exporter":"Export"}</button>
+          </div>
+        </div>
+      )}
+      {/* ── MAIN CONTENT ── */}
+      <div ref={pageRef} style={{flex:1,overflowY:"auto",maxWidth:isDesktop?"none":480,margin:isDesktop?"0":"0 auto",width:"100%",paddingBottom:isDesktop?0:80,height:isDesktop?"100vh":"auto"}}>
       {notif&&<NotifCard notif={notif} onClose={()=>setNotif(null)}/>}
       <InAppBanner notifs={inAppNotifs} onDismiss={()=>setInAppNotifs(n=>n.slice(1))} neon={neon}/>
       {showImport&&<ImportCSVModal onImport={imported=>{const merged=[...imported,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);setTrades(merged);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{trades:merged});}} onClose={()=>setShowImport(false)} lang={lang} neon={neon} config={config}/>}
       {showWeeklyRecap&&<WeeklyRecapModal trades={trades} lang={lang} neon={neon} onClose={()=>setShowWeeklyRecap(false)} onShareWeek={()=>{setShareTarget(null);setShowShare(true);}}/>}
 
-      <div style={{padding:"16px 20px 10px",borderBottom:`1px solid ${neon}1a`,background:"rgba(8,15,8,0.7)",backdropFilter:"blur(8px)"}}>
+      <div style={{padding:"16px 20px 10px",borderBottom:`1px solid ${neon}1a`,background:"rgba(8,15,8,0.7)",backdropFilter:"blur(8px)",display:isDesktop?"none":"block"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div><Logo size="sm" neon={neon}/><div style={{fontSize:10,color:"#3a5a3a",marginTop:4}}>{config.strategyName}</div></div>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
@@ -2033,7 +2087,13 @@ export default function App() {
         </div>
       </div>
 
-      {/* Barre objectif option A — fine, sous le header */}
+      {/* Barre phase / objectif — fine, sous le header */}
+      {config.phaseName&&!objectif.pnl&&(
+        <div style={{padding:"3px 20px",background:"rgba(8,15,8,0.45)",borderBottom:`1px solid ${neon}0d`,display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:7,color:`${neon}35`,fontFamily:MONO,letterSpacing:2}}>▶</span>
+          <span style={{fontSize:8,color:`${neon}55`,fontFamily:MONO,letterSpacing:2,textTransform:"uppercase"}}>{config.phaseName}</span>
+        </div>
+      )}
       {objectif.pnl&&(()=>{
         const cur=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
         const target=parseFloat(objectif.pnl)||1;
@@ -2052,7 +2112,7 @@ export default function App() {
           </div>
         </div>;
       })()}
-      <div style={{display:"flex",gap:6,padding:"10px 20px",borderBottom:`1px solid ${neon}14`}}>
+      <div className="tmt-tabbar" style={{display:isDesktop?"none":"flex",gap:6,padding:"10px 20px",borderBottom:`1px solid ${neon}14`}}>
         {[["dashboard",t.stats],["log",editingId?t.editLabel:`+ ${t.addTrade.replace("+ ","")}`],["history",t.history],["settings",t.settings]].map(([v,l])=>(
           <button key={v} className="btn" onClick={()=>{if(editingId&&v!=="log")cancelEdit();else{setView(v);scrollToTop();}}}
             style={{background:view===v?(editingId&&v==="log"?"rgba(240,180,41,0.15)":`${neon}1a`):"transparent",border:`1px solid ${view===v?(editingId&&v==="log"?"#f0b429":neon):`${neon}26`}`,color:view===v?(editingId&&v==="log"?"#f0b429":neon):"#3a5a3a",borderRadius:6,padding:v==="settings"?"7px 12px":"7px 0",fontSize:11,fontWeight:700,letterSpacing:1,fontFamily:MONO,flex:v==="settings"?0:1}}>{l}</button>
@@ -2347,7 +2407,7 @@ export default function App() {
         if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{lang:l});
       }} neon={neon} phases={phases} onObjectifChange={obj=>setObjectif(obj)} onImport={()=>setShowImport(true)}/>}
 
-      <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(8,15,8,0.97)",backdropFilter:"blur(12px)",borderTop:`1px solid ${neon}18`,padding:"10px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div className="tmt-bottombar" style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(8,15,8,0.97)",backdropFilter:"blur(12px)",borderTop:`1px solid ${neon}18`,padding:"10px 20px",display:isDesktop?"none":"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div style={{fontSize:9,color:`${neon}22`,fontFamily:"'IBM Plex Mono',monospace"}}>◈ TrackMyTrade</div>
 
         
@@ -2358,6 +2418,7 @@ export default function App() {
       {showStats&&<StatsInsightsModal trades={trades} lang={lang} neon={neon} onClose={()=>setShowStats(false)}/>}
       {showShare&&<ShareModal trade={shareTarget} trades={trades} lang={lang} neon={neon} config={config} onClose={()=>{setShowShare(false);setShareTarget(null);}}/> }
       {showReset&&<ResetModal trades={trades} onReset={handleReset} onClose={()=>setShowReset(false)} lang={lang} neon={neon}/>}
-    </div>
+      </div>{/* end tmt-main */}
+    </div>{/* end tmt-root */}
   );
 }
