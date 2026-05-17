@@ -1467,46 +1467,94 @@ function SplashLogo({neon}) {
   );
 }
 
+function GridBackground({neon,height=240}) {
+  const canvasRef=useRef();
+  const rafRef=useRef();
+  const startRef=useRef(null);
+  useEffect(()=>{
+    const canvas=canvasRef.current;
+    if(!canvas)return;
+    const ctx=canvas.getContext("2d");
+    const W=canvas.width,H=canvas.height;
+    const cols=10,rows=8,cw=W/cols,rh=H/rows;
+    const animate=ts=>{
+      if(!startRef.current)startRef.current=ts;
+      const t=(ts-startRef.current)/1000;
+      ctx.clearRect(0,0,W,H);
+      for(let r=0;r<=rows;r++){
+        for(let c=0;c<=cols;c++){
+          const cx=c*cw,cy=r*rh;
+          const dist=Math.hypot(cx-W/2,cy-H/2)/150;
+          const wave=Math.sin(t*1.5-dist*4.5)*0.5+0.5;
+          const op=wave*(1-Math.min(1,dist*0.75))*0.45;
+          if(op>0.02){
+            ctx.beginPath();ctx.arc(cx,cy,1.3,0,Math.PI*2);
+            ctx.fillStyle=`${neon}${Math.round(op*255).toString(16).padStart(2,"0")}`;ctx.fill();
+          }
+          if(r<rows&&c<cols){
+            const lineOp=wave*(1-Math.min(1,dist*0.85))*0.15;
+            if(lineOp>0.01){
+              ctx.strokeStyle=`${neon}${Math.round(lineOp*255).toString(16).padStart(2,"0")}`;
+              ctx.lineWidth=0.4;
+              ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+cw,cy);ctx.stroke();
+              ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx,cy+rh);ctx.stroke();
+            }
+          }
+        }
+      }
+      rafRef.current=requestAnimationFrame(animate);
+    };
+    rafRef.current=requestAnimationFrame(animate);
+    return()=>cancelAnimationFrame(rafRef.current);
+  },[]);
+  return <canvas ref={canvasRef} width={320} height={height} style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",maxWidth:"100%",pointerEvents:"none"}}/>;
+}
+
 function Onboarding({onDone}) {
   const [step,setStep]=useState(0);const [lang,setLang]=useState("fr");
   const t=T[lang];const neon="#00ff9d";
   const slides=[
     {visual:(
-      <div style={{position:"relative",width:"100%",height:240,display:"flex",alignItems:"center",justifyContent:"center"}}>
-        <div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse 80% 60% at 50% 50%,${neon}10,transparent 70%)`,pointerEvents:"none"}}/>
-        <svg style={{position:"absolute",top:0,left:0,width:"100%",height:"100%"}} viewBox="0 0 300 240">
-          <circle cx="150" cy="120" r="110" fill="none" stroke={neon} strokeWidth="0.6" opacity="0.08" style={{animation:"ring 3s ease-in-out infinite"}}/>
-          <circle cx="150" cy="120" r="82" fill="none" stroke={neon} strokeWidth="0.6" opacity="0.13" style={{animation:"ring 2.5s ease-in-out infinite",animationDelay:"0.3s"}}/>
-          <circle cx="150" cy="120" r="55" fill="none" stroke={neon} strokeWidth="0.8" opacity="0.18" style={{animation:"ring 2s ease-in-out infinite",animationDelay:"0.6s"}}/>
-        </svg>
+      <div style={{position:"relative",width:"100%",height:240,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
+        <div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse 70% 55% at 50% 50%,${neon}10,transparent 68%)`,pointerEvents:"none"}}/>
+        <GridBackground neon={neon} height={240}/>
         <div style={{position:"relative",zIndex:2}}><SplashLogo neon={neon}/></div>
       </div>
     ),title:t.welcome,desc:t.welcomeDesc,cta:t.discover},
     {visual:(
-      <div style={{display:"flex",flexDirection:"column",gap:8,maxWidth:280,margin:"0 auto"}}>
-        {[["HA M5 claire ✓",true],["MM20 orientée ✓",true],["BB approche ✓",true],["Rejet propre —",false]].map(([item,ok],i)=>(
-          <div key={i} className="fu" style={{background:ok?`${neon}0d`:"rgba(255,77,77,0.06)",border:`1px solid ${ok?neon+"30":"rgba(255,77,77,0.2)"}`,borderRadius:10,padding:"12px 16px",fontSize:13,fontWeight:600,color:ok?neon:"#ff4d4d",fontFamily:MONO,animationDelay:`${i*0.1}s`,display:"flex",alignItems:"center",gap:10}}>
-            <span style={{fontSize:16,flexShrink:0}}>{ok?"✓":"—"}</span>
-            <span>{item.replace(" ✓","").replace(" —","")}</span>
-          </div>
-        ))}
-      </div>
-    ),title:t.checklist,desc:t.checklistDesc,cta:t.next},
-    {visual:(
-      <div style={{maxWidth:280,margin:"0 auto"}}>
-        <div style={{display:"flex",gap:10,marginBottom:10}}>
-          {[["WIN RATE","73%"],["P&L","+4.2%"]].map(([l,v])=>(
-            <div key={l} style={{flex:1,background:`${neon}0d`,border:`1px solid ${neon}30`,borderRadius:14,padding:"16px 12px",textAlign:"center",boxShadow:`0 4px 24px ${neon}10,inset 0 1px 0 ${neon}18`}}>
-              <div style={{fontSize:26,fontWeight:900,color:neon,fontFamily:MONO,textShadow:`0 0 24px ${neon}88`,lineHeight:1}}>{v}</div>
-              <div style={{fontSize:9,color:"#ffffffaa",marginTop:6,letterSpacing:2}}>{l}</div>
+      <div style={{position:"relative",width:"100%",height:220,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
+        <GridBackground neon={neon} height={220}/>
+        <div style={{position:"relative",zIndex:2,display:"flex",flexDirection:"column",gap:8,maxWidth:280,width:"100%",padding:"0 10px"}}>
+          {[["HA M5 claire",true],["MM20 orientée",true],["BB approche",true],["Rejet propre",false]].map(([item,ok],i)=>(
+            <div key={i} className="fu" style={{background:ok?`${neon}0d`:"rgba(255,77,77,0.06)",border:`1px solid ${ok?neon+"30":"rgba(255,77,77,0.2)"}`,borderRadius:10,padding:"10px 14px",fontSize:13,fontWeight:600,color:ok?neon:"#ff4d4d",fontFamily:MONO,animationDelay:`${i*0.08}s`,display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:14,flexShrink:0,color:ok?neon:"#ff4d4d"}}>{ok?"✓":"✗"}</span>
+              <span style={{color:"#ffffff"}}>{item}</span>
             </div>
           ))}
         </div>
-        <div style={{background:`${neon}06`,border:`1px solid ${neon}18`,borderRadius:10,padding:"10px 14px",display:"flex",alignItems:"center",gap:10}}>
-          <div style={{flex:1,height:3,background:`${neon}15`,borderRadius:2,overflow:"hidden"}}>
-            <div style={{width:"73%",height:"100%",background:`linear-gradient(90deg,${neon}66,${neon})`,borderRadius:2,boxShadow:`0 0 8px ${neon}55`}}/>
+      </div>
+    ),title:t.checklist,desc:t.checklistDesc,cta:t.next},
+    {visual:(
+      <div style={{position:"relative",width:"100%",height:220,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
+        <GridBackground neon={neon} height={220}/>
+        <div style={{position:"relative",zIndex:2,maxWidth:280,width:"100%",padding:"0 10px"}}>
+          <div style={{display:"flex",gap:10,marginBottom:10}}>
+            {[["WIN RATE","73%"],["P&L","+4.2%"]].map(([l,v])=>(
+              <div key={l} style={{flex:1,background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:14,padding:"14px 12px",textAlign:"center",boxShadow:`0 4px 24px ${neon}10,inset 0 1px 0 ${neon}15`}}>
+                <div style={{fontSize:26,fontWeight:900,color:"#ffffff",fontFamily:MONO,lineHeight:1,textShadow:`0 0 20px ${neon}55`}}>{v}</div>
+                <div style={{fontSize:9,color:"#ffffffaa",marginTop:6,letterSpacing:2,textTransform:"uppercase"}}>{l}</div>
+              </div>
+            ))}
           </div>
-          <span style={{fontSize:10,color:neon,fontFamily:MONO,fontWeight:700,whiteSpace:"nowrap"}}>73% WR</span>
+          <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:10,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div>
+              <div style={{fontSize:9,color:"#ffffffaa",letterSpacing:2,marginBottom:6}}>CONFORMITÉ</div>
+              <div style={{height:3,width:140,background:"#ffffff10",borderRadius:2,overflow:"hidden"}}>
+                <div style={{width:"73%",height:"100%",background:`linear-gradient(90deg,${neon}66,${neon})`,borderRadius:2,boxShadow:`0 0 8px ${neon}55`}}/>
+              </div>
+            </div>
+            <div style={{fontSize:20,fontWeight:900,color:"#ffffff",fontFamily:MONO,textShadow:`0 0 20px ${neon}55`}}>73%</div>
+          </div>
         </div>
       </div>
     ),title:t.measure,desc:t.measureDesc,cta:t.start},
