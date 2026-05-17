@@ -1359,7 +1359,6 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
   const [phaseName,setPhaseName]=useState(config.phaseName||"");
   const [pushEnabled,setPushEnabled]=useState(config.pushEnabled||false);
   const [objPnl,setObjPnl]=useState(config.objPnl||"");
-  const [phaseName,setPhaseName]=useState(config.phaseName||"");
   const [objWr,setObjWr]=useState(config.objWr||"");
   const [objTrades,setObjTrades]=useState(config.objTrades||"");const [eliminatoires,setEliminatoires]=useState(config.eliminatoires||[]);
   const save=()=>{const savedObj={pnl:objPnl,wr:"",trades:"",editMode:false};
