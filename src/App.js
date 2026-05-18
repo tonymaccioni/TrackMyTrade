@@ -770,8 +770,8 @@ function LoginScreen({onLogin,onOnboarding,lang,setLang,neon="#00ff9d"}) {
         const ok=await authRegister(em,pwd,lang);
         if(ok){
           const result=await authLogin(em,pwd);
-          if(result){onLogin({email:em,_uid:result._uid,userData:result});}
-          else{onLogin({email:em,_uid:null,userData:null});}
+          if(result){onLogin({email:em,_uid:result._uid,userData:result,isNew:true});}
+          else{onLogin({email:em,_uid:null,userData:null,isNew:true});}
           setLoading(false);
         } else{setError(t.signupError);setLoading(false);}
       }
@@ -2387,8 +2387,10 @@ export default function App() {
       },2000);
     } else {
       if(u.lang) setLang(u.lang);
-      // Nouveau compte → onboarding → setup → dashboard
-      setPhase("onboarding");
+      // Nouveau compte (isNew) → onboarding → setup
+      // Compte existant sans setup → setup directement
+      if(u.isNew) setPhase("onboarding");
+      else setPhase("setup");
     }
   };
 
