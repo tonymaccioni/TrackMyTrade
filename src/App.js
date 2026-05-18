@@ -1287,12 +1287,22 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
   const configItems = (config&&config.items)||[];
   const tChecklist = isTrade?(trade.checklist||[]):[];
 
+  const loadHtml2Canvas = () => new Promise((resolve,reject)=>{
+    if(window.html2canvas){resolve(window.html2canvas);return;}
+    const s=document.createElement("script");
+    s.src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+    s.onload=()=>resolve(window.html2canvas);
+    s.onerror=reject;
+    document.head.appendChild(s);
+  });
+
   const doCapture = async () => {
     setCapturing(true);
     try {
-      const h2c = (await import("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.esm.min.js")).default;
+      const h2c = await loadHtml2Canvas();
       const canvas = await h2c(cardRef.current, {
         backgroundColor:"#0a140a", scale:2, useCORS:true, logging:false,
+        allowTaint:true,
       });
       const blob = await new Promise(r=>canvas.toBlob(r,"image/png"));
       const file = new File([blob],"trackmytrade.png",{type:"image/png"});
@@ -1306,7 +1316,7 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
     } catch(e){
       console.error(e);
       if(navigator.share){
-        const text=isTrade?`${trade.result} ${trade.asset} ${fmtP(trade.pnlPct)} — TrackMyTrade`:`${wWR}% WR · ${fmtP(wPnl)} — TrackMyTrade`;
+        const text=isTrade?`${trade.result} ${trade.asset||""} ${fmtP(trade.pnlPct)} — TrackMyTrade`:`${wWR}% WR · ${fmtP(wPnl)} — TrackMyTrade`;
         navigator.share({text,url:"https://trackmytrade.app"}).catch(()=>{});
       }
     }
