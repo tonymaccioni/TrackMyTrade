@@ -1276,7 +1276,7 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
   const isTrade = !!(trade && trade.asset);
   const [sharing, setSharing] = useState(false);
   const fmtP = v => { if(v===undefined||v===null||v==="") return "—"; const n=Number(v),a=Math.abs(n); return (n>=0?"+":"")+(a%1===0?a.toFixed(0):a.toFixed(1))+"%"; };
-  const rc2 = r => r==="WIN"?"#16a34a":r==="LOSS"?"#dc2626":"#ca8a04";
+  const rc2 = r => r==="WIN"?neon:r==="LOSS"?"#ff4d4d":"#f0b429";
 
   const cutoff = new Date(Date.now()-7*86400000).toISOString().split("T")[0];
   const week = (trades||[]).filter(x=>x.date>=cutoff);
@@ -1286,165 +1286,159 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
   const wConf = week.filter(x=>x.conforming).length;
   const wRev = week.filter(x=>x.isRevenge).length;
   const disc = week.length?Math.round((wConf/week.length*0.6+(1-wRev/week.length)*0.4)*10):0;
+  const discC = disc>=8?neon:disc>=5?"#f0b429":"#ff4d4d";
   const configItems = (config&&config.items)||[];
   const tChecklist = isTrade?(trade.checklist||[]):[];
-  const resC = isTrade?rc2(trade.result||"BE"):"#16a34a";
+  const resC = isTrade?rc2(trade.result||"BE"):neon;
 
   const generateAndShare = async () => {
     setSharing(true);
     try {
       const F = "'Courier New',monospace";
       const W = 480;
-      const numItems = Math.min((configItems||[]).length,7);
+      const numItems = Math.min(configItems.length,7);
       const hasCheckin = isTrade&&trade.checkin&&(trade.checkin.humeur||trade.checkin.biais);
-      const H = isTrade ? 120+60+(hasCheckin?60:0)+80+100+(numItems*36)+40 : 400;
+      const H = isTrade ? 80+(hasCheckin?60:0)+90+100+(numItems*38)+50 : 400;
       const canvas = document.createElement("canvas");
-      const scale = 2;
-      canvas.width = W*scale; canvas.height = H*scale;
+      const DPR = 2;
+      canvas.width = W*DPR; canvas.height = H*DPR;
       const ctx = canvas.getContext("2d");
-      ctx.scale(scale,scale);
+      ctx.scale(DPR,DPR);
 
-      const rr = (x,y,w,h,r) => {
+      const rr = (x,y,w,h,r,fill,stroke) => {
         ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);
         ctx.arcTo(x+w,y,x+w,y+r,r);ctx.lineTo(x+w,y+h-r);
         ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.lineTo(x+r,y+h);
         ctx.arcTo(x,y+h,x,y+h-r,r);ctx.lineTo(x,y+r);
         ctx.arcTo(x,y,x+r,y,r);ctx.closePath();
+        if(fill){ctx.fillStyle=fill;ctx.fill();}
+        if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke();}
       };
 
-      // ── FOND BLANC ──
-      ctx.fillStyle="#ffffff"; ctx.fillRect(0,0,W,H);
+      // Fond principal
+      ctx.fillStyle="#080f08"; ctx.fillRect(0,0,W,H);
 
-      // Barre top colorée
-      ctx.fillStyle=resC; ctx.fillRect(0,0,W,5);
+      // Barre top néon
+      const g=ctx.createLinearGradient(0,0,W,0);
+      g.addColorStop(0,neon);g.addColorStop(1,neon+"55");
+      ctx.fillStyle=g; ctx.fillRect(0,0,W,4);
 
       // Header
-      ctx.fillStyle="#f8fafc"; ctx.fillRect(0,5,W,55);
-      ctx.strokeStyle="#e2e8f0"; ctx.lineWidth=1;
-      ctx.beginPath();ctx.moveTo(0,60);ctx.lineTo(W,60);ctx.stroke();
-
-      // Logo texte
-      ctx.font=`bold 15px ${F}`; ctx.fillStyle="#0f172a";
-      ctx.fillText(isTrade?"◈ RÉCAP TRADE":"◈ RÉSUMÉ SEMAINE",20,30);
-      ctx.font=`10px ${F}`; ctx.fillStyle="#94a3b8";
-      ctx.fillText("TRACKMYTRADE",20,48);
-
-      // Date à droite
-      ctx.textAlign="right"; ctx.font=`10px ${F}`; ctx.fillStyle="#94a3b8";
-      ctx.fillText(isTrade?(trade.date||""):`Semaine · ${week.length} trades`,W-20,30);
+      ctx.fillStyle="#0a140a"; ctx.fillRect(0,4,W,54);
+      ctx.strokeStyle=neon+"18"; ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(0,58);ctx.lineTo(W,58);ctx.stroke();
+      ctx.font=`bold 15px ${F}`; ctx.fillStyle=neon;
+      ctx.fillText(isTrade?"◈ RÉCAP TRADE":"◈ RÉSUMÉ SEMAINE",20,28);
+      ctx.font=`9px ${F}`; ctx.fillStyle=neon+"44";
+      ctx.fillText("TRACKMYTRADE",20,46);
+      ctx.textAlign="right"; ctx.font=`9px ${F}`; ctx.fillStyle=neon+"44";
+      ctx.fillText(isTrade?(trade.date||""):`7 jours · ${week.length} trades`,W-20,28);
       ctx.textAlign="left";
 
       if(isTrade) {
         const rc = rc2(trade.result||"BE");
-        let y = 70;
+        let y = 68;
 
         // Check-in
         if(hasCheckin){
-          ctx.fillStyle="#f1f5f9"; rr(16,y,W-32,46,8); ctx.fill();
-          ctx.font=`8px ${F}`; ctx.fillStyle="#94a3b8"; ctx.fillText("CHECK-IN",28,y+14);
-          let bx=28;
-          if(trade.checkin.humeur){
-            const tw=ctx.measureText(trade.checkin.humeur).width+16;
-            ctx.fillStyle="#e2e8f0"; rr(bx,y+18,tw,20,4); ctx.fill();
-            ctx.font=`10px ${F}`; ctx.fillStyle="#1e293b"; ctx.fillText(trade.checkin.humeur,bx+8,y+32); bx+=tw+6;
-          }
-          if(trade.checkin.biais){
-            const tw=ctx.measureText(trade.checkin.biais).width+16;
-            ctx.fillStyle="#e2e8f0"; rr(bx,y+18,tw,20,4); ctx.fill();
-            ctx.font=`10px ${F}`; ctx.fillStyle="#1e293b"; ctx.fillText(trade.checkin.biais,bx+8,y+32);
-          }
-          y+=56;
+          rr(14,y,W-28,50,8,neon+"08",neon+"14");
+          ctx.font=`8px ${F}`; ctx.fillStyle="#3a5a3a"; ctx.fillText("CHECK-IN",26,y+14);
+          let bx=26;
+          [trade.checkin.humeur,trade.checkin.biais].filter(Boolean).forEach(txt=>{
+            const tw=ctx.measureText(txt).width+18;
+            rr(bx,y+18,tw,22,5,neon+"18",neon+"28");
+            ctx.font=`10px ${F}`; ctx.fillStyle="#c8e6c8"; ctx.fillText(txt,bx+9,y+33); bx+=tw+7;
+          });
+          y+=62;
         }
 
         // Asset + résultat
-        const rcLight=rc+"18";
-        ctx.fillStyle=rcLight; rr(16,y,W-32,68,10); ctx.fill();
-        ctx.strokeStyle=rc+"40"; ctx.lineWidth=1; rr(16,y,W-32,68,10); ctx.stroke();
-        ctx.fillStyle=rc; ctx.fillRect(16,y,4,68);
-        ctx.font=`bold 20px ${F}`; ctx.fillStyle="#0f172a";
-        ctx.fillText(`${trade.asset||""} · ${trade.direction||""}`,28,y+28);
-        ctx.font=`10px ${F}`; ctx.fillStyle="#64748b"; ctx.fillText(trade.date||"",28,y+50);
+        rr(14,y,W-28,76,10,rc+"14",rc+"30");
+        ctx.fillStyle=rc; ctx.fillRect(14,y,5,76);
+        ctx.font=`bold 20px ${F}`; ctx.fillStyle="#e8f5e8";
+        ctx.fillText(`${trade.asset||""} · ${trade.direction||""}`,27,y+28);
+        ctx.font=`10px ${F}`; ctx.fillStyle=neon+"55";
+        ctx.fillText(trade.date||"",27,y+50);
         ctx.font=`bold 24px ${F}`; ctx.fillStyle=rc;
-        ctx.textAlign="right"; ctx.fillText(trade.result||"",W-20,y+30);
+        ctx.textAlign="right"; ctx.fillText(trade.result||"",W-18,y+30);
         if(trade.pnlPct){
-          ctx.font=`bold 15px ${F}`; ctx.fillStyle=parseFloat(trade.pnlPct)>=0?"#16a34a":"#dc2626";
-          ctx.fillText(fmtP(trade.pnlPct),W-20,y+52);
+          ctx.font=`bold 15px ${F}`;
+          ctx.fillStyle=parseFloat(trade.pnlPct)>=0?neon:"#ff4d4d";
+          ctx.fillText(fmtP(trade.pnlPct),W-18,y+54);
         }
         ctx.textAlign="left";
-        y+=80;
+        y+=88;
 
-        // Setup + Rejet
-        const hw=(W-40)/2;
-        ctx.fillStyle="#f8fafc"; rr(16,y,hw,80,8); ctx.fill();
-        ctx.strokeStyle="#e2e8f0"; rr(16,y,hw,80,8); ctx.stroke();
-        ctx.font=`8px ${F}`; ctx.fillStyle="#94a3b8"; ctx.fillText("SETUP SCORE",28,y+16);
+        // Setup score + Rejet
+        const hw=(W-36)/2;
+        rr(14,y,hw,90,10,neon+"08",neon+"18");
+        ctx.font=`8px ${F}`; ctx.fillStyle="#3a5a3a"; ctx.fillText("SETUP SCORE",26,y+16);
         const sc=trade.setupScore||0, mx=trade.checklistMax||numItems||7;
         const pct=mx>0?sc/mx:0;
-        const cx=28+26,cy=y+52,cr=22;
-        ctx.strokeStyle="#e2e8f0"; ctx.lineWidth=5;
+        const cx=14+44,cy=y+56,cr=26;
+        ctx.strokeStyle=neon+"18"; ctx.lineWidth=6;
         ctx.beginPath();ctx.arc(cx,cy,cr,-Math.PI/2,Math.PI*1.5);ctx.stroke();
-        ctx.strokeStyle=rc; ctx.lineWidth=5;
+        ctx.strokeStyle=neon; ctx.lineWidth=6;
         ctx.beginPath();ctx.arc(cx,cy,cr,-Math.PI/2,-Math.PI/2+Math.PI*2*pct);ctx.stroke();
-        ctx.font=`bold 11px ${F}`; ctx.fillStyle="#0f172a";
+        ctx.font=`bold 12px ${F}`; ctx.fillStyle=neon;
         ctx.textAlign="center"; ctx.fillText(`${sc}/${mx}`,cx,cy+4); ctx.textAlign="left";
-        ctx.font=`bold 11px ${F}`; ctx.fillStyle=trade.conforming?"#16a34a":"#dc2626";
-        ctx.fillText(trade.conforming?"✓ conforme":"✗ non-conf.",28+60,y+50);
+        ctx.font=`bold 11px ${F}`; ctx.fillStyle=trade.conforming?neon:"#ff4d4d";
+        ctx.fillText(trade.conforming?"✓ conforme":"✗ non-conf.",14+hw*0.45+10,y+53);
 
-        ctx.fillStyle="#f8fafc"; rr(24+hw,y,hw,80,8); ctx.fill();
-        ctx.strokeStyle="#e2e8f0"; rr(24+hw,y,hw,80,8); ctx.stroke();
-        ctx.font=`8px ${F}`; ctx.fillStyle="#94a3b8"; ctx.fillText("REJET /10",36+hw,y+16);
-        ctx.font=`bold 40px ${F}`; 
-        ctx.fillStyle=trade.rejetScore>=8?"#16a34a":trade.rejetScore>=5?"#ca8a04":"#dc2626";
-        ctx.fillText(trade.rejetScore>0?`${trade.rejetScore}`:"—",36+hw,y+68);
-        y+=94;
+        rr(22+hw,y,hw,90,10,neon+"08",neon+"18");
+        ctx.font=`8px ${F}`; ctx.fillStyle="#3a5a3a"; ctx.fillText("REJET /10",34+hw,y+16);
+        ctx.font=`bold 44px ${F}`;
+        ctx.fillStyle=trade.rejetScore>=8?neon:trade.rejetScore>=5?"#f0b429":"#ff4d4d";
+        ctx.fillText(trade.rejetScore>0?`${trade.rejetScore}`:"—",34+hw,y+72);
+        if(trade.rejetScore>0){
+          ctx.font=`9px ${F}`; ctx.fillStyle="#5a7a5a";
+          ctx.fillText(trade.rejetScore>=8?"Excellent":trade.rejetScore>=5?"Correct":"Faible",34+hw+52,y+72);
+        }
+        y+=102;
 
         // Checklist
         if(numItems>0){
-          ctx.fillStyle="#f8fafc"; rr(16,y,W-32,numItems*36+22,8); ctx.fill();
-          ctx.strokeStyle="#e2e8f0"; rr(16,y,W-32,numItems*36+22,8); ctx.stroke();
-          ctx.font=`8px ${F}`; ctx.fillStyle="#94a3b8"; ctx.fillText("CHECKLIST",28,y+16);
+          const ch=numItems*38+24;
+          rr(14,y,W-28,ch,10,neon+"06",neon+"12");
+          ctx.font=`8px ${F}`; ctx.fillStyle="#3a5a3a"; ctx.fillText("CHECKLIST",26,y+16);
           configItems.slice(0,7).forEach((item,i)=>{
-            const iy=y+22+i*36;
-            const checked=tChecklist.includes(i);
-            if(i>0){ctx.strokeStyle="#f1f5f9";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(28,iy-4);ctx.lineTo(W-28,iy-4);ctx.stroke();}
-            ctx.font=`bold 12px ${F}`; ctx.fillStyle=checked?"#16a34a":"#cbd5e1";
-            ctx.fillText(checked?"✓":"✗",28,iy+16);
-            ctx.font=`11px ${F}`; ctx.fillStyle=checked?"#1e293b":"#94a3b8";
-            ctx.fillText(item.length>48?item.slice(0,48)+"…":item,50,iy+16);
+            const iy=y+24+i*38;
+            if(i>0){ctx.strokeStyle=neon+"0a";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(26,iy-6);ctx.lineTo(W-26,iy-6);ctx.stroke();}
+            const chk=tChecklist.includes(i);
+            ctx.font=`bold 13px ${F}`; ctx.fillStyle=chk?neon:"#2a3a2a";
+            ctx.fillText(chk?"✓":"✗",26,iy+16);
+            ctx.font=`11px ${F}`; ctx.fillStyle=chk?"#c8e6c8":"#3a5a3a";
+            ctx.fillText(item.length>46?item.slice(0,46)+"…":item,50,iy+16);
           });
-          y+=numItems*36+28;
+          y+=ch+8;
         }
       } else {
-        // Résumé semaine
-        let y=70;
-        const sw=(W-40)/3-5;
-        [{l:"WIN RATE",v:`${wWR}%`,c:wWR>=50?"#16a34a":"#dc2626"},{l:"P&L",v:fmtP(wPnl),c:wPnl>=0?"#16a34a":"#dc2626"},{l:"TRADES",v:`${week.length}`,c:"#0f172a"}].forEach(({l,v,c},i)=>{
-          const sx=16+i*(sw+8);
-          ctx.fillStyle="#f8fafc"; rr(sx,y,sw,60,8); ctx.fill();
-          ctx.strokeStyle="#e2e8f0"; rr(sx,y,sw,60,8); ctx.stroke();
-          ctx.font=`8px ${F}`; ctx.fillStyle="#94a3b8"; ctx.fillText(l,sx+10,y+16);
-          ctx.font=`bold 22px ${F}`; ctx.fillStyle=c; ctx.fillText(v,sx+10,y+46);
+        let y=68;
+        const sw=(W-36)/3-4;
+        [{l:"WIN RATE",v:`${wWR}%`,c:wWR>=50?neon:"#ff4d4d"},{l:"P&L",v:fmtP(wPnl),c:wPnl>=0?neon:"#ff4d4d"},{l:"TRADES",v:`${week.length}`,c:neon}].forEach(({l,v,c},i)=>{
+          const sx=14+i*(sw+8);
+          rr(sx,y,sw,68,8,c+"0d",c+"22");
+          ctx.font=`8px ${F}`; ctx.fillStyle=neon+"44"; ctx.fillText(l,sx+10,y+16);
+          ctx.font=`bold 24px ${F}`; ctx.fillStyle=c; ctx.fillText(v,sx+10,y+50);
         });
-        y+=74;
-        ctx.fillStyle="#f8fafc"; rr(16,y,W-32,80,8); ctx.fill();
-        ctx.strokeStyle="#e2e8f0"; rr(16,y,W-32,80,8); ctx.stroke();
-        ctx.font=`8px ${F}`; ctx.fillStyle="#94a3b8"; ctx.fillText("DISCIPLINE",28,y+16);
-        ctx.font=`bold 30px ${F}`; ctx.fillStyle="#0f172a";
-        ctx.fillText(`${disc}`,28,y+56);
-        ctx.font=`15px ${F}`; ctx.fillStyle="#94a3b8"; ctx.fillText("/10",28+ctx.measureText(`${disc}`).width+4,y+56);
-        const bx=100,bw=W-120;
-        [{l:fr?"Conformité":"Compliance",v:week.length?Math.round(wConf/week.length*100):0,c:"#16a34a"},{l:fr?"Sans revenge":"No revenge",v:week.length?Math.round((1-wRev/week.length)*100):100,c:wRev===0?"#16a34a":"#ca8a04"}].forEach(({l,v,c},i)=>{
-          const by=y+20+i*32;
-          ctx.font=`8px ${F}`; ctx.fillStyle="#64748b"; ctx.fillText(l,bx,by+4);
+        y+=82;
+        rr(14,y,W-28,86,10,discC+"08",discC+"18");
+        ctx.font=`8px ${F}`; ctx.fillStyle=neon+"44"; ctx.fillText("DISCIPLINE",26,y+16);
+        ctx.font=`bold 34px ${F}`; ctx.fillStyle=discC; ctx.fillText(`${disc}`,26,y+60);
+        ctx.font=`14px ${F}`; ctx.fillStyle=neon+"33"; ctx.fillText("/10",26+ctx.measureText(`${disc}`).width+4,y+60);
+        const bx=120,bw=W-138;
+        [{l:fr?"Conformité":"Compliance",v:week.length?Math.round(wConf/week.length*100):0,c:neon},{l:fr?"Sans revenge":"No revenge",v:week.length?Math.round((1-wRev/week.length)*100):100,c:wRev===0?neon:"#f0b429"}].forEach(({l,v,c},i)=>{
+          const by=y+20+i*34;
+          ctx.font=`8px ${F}`; ctx.fillStyle=neon+"44"; ctx.fillText(l,bx,by+4);
           ctx.font=`bold 8px ${F}`; ctx.fillStyle=c;
-          ctx.textAlign="right"; ctx.fillText(`${v}%`,W-20,by+4); ctx.textAlign="left";
-          ctx.fillStyle="#e2e8f0"; rr(bx,by+8,bw,4,2); ctx.fill();
-          ctx.fillStyle=c; rr(bx,by+8,bw*v/100,4,2); ctx.fill();
+          ctx.textAlign="right"; ctx.fillText(`${v}%`,W-18,by+4); ctx.textAlign="left";
+          rr(bx,by+9,bw,4,2,neon+"12",null);
+          rr(bx,by+9,Math.max(4,bw*v/100),4,2,c,null);
         });
       }
 
       // Watermark
-      ctx.font=`9px ${F}`; ctx.fillStyle="#cbd5e1";
+      ctx.font=`8px ${F}`; ctx.fillStyle=neon+"22";
       ctx.textAlign="center"; ctx.fillText("trackmytrade.app",W/2,H-10);
       ctx.textAlign="left";
 
@@ -1467,68 +1461,69 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
     setSharing(false);
   };
 
-  // Preview carte (même style que l'image générée)
-  const discC=disc>=8?"#16a34a":disc>=5?"#ca8a04":"#dc2626";
   return (
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
-      <div className="slide-up" style={{width:"100%",maxWidth:480,background:"#ffffff",borderRadius:"20px 20px 0 0",overflow:"hidden",maxHeight:"88vh",overflowY:"auto",paddingBottom:24}} onClick={e=>e.stopPropagation()}>
-        <div style={{height:4,background:resC}}/>
-        <div style={{padding:"14px 18px 10px",borderBottom:"1px solid #e2e8f0",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#f8fafc"}}>
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.94)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
+      <div className="slide-up" style={{width:"100%",maxWidth:480,background:"#080f08",borderRadius:"20px 20px 0 0",overflow:"hidden",border:`1px solid ${neon}25`,maxHeight:"88vh",overflowY:"auto",paddingBottom:24}} onClick={e=>e.stopPropagation()}>
+        <div style={{height:3,background:`linear-gradient(90deg,${neon},${neon}55)`}}/>
+        <div style={{padding:"14px 18px 10px",borderBottom:`1px solid ${neon}14`,display:"flex",justifyContent:"space-between",alignItems:"center",background:"#0a140a"}}>
           <div>
-            <div style={{fontSize:14,fontWeight:700,color:"#0f172a",fontFamily:MONO}}>{isTrade?(fr?"◈ RÉCAP TRADE":"◈ TRADE RECAP"):(fr?"◈ RÉSUMÉ SEMAINE":"◈ WEEKLY RECAP")}</div>
-            <div style={{fontSize:9,color:"#94a3b8",fontFamily:MONO,marginTop:2}}>TRACKMYTRADE</div>
+            <div style={{fontSize:14,fontWeight:700,color:neon,fontFamily:MONO}}>{isTrade?(fr?"◈ RÉCAP TRADE":"◈ TRADE RECAP"):(fr?"◈ RÉSUMÉ SEMAINE":"◈ WEEKLY RECAP")}</div>
+            <div style={{fontSize:9,color:`${neon}33`,fontFamily:MONO,marginTop:2}}>TRACKMYTRADE</div>
           </div>
-          <button onClick={onClose} style={{background:"transparent",border:"none",color:"#94a3b8",fontSize:20,cursor:"pointer"}}>✕</button>
+          <button onClick={onClose} style={{background:"transparent",border:"none",color:`${neon}44`,fontSize:20,cursor:"pointer"}}>✕</button>
         </div>
-        <div style={{padding:"14px 18px",background:"#ffffff"}}>
+        <div style={{padding:"14px 18px"}}>
           {isTrade?(
             <>
               {trade.checkin&&(trade.checkin.humeur||trade.checkin.biais)&&(
-                <div style={{background:"#f1f5f9",borderRadius:8,padding:"8px 12px",marginBottom:10}}>
-                  <div style={{fontSize:9,color:"#94a3b8",letterSpacing:2,marginBottom:6,fontFamily:MONO}}>CHECK-IN</div>
+                <div style={{background:`${neon}06`,border:`1px solid ${neon}14`,borderRadius:8,padding:"8px 12px",marginBottom:10}}>
+                  <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:6,fontFamily:MONO}}>CHECK-IN</div>
                   <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                    {trade.checkin.humeur&&<span style={{fontSize:11,padding:"3px 10px",borderRadius:5,background:"#e2e8f0",color:"#1e293b",fontFamily:MONO}}>{trade.checkin.humeur}</span>}
-                    {trade.checkin.biais&&<span style={{fontSize:11,padding:"3px 10px",borderRadius:5,background:"#e2e8f0",color:"#1e293b",fontFamily:MONO}}>{trade.checkin.biais}</span>}
+                    {trade.checkin.humeur&&<span style={{fontSize:11,padding:"4px 10px",borderRadius:6,background:`${neon}14`,border:`1px solid ${neon}25`,color:"#c8e6c8",fontFamily:MONO}}>{trade.checkin.humeur}</span>}
+                    {trade.checkin.biais&&<span style={{fontSize:11,padding:"4px 10px",borderRadius:6,background:`${neon}08`,border:`1px solid ${neon}18`,color:"#c8e6c8",fontFamily:MONO}}>{trade.checkin.biais}</span>}
                   </div>
                 </div>
               )}
-              <div style={{background:resC+"14",border:`1px solid ${resC}40`,borderRadius:10,padding:"12px 14px",marginBottom:10,borderLeft:`4px solid ${resC}`}}>
+              <div style={{background:`${resC}12`,border:`1px solid ${resC}30`,borderRadius:10,padding:"14px 16px",marginBottom:10,borderLeft:`5px solid ${resC}`}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                   <div>
-                    <div style={{fontSize:19,fontWeight:700,color:"#0f172a",fontFamily:MONO,marginBottom:3}}>{trade.asset} · {trade.direction}</div>
-                    <div style={{fontSize:10,color:"#64748b",fontFamily:MONO}}>{trade.date}{trade.time?" · "+trade.time:""}</div>
+                    <div style={{fontSize:20,fontWeight:700,color:"#e8f5e8",fontFamily:MONO,marginBottom:4}}>{trade.asset} · {trade.direction}</div>
+                    <div style={{fontSize:10,color:`${neon}55`,fontFamily:MONO}}>{trade.date}{trade.time?" · "+trade.time:""}</div>
                   </div>
                   <div style={{textAlign:"right"}}>
-                    <div style={{fontSize:22,fontWeight:800,color:resC,fontFamily:MONO}}>{trade.result}</div>
-                    {trade.pnlPct&&<div style={{fontSize:15,fontWeight:700,color:parseFloat(trade.pnlPct)>=0?"#16a34a":"#dc2626",fontFamily:MONO}}>{fmtP(trade.pnlPct)}</div>}
+                    <div style={{fontSize:24,fontWeight:800,color:resC,fontFamily:MONO,display:"flex",alignItems:"center",gap:6}}>
+                      {trade.result==="WIN"?<IcoWin neon={neon} size={20}/>:trade.result==="LOSS"?<IcoLoss size={20}/>:<IcoBE size={20}/>}
+                      {trade.result}
+                    </div>
+                    {trade.pnlPct&&<div style={{fontSize:16,fontWeight:700,color:parseFloat(trade.pnlPct)>=0?neon:"#ff4d4d",fontFamily:MONO}}>{fmtP(trade.pnlPct)}</div>}
                   </div>
                 </div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-                <div style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:10,padding:"10px 12px"}}>
-                  <div style={{fontSize:9,color:"#94a3b8",letterSpacing:1,marginBottom:8,fontFamily:MONO}}>SETUP SCORE</div>
+                <div style={{background:`${neon}06`,border:`1px solid ${neon}18`,borderRadius:10,padding:"12px 14px"}}>
+                  <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:1,marginBottom:8,fontFamily:MONO}}>SETUP SCORE</div>
                   <div style={{display:"flex",alignItems:"center",gap:10}}>
-                    <div style={{width:40,height:40,borderRadius:"50%",border:`3px solid ${resC}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                      <span style={{fontSize:11,fontWeight:700,color:resC,fontFamily:MONO}}>{trade.setupScore}/{trade.checklistMax||configItems.length||7}</span>
+                    <div style={{width:44,height:44,borderRadius:"50%",border:`3px solid ${neon}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:`0 0 12px ${neon}44`}}>
+                      <span style={{fontSize:12,fontWeight:700,color:neon,fontFamily:MONO}}>{trade.setupScore}/{trade.checklistMax||configItems.length||7}</span>
                     </div>
-                    <div style={{fontSize:11,fontWeight:700,color:trade.conforming?"#16a34a":"#dc2626",fontFamily:MONO}}>{trade.conforming?(fr?"✓ conforme":"✓ compliant"):(fr?"✗ non-conf.":"✗ non-comp.")}</div>
+                    <div style={{fontSize:12,fontWeight:700,color:trade.conforming?neon:"#ff4d4d",fontFamily:MONO}}>{trade.conforming?(fr?"✓ conforme":"✓ compliant"):(fr?"✗ non-conf.":"✗ non-comp.")}</div>
                   </div>
                 </div>
-                <div style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:10,padding:"10px 12px"}}>
-                  <div style={{fontSize:9,color:"#94a3b8",letterSpacing:1,marginBottom:4,fontFamily:MONO}}>REJET /10</div>
+                <div style={{background:`${neon}06`,border:`1px solid ${neon}18`,borderRadius:10,padding:"12px 14px"}}>
+                  <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:1,marginBottom:4,fontFamily:MONO}}>REJET /10</div>
                   <div style={{display:"flex",alignItems:"baseline",gap:8}}>
-                    <span style={{fontSize:34,fontWeight:800,color:trade.rejetScore>=8?"#16a34a":trade.rejetScore>=5?"#ca8a04":"#dc2626",fontFamily:MONO}}>{trade.rejetScore>0?trade.rejetScore:"—"}</span>
-                    {trade.rejetScore>0&&<span style={{fontSize:11,color:"#64748b",fontFamily:MONO}}>{trade.rejetScore>=8?"Excellent":trade.rejetScore>=5?"Correct":"Faible"}</span>}
+                    <span style={{fontSize:36,fontWeight:800,color:trade.rejetScore>=8?neon:trade.rejetScore>=5?"#f0b429":"#ff4d4d",fontFamily:MONO}}>{trade.rejetScore>0?trade.rejetScore:"—"}</span>
+                    {trade.rejetScore>0&&<span style={{fontSize:11,color:"#5a7a5a",fontFamily:MONO}}>{trade.rejetScore>=8?"Excellent":trade.rejetScore>=5?"Correct":"Faible"}</span>}
                   </div>
                 </div>
               </div>
               {configItems.length>0&&(
-                <div style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:10,padding:"10px 12px"}}>
-                  <div style={{fontSize:9,color:"#94a3b8",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>CHECKLIST</div>
+                <div style={{background:`${neon}05`,border:`1px solid ${neon}14`,borderRadius:10,padding:"12px 14px"}}>
+                  <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:10,fontFamily:MONO}}>CHECKLIST</div>
                   {configItems.slice(0,7).map((item,i)=>(
-                    <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:i<Math.min(configItems.length,7)-1?"1px solid #f1f5f9":"none"}}>
-                      <span style={{fontSize:13,color:tChecklist.includes(i)?"#16a34a":"#cbd5e1",flexShrink:0,fontFamily:MONO}}>{tChecklist.includes(i)?"✓":"✗"}</span>
-                      <span style={{fontSize:11,color:tChecklist.includes(i)?"#1e293b":"#94a3b8",fontFamily:MONO}}>{item}</span>
+                    <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:i<Math.min(configItems.length,7)-1?`1px solid ${neon}08`:"none"}}>
+                      <span style={{fontSize:14,color:tChecklist.includes(i)?neon:"#2a3a2a",flexShrink:0,fontFamily:MONO}}>{tChecklist.includes(i)?"✓":"✗"}</span>
+                      <span style={{fontSize:11,color:tChecklist.includes(i)?"#c8e6c8":"#3a5a3a",fontFamily:MONO}}>{item}</span>
                     </div>
                   ))}
                 </div>
@@ -1537,37 +1532,37 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
           ):(
             <>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
-                {[{l:"WIN RATE",v:`${wWR}%`,c:wWR>=50?"#16a34a":"#dc2626"},{l:"P&L",v:fmtP(wPnl),c:wPnl>=0?"#16a34a":"#dc2626"},{l:"TRADES",v:`${week.length}`,c:"#0f172a"}].map(({l,v,c})=>(
-                  <div key={l} style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:10,padding:"10px 0",textAlign:"center"}}>
-                    <div style={{fontSize:8,color:"#94a3b8",fontFamily:MONO,letterSpacing:1,marginBottom:4}}>{l}</div>
+                {[{l:"WIN RATE",v:`${wWR}%`,c:wWR>=50?neon:"#ff4d4d"},{l:"P&L",v:fmtP(wPnl),c:wPnl>=0?neon:"#ff4d4d"},{l:"TRADES",v:`${week.length}`,c:neon}].map(({l,v,c})=>(
+                  <div key={l} style={{background:`${c}0c`,border:`1px solid ${c}22`,borderRadius:10,padding:"10px 0",textAlign:"center"}}>
+                    <div style={{fontSize:8,color:`${neon}44`,fontFamily:MONO,letterSpacing:1,marginBottom:4}}>{l}</div>
                     <div style={{fontSize:20,fontWeight:800,color:c,fontFamily:MONO}}>{v}</div>
                   </div>
                 ))}
               </div>
-              <div style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:10,padding:"12px 14px"}}>
+              <div style={{background:`${discC}08`,border:`1px solid ${discC}18`,borderRadius:10,padding:"12px 14px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                  <span style={{fontSize:9,color:"#94a3b8",fontFamily:MONO,letterSpacing:2}}>DISCIPLINE</span>
-                  <span style={{fontSize:24,fontWeight:800,color:discC,fontFamily:MONO}}>{disc}<span style={{fontSize:12,color:"#94a3b8"}}>/10</span></span>
+                  <span style={{fontSize:9,color:`${neon}44`,fontFamily:MONO,letterSpacing:2}}>DISCIPLINE</span>
+                  <span style={{fontSize:24,fontWeight:800,color:discC,fontFamily:MONO}}>{disc}<span style={{fontSize:12,color:`${neon}33`}}>/10</span></span>
                 </div>
-                {[{l:fr?"Conformité":"Compliance",v:week.length?Math.round(wConf/week.length*100):0,c:"#16a34a"},{l:fr?"Sans revenge":"No revenge",v:week.length?Math.round((1-wRev/week.length)*100):100,c:wRev===0?"#16a34a":"#ca8a04"}].map(({l,v,c})=>(
+                {[{l:fr?"Conformité":"Compliance",v:week.length?Math.round(wConf/week.length*100):0,c:neon},{l:fr?"Sans revenge":"No revenge",v:week.length?Math.round((1-wRev/week.length)*100):100,c:wRev===0?neon:"#f0b429"}].map(({l,v,c})=>(
                   <div key={l} style={{marginBottom:6}}>
                     <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                      <span style={{fontSize:9,color:"#64748b",fontFamily:MONO}}>{l}</span>
+                      <span style={{fontSize:9,color:`${neon}44`,fontFamily:MONO}}>{l}</span>
                       <span style={{fontSize:9,color:c,fontWeight:700,fontFamily:MONO}}>{v}%</span>
                     </div>
-                    <div style={{height:3,background:"#e2e8f0",borderRadius:2}}><div style={{width:`${v}%`,height:"100%",background:c,borderRadius:2}}/></div>
+                    <div style={{height:3,background:`${neon}10`,borderRadius:2}}><div style={{width:`${v}%`,height:"100%",background:c,borderRadius:2}}/></div>
                   </div>
                 ))}
               </div>
             </>
           )}
           <div style={{textAlign:"center",marginTop:12}}>
-            <span style={{fontSize:8,color:"#cbd5e1",fontFamily:MONO,letterSpacing:2}}>trackmytrade.app</span>
+            <span style={{fontSize:8,color:`${neon}20`,fontFamily:MONO,letterSpacing:2}}>trackmytrade.app</span>
           </div>
         </div>
         <div style={{padding:"0 18px"}}>
           <button onClick={generateAndShare} disabled={sharing} className="btn"
-            style={{width:"100%",background:resC,border:"none",color:"#ffffff",borderRadius:10,padding:"14px 0",fontSize:12,fontWeight:700,fontFamily:MONO,letterSpacing:2,display:"flex",alignItems:"center",justifyContent:"center",gap:8,opacity:sharing?0.7:1}}>
+            style={{width:"100%",background:`${neon}18`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:"14px 0",fontSize:12,fontWeight:700,fontFamily:MONO,letterSpacing:2,display:"flex",alignItems:"center",justifyContent:"center",gap:8,opacity:sharing?0.7:1}}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
             {sharing?(fr?"Génération…":"Generating…"):(fr?"PARTAGER":"SHARE")}
           </button>
