@@ -1287,46 +1287,187 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
   const tChecklist = isTrade?(trade.checklist||[]):[];
   const resC = isTrade?rc2(trade.result||"BE"):neon;
 
-  const doShare = async () => {
+  const generateAndShare = async () => {
     setSharing(true);
     try {
-      // Construire l'URL de l'API image
-      const base = window.location.origin;
-      let url;
+      const scale = 2;
+      const W = 480;
+      const configLen = Math.min(configItems.length, 7);
+      const H = isTrade ? (200 + (trade.checkin&&(trade.checkin.humeur||trade.checkin.biais)?70:0) + 110 + configLen*44 + 80) : 460;
+      const canvas = document.createElement("canvas");
+      canvas.width = W * scale;
+      canvas.height = H * scale;
+      const ctx = canvas.getContext("2d");
+      ctx.scale(scale, scale);
+      const F = "'Courier New',monospace";
+
+      const rr = (x,y,w,h,r) => {
+        ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);
+        ctx.arcTo(x+w,y,x+w,y+r,r);ctx.lineTo(x+w,y+h-r);
+        ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.lineTo(x+r,y+h);
+        ctx.arcTo(x,y+h,x,y+h-r,r);ctx.lineTo(x,y+r);
+        ctx.arcTo(x,y,x+r,y,r);ctx.closePath();
+      };
+
+      // Fond
+      ctx.fillStyle="#080f08"; ctx.fillRect(0,0,W,H);
+
+      // Barre top néon
+      const g=ctx.createLinearGradient(0,0,W,0);
+      g.addColorStop(0,neon); g.addColorStop(1,neon+"55");
+      ctx.fillStyle=g; ctx.fillRect(0,0,W,4);
+
+      // Header
+      ctx.fillStyle="#0a140a"; ctx.fillRect(0,4,W,54);
+      ctx.strokeStyle=neon+"18"; ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(0,58);ctx.lineTo(W,58);ctx.stroke();
+      ctx.font=`bold 16px ${F}`; ctx.fillStyle=neon;
+      ctx.fillText(isTrade?"◈ RÉCAP TRADE":"◈ RÉSUMÉ SEMAINE",20,28);
+      ctx.font=`10px ${F}`; ctx.fillStyle=neon+"44";
+      ctx.fillText("TRACKMYTRADE",20,46);
+
       if(isTrade) {
-        const p = new URLSearchParams({
-          type:'trade', asset:trade.asset||'', direction:trade.direction||'',
-          result:trade.result||'', pnl:trade.pnlPct||'0',
-          score:trade.setupScore||'0', maxScore:trade.checklistMax||configItems.length||7,
-          rejet:trade.rejetScore||'0', date:trade.date||'',
-          conforming:trade.conforming?'1':'0', neon
-        });
-        url = `${base}/api/share?${p}`;
+        const rc=rc2(trade.result||"BE");
+        let y=68;
+
+        // Check-in
+        if(trade.checkin&&(trade.checkin.humeur||trade.checkin.biais)){
+          ctx.fillStyle=neon+"08"; rr(14,y,W-28,56,8); ctx.fill();
+          ctx.strokeStyle=neon+"14"; ctx.lineWidth=1; rr(14,y,W-28,56,8); ctx.stroke();
+          ctx.font=`9px ${F}`; ctx.fillStyle="#3a5a3a";
+          ctx.fillText("CHECK-IN",26,y+15);
+          let bx=26;
+          if(trade.checkin.humeur){
+            const tw=ctx.measureText(trade.checkin.humeur).width+20;
+            ctx.fillStyle=neon+"18"; rr(bx,y+20,tw,26,5); ctx.fill();
+            ctx.strokeStyle=neon+"28"; rr(bx,y+20,tw,26,5); ctx.stroke();
+            ctx.font=`11px ${F}`; ctx.fillStyle="#c8e6c8";
+            ctx.fillText(trade.checkin.humeur,bx+10,y+38); bx+=tw+8;
+          }
+          if(trade.checkin.biais){
+            const tw=ctx.measureText(trade.checkin.biais).width+20;
+            ctx.fillStyle=neon+"10"; rr(bx,y+20,tw,26,5); ctx.fill();
+            ctx.font=`11px ${F}`; ctx.fillStyle="#c8e6c8";
+            ctx.fillText(trade.checkin.biais,bx+10,y+38);
+          }
+          y+=68;
+        }
+
+        // Asset + résultat
+        ctx.fillStyle=rc+"12"; rr(14,y,W-28,76,10); ctx.fill();
+        ctx.strokeStyle=rc+"30"; ctx.lineWidth=1; rr(14,y,W-28,76,10); ctx.stroke();
+        ctx.fillStyle=rc; ctx.fillRect(14,y,5,76);
+        ctx.font=`bold 22px ${F}`; ctx.fillStyle="#e8f5e8";
+        ctx.fillText(`${trade.asset||""} · ${trade.direction||""}`,28,y+30);
+        ctx.font=`10px ${F}`; ctx.fillStyle=neon+"55";
+        ctx.fillText(trade.date||"",28,y+52);
+        ctx.font=`bold 26px ${F}`; ctx.fillStyle=rc;
+        ctx.textAlign="right"; ctx.fillText(trade.result||"",W-20,y+30);
+        ctx.font=`bold 16px ${F}`;
+        ctx.fillStyle=parseFloat(trade.pnlPct||0)>=0?neon:"#ff4d4d";
+        ctx.fillText(fmtP(trade.pnlPct),W-20,y+54);
+        ctx.textAlign="left";
+        y+=90;
+
+        // Setup + Rejet
+        const hw=(W-28-12)/2;
+        // Setup
+        ctx.fillStyle=neon+"06"; rr(14,y,hw,86,10); ctx.fill();
+        ctx.strokeStyle=neon+"18"; rr(14,y,hw,86,10); ctx.stroke();
+        ctx.font=`9px ${F}`; ctx.fillStyle="#3a5a3a";
+        ctx.fillText("SETUP SCORE",26,y+18);
+        // Cercle
+        const cx=14+46,cy=y+55,cr=28;
+        const sc=trade.setupScore||0, mx=trade.checklistMax||configItems.length||7;
+        ctx.strokeStyle=neon+"18"; ctx.lineWidth=6;
+        ctx.beginPath();ctx.arc(cx,cy,cr,-Math.PI/2,Math.PI*1.5);ctx.stroke();
+        ctx.strokeStyle=neon; ctx.lineWidth=6;
+        ctx.beginPath();ctx.arc(cx,cy,cr,-Math.PI/2,-Math.PI/2+Math.PI*2*(sc/mx));ctx.stroke();
+        ctx.font=`bold 13px ${F}`; ctx.fillStyle=neon;
+        ctx.textAlign="center"; ctx.fillText(`${sc}/${mx}`,cx,cy+5); ctx.textAlign="left";
+        ctx.font=`bold 11px ${F}`; ctx.fillStyle=trade.conforming?neon:"#ff4d4d";
+        ctx.fillText(trade.conforming?fr?"✓ conforme":"✓ compliant":fr?"✗ non-conforme":"✗ non-compliant",14+hw*0.45+8,y+54);
+        // Rejet
+        ctx.fillStyle=neon+"06"; rr(14+hw+12,y,hw,86,10); ctx.fill();
+        ctx.strokeStyle=neon+"18"; rr(14+hw+12,y,hw,86,10); ctx.stroke();
+        ctx.font=`9px ${F}`; ctx.fillStyle="#3a5a3a";
+        ctx.fillText("REJET /10",14+hw+24,y+18);
+        ctx.font=`bold 44px ${F}`;
+        ctx.fillStyle=trade.rejetScore>=8?neon:trade.rejetScore>=5?"#f0b429":"#ff4d4d";
+        ctx.fillText(trade.rejetScore>0?`${trade.rejetScore}`:"—",14+hw+24,y+72);
+        if(trade.rejetScore>0){
+          ctx.font=`10px ${F}`; ctx.fillStyle="#5a7a5a";
+          ctx.fillText(trade.rejetScore>=8?"Excellent":trade.rejetScore>=5?"Correct":"Faible",14+hw+24+50,y+72);
+        }
+        y+=100;
+
+        // Checklist
+        if(configItems.length>0){
+          const ch=configLen*44+26;
+          ctx.fillStyle=neon+"05"; rr(14,y,W-28,ch,10); ctx.fill();
+          ctx.strokeStyle=neon+"12"; rr(14,y,W-28,ch,10); ctx.stroke();
+          ctx.font=`9px ${F}`; ctx.fillStyle="#3a5a3a"; ctx.fillText("CHECKLIST",26,y+18);
+          configItems.slice(0,7).forEach((item,i)=>{
+            const iy=y+26+i*44;
+            if(i>0){ctx.strokeStyle=neon+"0a";ctx.beginPath();ctx.moveTo(26,iy-8);ctx.lineTo(W-26,iy-8);ctx.stroke();}
+            const chk=tChecklist.includes(i);
+            ctx.font=`bold 14px ${F}`; ctx.fillStyle=chk?neon:"#2a3a2a";
+            ctx.fillText(chk?"✓":"✗",26,iy+16);
+            ctx.font=`12px ${F}`; ctx.fillStyle=chk?"#c8e6c8":"#3a5a3a";
+            ctx.fillText(item.length>48?item.slice(0,48)+"…":item,52,iy+16);
+          });
+          y+=ch+8;
+        }
       } else {
-        const p = new URLSearchParams({
-          type:'week', wr:wWR, wpnl:wPnl.toFixed(1),
-          trades:week.length, disc, neon
+        let y=68;
+        // Stats 3 col
+        const sw3=(W-28-16)/3;
+        [{l:"WIN RATE",v:`${wWR}%`,c:wWR>=50?neon:"#ff4d4d"},{l:"P&L",v:fmtP(wPnl),c:wPnl>=0?neon:"#ff4d4d"},{l:"TRADES",v:`${week.length}`,c:neon}].forEach(({l,v,c},i)=>{
+          const sx=14+i*(sw3+8);
+          ctx.fillStyle=c+"0d"; rr(sx,y,sw3,70,8); ctx.fill();
+          ctx.strokeStyle=c+"22"; rr(sx,y,sw3,70,8); ctx.stroke();
+          ctx.font=`9px ${F}`; ctx.fillStyle=neon+"44"; ctx.fillText(l,sx+10,y+18);
+          ctx.font=`bold 26px ${F}`; ctx.fillStyle=c; ctx.fillText(v,sx+10,y+52);
         });
-        url = `${base}/api/share?${p}`;
+        y+=84;
+        // Discipline
+        ctx.fillStyle=discC+"08"; rr(14,y,W-28,88,10); ctx.fill();
+        ctx.strokeStyle=discC+"18"; rr(14,y,W-28,88,10); ctx.stroke();
+        ctx.font=`9px ${F}`; ctx.fillStyle=neon+"44"; ctx.fillText("DISCIPLINE",26,y+18);
+        ctx.font=`bold 32px ${F}`; ctx.fillStyle=discC; ctx.fillText(`${disc}`,26,y+56);
+        ctx.font=`14px ${F}`; ctx.fillStyle=neon+"33"; ctx.fillText("/10",26+ctx.measureText(`${disc}`).width+4,y+56);
+        const bx=120,bw=W-140;
+        [{l:fr?"Conformité":"Compliance",v:week.length?Math.round(wConf/week.length*100):0,c:neon},{l:fr?"Sans revenge":"No revenge",v:week.length?Math.round((1-wRev/week.length)*100):100,c:wRev===0?neon:"#f0b429"}].forEach(({l,v,c},i)=>{
+          const by=y+22+i*34;
+          ctx.font=`9px ${F}`; ctx.fillStyle=neon+"44"; ctx.fillText(l,bx,by+4);
+          ctx.font=`bold 9px ${F}`; ctx.fillStyle=c;
+          ctx.textAlign="right"; ctx.fillText(`${v}%`,W-20,by+4); ctx.textAlign="left";
+          ctx.fillStyle=neon+"12"; rr(bx,by+8,bw,4,2); ctx.fill();
+          ctx.fillStyle=c; rr(bx,by+8,bw*v/100,4,2); ctx.fill();
+        });
       }
-      // Récupérer l'image
-      const res = await fetch(url);
-      const blob = await res.blob();
-      const file = new File([blob], "trackmytrade.png", {type:"image/png"});
-      if(navigator.canShare&&navigator.canShare({files:[file]})) {
-        await navigator.share({files:[file], title:"TrackMyTrade"});
+
+      // Watermark
+      ctx.font=`9px ${F}`; ctx.fillStyle=neon+"22";
+      ctx.textAlign="center"; ctx.fillText("trackmytrade.app",W/2,H-12);
+      ctx.textAlign="left";
+
+      // Partager
+      const blob=await new Promise(r=>canvas.toBlob(r,"image/png",0.95));
+      const file=new File([blob],"trackmytrade.png",{type:"image/png"});
+      if(navigator.canShare&&navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],title:"TrackMyTrade"});
       } else {
-        const objUrl = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href=objUrl; a.download="trackmytrade.png"; a.click();
-        URL.revokeObjectURL(objUrl);
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement("a");a.href=url;a.download="trackmytrade.png";a.click();
+        URL.revokeObjectURL(url);
       }
-    } catch(e) {
+    } catch(e){
       console.error(e);
-      const text = isTrade
-        ? `${trade.result} ${trade.asset||""} ${fmtP(trade.pnlPct)} — TrackMyTrade`
-        : `${wWR}% WR · ${fmtP(wPnl)} — TrackMyTrade`;
-      if(navigator.share) navigator.share({text, url:"https://trackmytrade.app"}).catch(()=>{});
+      if(navigator.share){
+        const text=isTrade?`${trade.result} ${trade.asset} ${fmtP(trade.pnlPct)} — TrackMyTrade`:`${wWR}% WR · ${fmtP(wPnl)} — TrackMyTrade`;
+        navigator.share({text,url:"https://trackmytrade.app"}).catch(()=>{});
+      }
     }
     setSharing(false);
   };
@@ -1380,7 +1521,7 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
                   <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:1,marginBottom:4,fontFamily:MONO}}>REJET /10</div>
                   <div style={{display:"flex",alignItems:"baseline",gap:8}}>
                     <span style={{fontSize:36,fontWeight:800,color:trade.rejetScore>=8?neon:trade.rejetScore>=5?"#f0b429":"#ff4d4d",fontFamily:MONO}}>{trade.rejetScore>0?trade.rejetScore:"—"}</span>
-                    {trade.rejetScore>0&&<span style={{fontSize:11,color:"#5a7a5a",fontFamily:MONO}}>{trade.rejetScore>=8?(fr?"Excellent":"Excellent"):trade.rejetScore>=5?(fr?"Correct":"Correct"):(fr?"Faible":"Low")}</span>}
+                    {trade.rejetScore>0&&<span style={{fontSize:11,color:"#5a7a5a",fontFamily:MONO}}>{trade.rejetScore>=8?"Excellent":trade.rejetScore>=5?"Correct":"Faible"}</span>}
                   </div>
                 </div>
               </div>
@@ -1428,7 +1569,8 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
           </div>
         </div>
         <div style={{padding:"0 18px"}}>
-          <button onClick={doShare} disabled={sharing} className="btn" style={{width:"100%",background:`${neon}18`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:"14px 0",fontSize:12,fontWeight:700,fontFamily:MONO,letterSpacing:2,display:"flex",alignItems:"center",justifyContent:"center",gap:8,opacity:sharing?0.6:1}}>
+          <button onClick={generateAndShare} disabled={sharing} className="btn"
+            style={{width:"100%",background:`${neon}18`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:"14px 0",fontSize:12,fontWeight:700,fontFamily:MONO,letterSpacing:2,display:"flex",alignItems:"center",justifyContent:"center",gap:8,opacity:sharing?0.6:1}}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
             {sharing?(fr?"Génération…":"Generating…"):(fr?"PARTAGER":"SHARE")}
           </button>
