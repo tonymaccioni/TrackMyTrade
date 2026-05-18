@@ -848,11 +848,11 @@ function SplashScreen({onDone,neon}) {
   useEffect(()=>{
     const done=setTimeout(onDone,2700);
     const canvas=canvasRef.current;
-    if(!canvas)return;
+    if(!canvas)return ()=>{clearTimeout(done);};
     const ctx=canvas.getContext("2d");
     const W=canvas.width,H=canvas.height;
     const cols=11,rows=19,cw=W/cols,rh=H/rows;
-    const hex=neon; // "#00ff9d"
+    const hex=neon;
     const PTS=[[52,88],[248,65],[32,215],[268,192],[142,35],[72,335],[232,305],[25,445],[275,382],[115,488],[195,452],[45,532],[255,515],[128,148],[185,348],[88,188],[218,162],[158,545],[38,308],[262,458]];
 
     const animate=ts=>{
