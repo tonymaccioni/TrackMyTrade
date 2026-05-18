@@ -1291,7 +1291,7 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
   const doCapture = async () => {
     setCapturing(true);
     try {
-      const h2c = (await import('html2canvas')).default;
+      const h2c = html2canvas;
       const canvas = await h2c(cardRef.current, {
         backgroundColor:"#0a140a", scale:2, useCORS:true, logging:false,
         allowTaint:true,
