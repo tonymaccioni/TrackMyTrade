@@ -1313,10 +1313,7 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
     // Fond
     ctx.fillStyle="#080f08"; ctx.fillRect(0,0,W,H);
 
-    // Grille subtile
-    ctx.strokeStyle=neon+"06"; ctx.lineWidth=1;
-    for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
-    for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
 
     // Barre top néon
     const grad=ctx.createLinearGradient(0,0,W,0);
@@ -1484,16 +1481,26 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
   const doShare = async () => {
     if(!imgUrl) return;
     try {
-      const res=await fetch(imgUrl);
-      const blob=await res.blob();
-      const file=new File([blob],"trackmytrade.png",{type:"image/png"});
-      if(navigator.canShare&&navigator.canShare({files:[file]})){
-        await navigator.share({files:[file],title:"TrackMyTrade"});
-      } else {
-        const a=document.createElement("a");
-        a.href=imgUrl; a.download="trackmytrade.png"; a.click();
+      const res = await fetch(imgUrl);
+      const blob = await res.blob();
+      const file = new File([blob], "trackmytrade.png", {type:"image/png"});
+      // Essayer partage natif avec fichier (Android + iOS PWA)
+      if(navigator.canShare && navigator.canShare({files:[file]})) {
+        await navigator.share({files:[file], title:"TrackMyTrade"});
+        return;
       }
-    } catch(e){console.error(e);}
+      // Fallback : partage texte + lien
+      if(navigator.share) {
+        const text = isTrade
+          ? `${trade.result} ${trade.asset||""} ${trade.pnlPct?`+${trade.pnlPct}%`:""} — TrackMyTrade`
+          : `Semaine : ${wWR}% WR · ${fmtP(wPnl)} P&L — TrackMyTrade`;
+        await navigator.share({text, url:"https://trackmytrade.app"});
+        return;
+      }
+      // Fallback desktop : télécharger
+      const a = document.createElement("a");
+      a.href = imgUrl; a.download = "trackmytrade.png"; a.click();
+    } catch(e) { console.error(e); }
   };
 
   return (
@@ -1510,7 +1517,7 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
           <button onClick={onClose} className="btn" style={{background:"transparent",border:`1px solid ${neon}22`,color:`${neon}66`,borderRadius:10,padding:"14px 16px",fontSize:14}}>✕</button>
         </div>
         <div style={{fontSize:9,color:`${neon}22`,fontFamily:"'IBM Plex Mono',monospace"}}>
-          {fr?"Appui long sur l'image pour la sauvegarder":"Long press to save image"}
+          {fr?"💡 Appui long sur l'image → Enregistrer dans les photos → Partager en story":"💡 Long press image → Save to photos → Share as story"}
         </div>
       </div>
     </div>
