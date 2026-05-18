@@ -1268,11 +1268,10 @@ function StatsInsightsModal({trades,lang,neon,onClose}) {
 
 function ShareModal({trade, trades, lang, neon, config, onClose}) {
   const fr = lang === "fr";
-  const M = "'IBM Plex Mono','Courier New',monospace";
+  const M = "'Courier New',monospace";
   const canvasRef = useRef(null);
   const [imgUrl, setImgUrl] = useState(null);
   const [generating, setGenerating] = useState(true);
-
   const isTrade = !!(trade && trade.asset);
   const rc2 = r => r==="WIN"?neon:r==="LOSS"?"#ff4d4d":"#f0b429";
   const fmtP = v => {
@@ -1292,7 +1291,7 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
   const disc = week.length?Math.round((wConf/week.length*0.6+(1-wRev/week.length)*0.4)*10):0;
   const discC = disc>=8?neon:disc>=5?"#f0b429":"#ff4d4d";
 
-  function drawRoundRect(ctx,x,y,w,h,r){
+  function rr(ctx,x,y,w,h,r){
     ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);
     ctx.arcTo(x+w,y,x+w,y+r,r);ctx.lineTo(x+w,y+h-r);
     ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.lineTo(x+r,y+h);
@@ -1303,174 +1302,200 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
   useEffect(()=>{
     const canvas = canvasRef.current;
     if(!canvas) return;
-    const W=400, FONT="'Courier New',monospace";
+    const W = 800;
     const configItems = (config&&config.items)||[];
     const tChecklist = isTrade?(trade.checklist||[]):[];
-    const H = isTrade ? Math.max(520, 280 + configItems.slice(0,7).length*24) : 460;
+    const numItems = Math.min(configItems.length,7);
+    const H = isTrade ? 180+80+90+(numItems*52)+80 : 520;
     canvas.width=W; canvas.height=H;
     const ctx = canvas.getContext("2d");
+    const scale = 2;
+    canvas.width=W*scale; canvas.height=H*scale;
+    canvas.style.width=W+"px"; canvas.style.height=H+"px";
+    ctx.scale(scale,scale);
 
-    // Fond
-    ctx.fillStyle="#080f08"; ctx.fillRect(0,0,W,H);
+    // ── FOND ──
+    ctx.fillStyle="#0a140a"; ctx.fillRect(0,0,W,H);
 
-
-
-    // Barre top néon
-    const grad=ctx.createLinearGradient(0,0,W,0);
-    grad.addColorStop(0,neon);grad.addColorStop(1,neon+"55");
-    ctx.fillStyle=grad; ctx.fillRect(0,0,W,4);
-
-    // Bordure carte
-    ctx.strokeStyle=neon+"25"; ctx.lineWidth=1; ctx.strokeRect(0,0,W,H);
-
-    // Header
-    ctx.font=`500 10px ${FONT}`; ctx.fillStyle=neon+"44"; ctx.fillText("TRACKMYTRADE",24,28);
-    ctx.font=`bold 16px ${FONT}`; ctx.fillStyle=neon;
-    ctx.fillText(isTrade?(fr?"◈ RÉCAP TRADE":"◈ TRADE RECAP"):(fr?"◈ RÉSUMÉ SEMAINE":"◈ WEEKLY RECAP"),24,52);
-    ctx.font=`10px ${FONT}`; ctx.fillStyle=neon+"33";
-    ctx.fillText(isTrade?`${trade.date||""}${trade.time?" · "+trade.time:""}`:(fr?`7 derniers jours · ${week.length} trades`:`Last 7 days · ${week.length} trades`),24,70);
-
-    // Séparateur
-    ctx.strokeStyle=neon+"14"; ctx.lineWidth=1;
-    ctx.beginPath();ctx.moveTo(24,82);ctx.lineTo(W-24,82);ctx.stroke();
+    // ── HEADER ──
+    ctx.fillStyle="#0d1a0d"; ctx.fillRect(0,0,W,64);
+    ctx.font=`bold 18px ${M}`; ctx.fillStyle=neon;
+    ctx.fillText(isTrade?(fr?"RÉCAP TRADE":"TRADE RECAP"):(fr?"RÉSUMÉ SEMAINE":"WEEKLY RECAP"),24,28);
+    ctx.font=`11px ${M}`; ctx.fillStyle=neon+"55";
+    ctx.fillText("TRACKMYTRADE",24,48);
+    // Filet sous header
+    ctx.strokeStyle=neon+"20"; ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(0,64);ctx.lineTo(W,64);ctx.stroke();
 
     if(isTrade) {
-      // ── CARTE TRADE ──
-      const resC=rc2(trade.result||"BE");
+      const resC = rc2(trade.result||"BE");
+      let y = 80;
 
-      // Bloc principal résultat
-      ctx.fillStyle=resC+"10"; drawRoundRect(ctx,24,92,W-48,64,10); ctx.fill();
-      ctx.strokeStyle=resC+"30"; ctx.lineWidth=1; drawRoundRect(ctx,24,92,W-48,64,10); ctx.stroke();
-      ctx.fillStyle=resC; ctx.fillRect(24,92,4,64);
+      // ── CHECK-IN ──
+      if(trade.checkin&&(trade.checkin.humeur||trade.checkin.biais)){
+        ctx.fillStyle="#0d1a0d"; ctx.strokeStyle=neon+"18"; ctx.lineWidth=1;
+        rr(ctx,16,y,W-32,56,8); ctx.fill(); ctx.stroke();
+        ctx.font=`10px ${M}`; ctx.fillStyle="#3a5a3a";
+        ctx.fillText("CHECK-IN",30,y+16);
+        // Badges check-in
+        let bx=30;
+        if(trade.checkin.humeur){
+          ctx.fillStyle=neon+"18"; rr(ctx,bx,y+22,120,26,6); ctx.fill();
+          ctx.strokeStyle=neon+"30"; ctx.lineWidth=1; rr(ctx,bx,y+22,120,26,6); ctx.stroke();
+          ctx.font=`bold 11px ${M}`; ctx.fillStyle="#c8e6c8";
+          ctx.fillText(trade.checkin.humeur,bx+10,y+40); bx+=130;
+        }
+        if(trade.checkin.biais){
+          ctx.fillStyle=neon+"10"; rr(ctx,bx,y+22,110,26,6); ctx.fill();
+          ctx.strokeStyle=neon+"22"; ctx.lineWidth=1; rr(ctx,bx,y+22,110,26,6); ctx.stroke();
+          ctx.font=`bold 11px ${M}`; ctx.fillStyle="#c8e6c8";
+          ctx.fillText(trade.checkin.biais,bx+10,y+40);
+        }
+        y+=70;
+      }
 
-      ctx.font=`bold 20px ${FONT}`; ctx.fillStyle="#e8f5e8";
-      ctx.fillText(`${trade.asset||""} · ${trade.direction||""}`,38,120);
-      ctx.font=`10px ${FONT}`; ctx.fillStyle=neon+"44";
-      ctx.fillText(`${trade.date||""}${trade.time?" · "+trade.time:""}`,38,138);
-      ctx.font=`bold 24px ${FONT}`; ctx.fillStyle=resC;
-      ctx.textAlign="right"; ctx.fillText(trade.result||"BE",W-34,120);
+      // ── BLOC ASSET + RÉSULTAT ──
+      ctx.fillStyle=resC+"14"; rr(ctx,16,y,W-32,80,10); ctx.fill();
+      ctx.strokeStyle=resC+"35"; ctx.lineWidth=1; rr(ctx,16,y,W-32,80,10); ctx.stroke();
+      // Bordure gauche colorée
+      ctx.fillStyle=resC; rr(ctx,16,y,5,80,3); ctx.fill();
+
+      ctx.font=`bold 22px ${M}`; ctx.fillStyle="#e8f5e8";
+      ctx.fillText(`${trade.asset||""} · ${trade.direction||""}`,34,y+32);
+      ctx.font=`11px ${M}`; ctx.fillStyle=neon+"55";
+      ctx.fillText(trade.date||"",34,y+54);
+
+      // WIN/LOSS à droite
+      ctx.font=`bold 28px ${M}`; ctx.fillStyle=resC;
+      ctx.textAlign="right";
+      ctx.fillText(trade.result||"BE",W-28,y+36);
       if(trade.pnlPct){
-        ctx.font=`bold 15px ${FONT}`;
+        ctx.font=`bold 18px ${M}`;
         ctx.fillStyle=parseFloat(trade.pnlPct)>=0?neon:"#ff4d4d";
-        ctx.fillText(fmtP(trade.pnlPct),W-34,142);
+        ctx.fillText(fmtP(trade.pnlPct),W-28,y+60);
       }
       ctx.textAlign="left";
+      y+=96;
 
-      // 3 stats
-      const stats=[
-        {l:"SETUP",v:`${trade.setupScore||0}/${trade.checklistMax||configItems.length||7}`,c:trade.conforming?neon:"#ff4d4d"},
-        {l:"REJET",v:trade.rejetScore>0?`${trade.rejetScore}/10`:"—",c:trade.rejetScore>=8?neon:trade.rejetScore>=5?"#f0b429":"#ff4d4d"},
-        {l:fr?"CONFORME":"COMPLIANT",v:trade.conforming?"✓":"✗",c:trade.conforming?neon:"#ff4d4d"},
-      ];
-      stats.forEach(({l,v,c},i)=>{
-        const sx=24+i*118+i*4,sy=168,sw=116,sh=52;
-        ctx.fillStyle=c+"0c"; drawRoundRect(ctx,sx,sy,sw,sh,8); ctx.fill();
-        ctx.strokeStyle=c+"22"; ctx.lineWidth=1; drawRoundRect(ctx,sx,sy,sw,sh,8); ctx.stroke();
-        ctx.font=`8px ${FONT}`; ctx.fillStyle=neon+"44"; ctx.fillText(l,sx+8,sy+16);
-        ctx.font=`bold 18px ${FONT}`; ctx.fillStyle=c; ctx.fillText(v,sx+8,sy+40);
-      });
+      // ── SETUP SCORE + REJET ──
+      const halfW=(W-32-12)/2;
 
-      // Check-in
-      let yy=234;
-      if(trade.checkin&&(trade.checkin.humeur||trade.checkin.biais)){
-        ctx.fillStyle=neon+"06"; drawRoundRect(ctx,24,yy,W-48,32,8); ctx.fill();
-        ctx.font=`8px ${FONT}`; ctx.fillStyle=neon+"33"; ctx.fillText("CHECK-IN",34,yy+12);
-        ctx.font=`11px ${FONT}`; ctx.fillStyle="#c8e6c8";
-        let cx=34;
-        if(trade.checkin.humeur){ctx.fillText(trade.checkin.humeur,cx,yy+26);cx+=ctx.measureText(trade.checkin.humeur).width+10;}
-        if(trade.checkin.biais){ctx.fillStyle=neon+"77";ctx.fillText(trade.checkin.biais,cx,yy+26);}
-        yy+=42;
+      // Setup score (cercle)
+      ctx.fillStyle="#0d1a0d"; ctx.strokeStyle=neon+"18"; ctx.lineWidth=1;
+      rr(ctx,16,y,halfW,90,8); ctx.fill(); ctx.stroke();
+      // Cercle score
+      const cx_=16+50, cy_=y+44, cr=34;
+      const score=trade.setupScore||0;
+      const maxScore=trade.checklistMax||configItems.length||7;
+      const pct=maxScore>0?score/maxScore:0;
+      ctx.strokeStyle=neon+"15"; ctx.lineWidth=8;
+      ctx.beginPath();ctx.arc(cx_,cy_,cr,-Math.PI/2,Math.PI*1.5);ctx.stroke();
+      ctx.strokeStyle=neon; ctx.lineWidth=8;
+      ctx.beginPath();ctx.arc(cx_,cy_,cr,-Math.PI/2,-Math.PI/2+Math.PI*2*pct);ctx.stroke();
+      ctx.font=`bold 20px ${M}`; ctx.fillStyle=neon;
+      ctx.textAlign="center"; ctx.fillText(`${score}/${maxScore}`,cx_,cy_+7); ctx.textAlign="left";
+      ctx.font=`10px ${M}`; ctx.fillStyle="#3a5a3a";
+      ctx.fillText("SETUP SCORE",cx_+44,y+28);
+      ctx.font=`bold 12px ${M}`; ctx.fillStyle=neon;
+      ctx.fillText(trade.conforming?(fr?"✓ conforme":"✓ compliant"):(fr?"✗ non-conforme":"✗ non-compliant"),cx_+44,y+52);
+
+      // Rejet
+      ctx.fillStyle="#0d1a0d"; ctx.strokeStyle=neon+"18"; ctx.lineWidth=1;
+      rr(ctx,16+halfW+12,y,halfW,90,8); ctx.fill(); ctx.stroke();
+      ctx.font=`bold 48px ${M}`; ctx.fillStyle=trade.rejetScore>=8?neon:trade.rejetScore>=5?"#f0b429":"#ff4d4d";
+      ctx.fillText(trade.rejetScore>0?`${trade.rejetScore}`:"—",16+halfW+28,y+62);
+      ctx.font=`10px ${M}`; ctx.fillStyle="#3a5a3a";
+      ctx.fillText("REJET /10",16+halfW+28,y+80);
+      if(trade.rejetScore>0){
+        ctx.font=`10px ${M}`; ctx.fillStyle="#5a7a5a";
+        ctx.fillText(trade.rejetScore>=8?(fr?"Excellent":"Excellent"):trade.rejetScore>=5?(fr?"Correct":"Correct"):(fr?"Faible":"Low"),16+halfW+90,y+80);
       }
+      y+=106;
 
-      // Checklist
-      if(configItems.length>0){
-        const clH=configItems.slice(0,7).length*24+24;
-        ctx.fillStyle=neon+"05"; drawRoundRect(ctx,24,yy,W-48,clH,8); ctx.fill();
-        ctx.font=`8px ${FONT}`; ctx.fillStyle=neon+"33"; ctx.fillText("CHECKLIST",34,yy+14);
+      // ── CHECKLIST ──
+      if(numItems>0){
+        ctx.fillStyle="#0d1a0d"; ctx.strokeStyle=neon+"15"; ctx.lineWidth=1;
+        const clH=numItems*52+24;
+        rr(ctx,16,y,W-32,clH,8); ctx.fill(); ctx.stroke();
+        ctx.font=`10px ${M}`; ctx.fillStyle="#3a5a3a";
+        ctx.fillText("CHECKLIST",30,y+18);
         configItems.slice(0,7).forEach((item,i)=>{
-          const iy=yy+24+i*24;
+          const iy=y+30+i*52;
           const checked=tChecklist.includes(i);
-          ctx.font=`12px ${FONT}`; ctx.fillStyle=checked?neon:"#2a3a2a";
-          ctx.fillText(checked?"✓":"✗",34,iy);
-          ctx.font=`10px ${FONT}`; ctx.fillStyle=checked?"#c8e6c8":"#2a3a2a";
-          ctx.fillText(item.length>42?item.slice(0,42)+"…":item,54,iy);
+          // Séparateur
+          if(i>0){ctx.strokeStyle=neon+"0a";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(30,iy-14);ctx.lineTo(W-30,iy-14);ctx.stroke();}
+          ctx.font=`bold 16px ${M}`; ctx.fillStyle=checked?neon:"#2a3a2a";
+          ctx.fillText(checked?"✓":"✗",30,iy+16);
+          ctx.font=`14px ${M}`; ctx.fillStyle=checked?"#c8e6c8":"#3a5a3a";
+          ctx.fillText(item.length>50?item.slice(0,50)+"…":item,60,iy+16);
         });
-        yy+=clH+8;
-      }
-
-      // Notes
-      if(trade.notes){
-        ctx.fillStyle=neon+"04"; drawRoundRect(ctx,24,yy,W-48,40,8); ctx.fill();
-        ctx.font=`italic 10px ${FONT}`; ctx.fillStyle=neon+"44";
-        const note=`"${trade.notes.length>70?trade.notes.slice(0,70)+"…":trade.notes}"`;
-        ctx.fillText(note,34,yy+24);
+        y+=clH+12;
       }
 
     } else {
-      // ── CARTE RÉSUMÉ SEMAINE ──
-      const stats3=[
-        {l:"WIN RATE",v:`${wWR}%`,c:wWR>=50?neon:"#ff4d4d"},
-        {l:"P&L",v:fmtP(wPnl),c:wPnl>=0?neon:"#ff4d4d"},
-        {l:"TRADES",v:`${week.length}`,c:neon},
-      ];
-      stats3.forEach(({l,v,c},i)=>{
-        const sx=24+i*118+i*4,sy=92,sw=116,sh=66;
-        ctx.fillStyle=c+"0d"; drawRoundRect(ctx,sx,sy,sw,sh,10); ctx.fill();
-        ctx.strokeStyle=c+"25"; ctx.lineWidth=1; drawRoundRect(ctx,sx,sy,sw,sh,10); ctx.stroke();
-        ctx.font=`8px ${FONT}`; ctx.fillStyle=neon+"44"; ctx.fillText(l,sx+10,sy+18);
-        ctx.font=`bold 22px ${FONT}`; ctx.fillStyle=c; ctx.fillText(v,sx+10,sy+48);
+      // ── RÉSUMÉ SEMAINE ──
+      let y=80;
+
+      // 3 stats
+      const sw3=(W-32-16)/3;
+      [{l:"WIN RATE",v:`${wWR}%`,c:wWR>=50?neon:"#ff4d4d"},
+       {l:"P&L",v:fmtP(wPnl),c:wPnl>=0?neon:"#ff4d4d"},
+       {l:fr?"TRADES":"TRADES",v:`${week.length}`,c:neon}
+      ].forEach(({l,v,c},i)=>{
+        const sx=16+i*(sw3+8);
+        ctx.fillStyle="#0d1a0d"; ctx.strokeStyle=c+"22"; ctx.lineWidth=1;
+        rr(ctx,sx,y,sw3,74,8); ctx.fill(); ctx.stroke();
+        ctx.font=`10px ${M}`; ctx.fillStyle=neon+"44"; ctx.fillText(l,sx+12,y+20);
+        ctx.font=`bold 28px ${M}`; ctx.fillStyle=c; ctx.fillText(v,sx+12,y+56);
       });
+      y+=90;
 
       // Discipline
-      ctx.fillStyle=discC+"08"; drawRoundRect(ctx,24,172,W-48,70,10); ctx.fill();
-      ctx.strokeStyle=discC+"20"; ctx.lineWidth=1; drawRoundRect(ctx,24,172,W-48,70,10); ctx.stroke();
-      ctx.font=`8px ${FONT}`; ctx.fillStyle=neon+"44"; ctx.fillText("DISCIPLINE",34,190);
-      ctx.font=`bold 28px ${FONT}`; ctx.fillStyle=discC;
-      ctx.fillText(`${disc}`,34,222);
-      ctx.font=`13px ${FONT}`; ctx.fillStyle=neon+"33"; ctx.fillText("/10",34+ctx.measureText(`${disc}`).width+4,222);
-
+      ctx.fillStyle="#0d1a0d"; ctx.strokeStyle=discC+"22"; ctx.lineWidth=1;
+      rr(ctx,16,y,W-32,80,8); ctx.fill(); ctx.stroke();
+      ctx.font=`10px ${M}`; ctx.fillStyle="#3a5a3a"; ctx.fillText("DISCIPLINE",30,y+20);
+      ctx.font=`bold 36px ${M}`; ctx.fillStyle=discC;
+      ctx.fillText(`${disc}`,30,y+62);
+      ctx.font=`18px ${M}`; ctx.fillStyle=neon+"33"; ctx.fillText("/10",30+ctx.measureText(`${disc}`).width+6,y+62);
       // Barres
-      const bars=[
-        {l:fr?"Conformité":"Compliance",v:week.length?Math.round(wConf/week.length*100):0,c:neon},
-        {l:fr?"Sans revenge":"No revenge",v:week.length?Math.round((1-wRev/week.length)*100):100,c:wRev===0?neon:"#f0b429"},
-      ];
-      bars.forEach(({l,v,c},i)=>{
-        const by=196+i*30,bx=120,bw=W-148;
-        ctx.font=`8px ${FONT}`; ctx.fillStyle=neon+"44"; ctx.fillText(l,bx,by+4);
-        ctx.font=`bold 8px ${FONT}`; ctx.fillStyle=c;
-        ctx.textAlign="right"; ctx.fillText(`${v}%`,W-34,by+4); ctx.textAlign="left";
-        ctx.fillStyle=neon+"12"; drawRoundRect(ctx,bx,by+8,bw,4,2); ctx.fill();
-        ctx.fillStyle=c; drawRoundRect(ctx,bx,by+8,bw*v/100,4,2); ctx.fill();
+      const bx=160,bw=W-180;
+      [{l:fr?"Conformité":"Compliance",v:week.length?Math.round(wConf/week.length*100):0,c:neon},
+       {l:fr?"Sans revenge":"No revenge",v:week.length?Math.round((1-wRev/week.length)*100):100,c:wRev===0?neon:"#f0b429"}
+      ].forEach(({l,v,c},i)=>{
+        const by=y+20+i*34;
+        ctx.font=`9px ${M}`; ctx.fillStyle=neon+"44"; ctx.fillText(l,bx,by+4);
+        ctx.font=`bold 9px ${M}`; ctx.fillStyle=c;
+        ctx.textAlign="right"; ctx.fillText(`${v}%`,W-28,by+4); ctx.textAlign="left";
+        ctx.fillStyle=neon+"12"; rr(ctx,bx,by+8,bw,5,3); ctx.fill();
+        ctx.fillStyle=c; rr(ctx,bx,by+8,bw*v/100,5,3); ctx.fill();
       });
+      y+=96;
 
       // Insights
-      const insights=[];
+      const ins=[];
       if(week.length>=3){
         const nc=week.filter(x=>!x.conforming);
         const cWRv=wConf?Math.round(week.filter(x=>x.conforming&&x.result==="WIN").length/wConf*100):0;
         const ncWR=nc.length?Math.round(nc.filter(x=>x.result==="WIN").length/nc.length*100):0;
-        if(wConf>=2&&nc.length>=2&&cWRv-ncWR>10)
-          insights.push({c:neon,txt:fr?`Conformes : ${cWRv}% WR vs ${ncWR}% non-conformes`:`Compliant: ${cWRv}% WR vs ${ncWR}% non-compliant`});
-        if(wRev>0)
-          insights.push({c:"#ff4d4d",txt:fr?`${wRev} revenge trade${wRev>1?"s":""} — à corriger`:`${wRev} revenge trade${wRev>1?"s":""}  — fix this`});
-        else
-          insights.push({c:neon,txt:fr?"Aucun revenge trade ✓":"No revenge trades ✓"});
+        if(wConf>=2&&nc.length>=2&&cWRv-ncWR>10)ins.push({c:neon,t:fr?`Conformes : ${cWRv}% WR vs ${ncWR}% non-conformes`:`Compliant: ${cWRv}% WR vs ${ncWR}% non-compliant`});
+        if(wRev>0)ins.push({c:"#ff4d4d",t:fr?`${wRev} revenge trade${wRev>1?"s":""} — à corriger`:`${wRev} revenge trade${wRev>1?"s":""} — fix this`});
+        else ins.push({c:neon,t:fr?"Aucun revenge trade ✓":"No revenge trades ✓"});
       }
-      insights.slice(0,3).forEach(({c,txt},i)=>{
-        const iy=256+i*52;
-        ctx.fillStyle=c+"07"; drawRoundRect(ctx,24,iy,W-48,44,8); ctx.fill();
-        ctx.strokeStyle=c+"18"; ctx.lineWidth=1; drawRoundRect(ctx,24,iy,W-48,44,8); ctx.stroke();
-        ctx.fillStyle=c; ctx.fillRect(24,iy,3,44);
-        ctx.font=`11px ${FONT}`; ctx.fillStyle="#c8e6c8";
-        // wrap text
-        const words=txt.split(" "); let line="",ly=iy+16;
-        words.forEach(w=>{const t=line+w+" ";if(ctx.measureText(t).width>W-80&&line){ctx.fillText(line,36,ly);line=w+" ";ly+=16;}else line=t;});
-        ctx.fillText(line,36,ly);
+      ins.slice(0,3).forEach(({c,t},i)=>{
+        const iy=y+i*60;
+        ctx.fillStyle=c+"0a"; rr(ctx,16,iy,W-32,52,8); ctx.fill();
+        ctx.strokeStyle=c+"20"; ctx.lineWidth=1; rr(ctx,16,iy,W-32,52,8); ctx.stroke();
+        ctx.fillStyle=c; ctx.fillRect(16,iy,4,52);
+        ctx.font=`12px ${M}`; ctx.fillStyle="#c8e6c8";
+        const words=t.split(" ");let line="",ly=iy+20;
+        words.forEach(w=>{const tt=line+w+" ";if(ctx.measureText(tt).width>W-60&&line){ctx.fillText(line,28,ly);line=w+" ";ly+=18;}else line=tt;});
+        ctx.fillText(line,28,ly);
       });
+      y+=ins.length*60+8;
     }
 
-    // Watermark
-    ctx.font=`8px ${FONT}`; ctx.fillStyle=neon+"1a";
+    // ── WATERMARK ──
+    ctx.font=`10px ${M}`; ctx.fillStyle=neon+"25";
     ctx.textAlign="center"; ctx.fillText("trackmytrade.app",W/2,H-12);
     ctx.textAlign="left";
 
@@ -1481,34 +1506,28 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
   const doShare = async () => {
     if(!imgUrl) return;
     try {
-      const res = await fetch(imgUrl);
-      const blob = await res.blob();
-      const file = new File([blob], "trackmytrade.png", {type:"image/png"});
-      // Essayer partage natif avec fichier (Android + iOS PWA)
-      if(navigator.canShare && navigator.canShare({files:[file]})) {
-        await navigator.share({files:[file], title:"TrackMyTrade"});
+      const res=await fetch(imgUrl);
+      const blob=await res.blob();
+      const file=new File([blob],"trackmytrade.png",{type:"image/png"});
+      if(navigator.canShare&&navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],title:"TrackMyTrade"});
         return;
       }
-      // Fallback : partage texte + lien
-      if(navigator.share) {
-        const text = isTrade
-          ? `${trade.result} ${trade.asset||""} ${trade.pnlPct?`+${trade.pnlPct}%`:""} — TrackMyTrade`
-          : `Semaine : ${wWR}% WR · ${fmtP(wPnl)} P&L — TrackMyTrade`;
-        await navigator.share({text, url:"https://trackmytrade.app"});
+      if(navigator.share){
+        const text=isTrade?`${trade.result} ${trade.asset||""} ${fmtP(trade.pnlPct)} — TrackMyTrade`:`Semaine : ${wWR}% WR · ${fmtP(wPnl)} — TrackMyTrade`;
+        await navigator.share({text,url:"https://trackmytrade.app"});
         return;
       }
-      // Fallback desktop : télécharger
-      const a = document.createElement("a");
-      a.href = imgUrl; a.download = "trackmytrade.png"; a.click();
-    } catch(e) { console.error(e); }
+      const a=document.createElement("a");a.href=imgUrl;a.download="trackmytrade.png";a.click();
+    } catch(e){console.error(e);}
   };
 
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.95)",zIndex:500,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:16,overflowY:"auto"}} onClick={onClose}>
       <canvas ref={canvasRef} style={{display:"none"}}/>
-      <div className="slide-up" style={{width:"100%",maxWidth:400,display:"flex",flexDirection:"column",alignItems:"center",gap:12}} onClick={e=>e.stopPropagation()}>
-        {generating&&<div style={{color:neon,fontSize:12,fontFamily:"'IBM Plex Mono',monospace"}}>{fr?"Génération de l'image…":"Generating image…"}</div>}
-        {imgUrl&&<img src={imgUrl} alt="share card" style={{width:"100%",maxWidth:400,borderRadius:12,border:`1px solid ${neon}25`,display:"block"}}/>}
+      <div className="slide-up" style={{width:"100%",maxWidth:420,display:"flex",flexDirection:"column",alignItems:"center",gap:12}} onClick={e=>e.stopPropagation()}>
+        {generating&&<div style={{color:neon,fontSize:12,fontFamily:"'IBM Plex Mono',monospace"}}>{fr?"Génération…":"Generating…"}</div>}
+        {imgUrl&&<img src={imgUrl} alt="share card" style={{width:"100%",maxWidth:420,borderRadius:12,border:`1px solid ${neon}25`,display:"block"}}/>}
         <div style={{display:"flex",gap:10,width:"100%"}}>
           <button onClick={doShare} className="btn" style={{flex:1,background:`${neon}18`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:"14px 0",fontSize:12,fontWeight:700,fontFamily:"'IBM Plex Mono',monospace",letterSpacing:2,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
@@ -1516,8 +1535,8 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
           </button>
           <button onClick={onClose} className="btn" style={{background:"transparent",border:`1px solid ${neon}22`,color:`${neon}66`,borderRadius:10,padding:"14px 16px",fontSize:14}}>✕</button>
         </div>
-        <div style={{fontSize:9,color:`${neon}22`,fontFamily:"'IBM Plex Mono',monospace"}}>
-          {fr?"💡 Appui long sur l'image → Enregistrer dans les photos → Partager en story":"💡 Long press image → Save to photos → Share as story"}
+        <div style={{fontSize:9,color:`${neon}22`,fontFamily:"'IBM Plex Mono',monospace",textAlign:"center"}}>
+          {fr?"💡 Appui long sur l'image → Enregistrer → Partager en story":"💡 Long press image → Save → Share as story"}
         </div>
       </div>
     </div>
