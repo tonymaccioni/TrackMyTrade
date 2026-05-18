@@ -47,7 +47,7 @@ const authRegister = async (email, pwd, lang) => {
 };
 
 const PRESET_ASSETS = ["XAU/USD","EUR/USD","GBP/USD","USD/JPY","GBP/JPY","NAS100","US30","SPX500","BTC/USD","ETH/USD","EUR/JPY","AUD/USD","USD/CAD"];
-const DEFAULT_CRITERIA = ["Tendance identifiée (HTF)","Point d'entrée validé","Risk/Reward ≥ 1:2","Stop loss placé","Pas de news dans les 30min","Pas plus de 2 trades perdants","Contexte de marché favorable"];
+const DEFAULT_CRITERIA = ["Tendance HTF","Cassure + retest validés","Liquidity Sweep OK?","Réaction propre sur zone clé","Pas de news dans les 30min","Présence d’un FVG","Contexte de marché favorable"];
 const MONO = "'Geist Mono','IBM Plex Mono',monospace";
 const PNL_PRESETS = ["-1","-0.5","0","+1","+2","+3","+4","+5"];
 const NEON_COLORS = [{name:"Vert",value:"#00ff9d"},{name:"Bleu",value:"#00d4ff"},{name:"Violet",value:"#bf00ff"},{name:"Rose",value:"#ff00aa"},{name:"Or",value:"#f0b429"}];
