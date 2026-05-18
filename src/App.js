@@ -1,3 +1,4 @@
+import html2canvas from 'html2canvas';
 import { useState, useEffect, useRef, useCallback } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell } from "recharts";
 import { initializeApp } from "firebase/app";
@@ -1287,19 +1288,10 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
   const configItems = (config&&config.items)||[];
   const tChecklist = isTrade?(trade.checklist||[]):[];
 
-  const loadHtml2Canvas = () => new Promise((resolve,reject)=>{
-    if(window.html2canvas){resolve(window.html2canvas);return;}
-    const s=document.createElement("script");
-    s.src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
-    s.onload=()=>resolve(window.html2canvas);
-    s.onerror=reject;
-    document.head.appendChild(s);
-  });
-
   const doCapture = async () => {
     setCapturing(true);
     try {
-      const h2c = await loadHtml2Canvas();
+      const h2c = (await import('html2canvas')).default;
       const canvas = await h2c(cardRef.current, {
         backgroundColor:"#0a140a", scale:2, useCORS:true, logging:false,
         allowTaint:true,
