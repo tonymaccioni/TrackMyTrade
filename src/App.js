@@ -1719,14 +1719,14 @@ function GuidedSetup({onDone,lang}) {
   const [selAssets,setSelAssets]=useState(["XAU/USD"]);const [customAsset,setCustomAsset]=useState("");
   const [criteria,setCriteria]=useState([...DEFAULT_CRITERIA]);const [threshold,setThreshold]=useState(6);const [newItem,setNewItem]=useState("");
   const allAssets=[...new Set([...PRESET_ASSETS,...selAssets.filter(a=>!PRESET_ASSETS.includes(a))])];
-  const TOTAL=4;const titles=[t.strategy,t.assets,t.criteria,t.threshold];const descs=[t.strategyDesc,t.assetsDesc,t.criteriaDesc,t.thresholdDesc];
-  const canNext=step===1?selAssets.length>0:step===2?criteria.length>=2:true;
+  const TOTAL=4;const titles=[t.assets,t.criteria,t.threshold,t.strategy];const descs=[t.assetsDesc,t.criteriaDesc,t.thresholdDesc,t.strategyDesc];
+  const canNext=step===0?selAssets.length>0:step===1?criteria.length>=2:true;
   const launch=()=>onDone({strategyName:stratName.trim()||"Ma Stratégie",defaultAsset:selAssets[0]||"XAU/USD",items:criteria,threshold,customAssets:selAssets});
   const inSt=mkInput(neon);
   const renderContent=()=>{
     if(step===0) return <input value={stratName} onChange={e=>setStratName(e.target.value)} placeholder="Ex: XAU/USD Scalping BB" style={{...inSt,fontSize:14,padding:14}} autoFocus/>;
-    if(step===1) return <div><div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:10}}>{allAssets.map(a=><button key={a} onClick={()=>setSelAssets(p=>p.includes(a)?p.filter(x=>x!==a):[...p,a])} className="btn" style={{background:selAssets.includes(a)?`${neon}26`:"#131318",border:`1px solid ${selAssets.includes(a)?neon:`${neon}22`}`,color:selAssets.includes(a)?neon:"#ffffffaa",borderRadius:8,padding:"9px 14px",fontSize:12,fontWeight:700,fontFamily:MONO}}>{a}</button>)}</div><div style={{display:"flex",gap:8}}><input value={customAsset} onChange={e=>setCustomAsset(e.target.value)} placeholder={t.customAsset} onKeyDown={e=>{if(e.key==="Enter"&&customAsset.trim()){setSelAssets(p=>[...p,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} style={{...inSt,marginBottom:0,flex:1}}/><button onClick={()=>{if(customAsset.trim()){setSelAssets(p=>[...p,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} className="btn" style={{background:`${neon}1a`,border:`1px solid ${neon}55`,color:neon,borderRadius:8,padding:"0 16px",fontSize:18}}>+</button></div></div>;
-    if(step===2) return <div>{criteria.map((c,i)=><div key={i} style={{display:"flex",gap:8,marginBottom:8}}><input value={c} onChange={e=>{const n=[...criteria];n[i]=e.target.value;setCriteria(n);}} style={{...inSt,marginBottom:0,flex:1}}/><button onClick={()=>setCriteria(criteria.filter((_,idx)=>idx!==i))} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d",borderRadius:6,padding:"8px 10px",cursor:"pointer"}}>✕</button></div>)}<div style={{display:"flex",gap:8}}><input value={newItem} onChange={e=>setNewItem(e.target.value)} placeholder={lang==="fr"?"Ajouter…":"Add…"} onKeyDown={e=>{if(e.key==="Enter"&&newItem.trim()){setCriteria([...criteria,newItem.trim()]);setNewItem("");}}} style={{...inSt,marginBottom:0,flex:1}}/><button onClick={()=>{if(newItem.trim()){setCriteria([...criteria,newItem.trim()]);setNewItem("");}}} className="btn" style={{background:`${neon}1a`,border:`1px solid ${neon}55`,color:neon,borderRadius:8,padding:"0 16px",fontSize:18}}>+</button></div></div>;
+    if(step===3) return <div><div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:10}}>{allAssets.map(a=><button key={a} onClick={()=>setSelAssets(p=>p.includes(a)?p.filter(x=>x!==a):[...p,a])} className="btn" style={{background:selAssets.includes(a)?`${neon}26`:"#131318",border:`1px solid ${selAssets.includes(a)?neon:`${neon}22`}`,color:selAssets.includes(a)?neon:"#ffffffaa",borderRadius:8,padding:"9px 14px",fontSize:12,fontWeight:700,fontFamily:MONO}}>{a}</button>)}</div><div style={{display:"flex",gap:8}}><input value={customAsset} onChange={e=>setCustomAsset(e.target.value)} placeholder={t.customAsset} onKeyDown={e=>{if(e.key==="Enter"&&customAsset.trim()){setSelAssets(p=>[...p,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} style={{...inSt,marginBottom:0,flex:1}}/><button onClick={()=>{if(customAsset.trim()){setSelAssets(p=>[...p,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} className="btn" style={{background:`${neon}1a`,border:`1px solid ${neon}55`,color:neon,borderRadius:8,padding:"0 16px",fontSize:18}}>+</button></div></div>;
+    if(step===1) return <div>{criteria.map((c,i)=><div key={i} style={{display:"flex",gap:8,marginBottom:8}}><input value={c} onChange={e=>{const n=[...criteria];n[i]=e.target.value;setCriteria(n);}} style={{...inSt,marginBottom:0,flex:1}}/><button onClick={()=>setCriteria(criteria.filter((_,idx)=>idx!==i))} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d",borderRadius:6,padding:"8px 10px",cursor:"pointer"}}>✕</button></div>)}<div style={{display:"flex",gap:8}}><input value={newItem} onChange={e=>setNewItem(e.target.value)} placeholder={lang==="fr"?"Ajouter…":"Add…"} onKeyDown={e=>{if(e.key==="Enter"&&newItem.trim()){setCriteria([...criteria,newItem.trim()]);setNewItem("");}}} style={{...inSt,marginBottom:0,flex:1}}/><button onClick={()=>{if(newItem.trim()){setCriteria([...criteria,newItem.trim()]);setNewItem("");}}} className="btn" style={{background:`${neon}1a`,border:`1px solid ${neon}55`,color:neon,borderRadius:8,padding:"0 16px",fontSize:18}}>+</button></div></div>;
     return <div><div style={{display:"flex",gap:8,marginBottom:20}}>{Array.from({length:Math.min(7,criteria.length-1)},(_,i)=>i+2).map(n=><button key={n} onClick={()=>setThreshold(n)} className="btn" style={{flex:1,padding:"12px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:threshold===n?`${neon}33`:"#131318",border:`1px solid ${threshold===n?neon:`${neon}22`}`,color:threshold===n?neon:"#ffffffaa"}}>{n}</button>)}</div><div style={{background:`${neon}0d`,border:`1px solid ${neon}22`,borderRadius:10,padding:16}}><div style={{fontSize:12,color:neon,marginBottom:4}}>✓ {threshold}/{criteria.length}</div><div style={{fontSize:10,color:"#ffffff44"}}>{threshold/criteria.length>=0.875?`↑ ${t.highStd}`:threshold/criteria.length>=0.6?`· ${t.balanced}`:`↓ ${t.lowStd}`}</div></div></div>;
   };
   return (
@@ -1896,6 +1896,11 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
 const NOTIF_PERMISSION_KEY = "tmt_notif_perm";
 
 function InAppBanner({notifs, onDismiss, neon}) {
+  useEffect(()=>{
+    if(!notifs||!notifs.length) return;
+    const t = setTimeout(()=>onDismiss(), 3000);
+    return ()=>clearTimeout(t);
+  },[notifs]);
   if(!notifs||!notifs.length) return null;
   const n = notifs[0];
   const colors = {
@@ -2215,7 +2220,15 @@ export default function App() {
     const isMonday=new Date().getDay()===1;
     if(phase==="app"&&view==="dashboard"&&!weeklyShownRef.current&&trades.length>=2&&isMonday){
       const cutoff=new Date(Date.now()-7*86400000).toISOString().split("T")[0];
-      if(trades.some(x=>x.date>=cutoff)){weeklyShownRef.current=true;const id=setTimeout(()=>setShowWeeklyRecap(true),1000);return ()=>clearTimeout(id);}
+      if(trades.some(x=>x.date>=cutoff)){
+          const wk="tmt_weekly_"+new Date().toISOString().split("T")[0];
+          if(!localStorage.getItem(wk)){
+            localStorage.setItem(wk,"1");
+            weeklyShownRef.current=true;
+            const id=setTimeout(()=>setShowWeeklyRecap(true),1000);
+            return ()=>clearTimeout(id);
+          }
+        }
     }
   },[phase,view,trades]);
 
@@ -2358,7 +2371,11 @@ export default function App() {
         if(trades_.length>=3){
           const last=trades_[0];
           const days=last?Math.floor((Date.now()-new Date(last.date))/86400000):999;
-          if(days>=3) notifs_.push({type:"info",emoji:"📅",title:lang==="fr"?"Journal en pause":"Journal paused",body:lang==="fr"?`${days} jours sans trade. Pense à journaliser !`:`${days} days without a trade. Time to journal!`});
+          const nk="tmt_notif_"+new Date().toISOString().split("T")[0];
+          if(days>=3&&!localStorage.getItem(nk)){
+            localStorage.setItem(nk,"1");
+            notifs_.push({type:"info",emoji:"calendar",title:lang==="fr"?"Journal en pause":"Journal paused",body:lang==="fr"?`${days} jours sans trade. Pense à journaliser !`:`${days} days without a trade. Time to journal!`});
+          }
           const revStreak=trades_.slice(0,3).filter(x=>x.isRevenge).length;
           if(revStreak>=2) notifs_.push({type:"warn",emoji:"🔥",title:lang==="fr"?"Attention — Revenge":"Warning — Revenge",body:lang==="fr"?"Plusieurs revenge trades récents. Fais une pause.":"Multiple recent revenge trades. Take a break."});
         }
