@@ -791,7 +791,7 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
         <div style={{fontSize:13,color:"#ffffffaa",fontFamily:MONO,lineHeight:1.7,marginBottom:28}}>{fr?`Bienvenue sur TrackMyTrade.\nTon compte est prêt.`:`Welcome to TrackMyTrade.\nYour account is ready.`}</div>
         <button onClick={()=>onLogin({email:email.trim().toLowerCase(),pwd,userData:null})} className="btn"
           style={{width:"100%",background:`${neon}22`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:16,fontSize:14,fontWeight:700,fontFamily:MONO,letterSpacing:2}}>
-          {fr?"CONFIGURER MA STRATÉGIE →":"SET UP MY STRATEGY →"}
+          {fr?"CONTINUER →":"CONTINUE →"}
         </button>
       </div>
     </div>
@@ -2389,7 +2389,7 @@ export default function App() {
   };
 
   if(phase==="splash") return <SplashScreen onDone={()=>setPhase("login")} neon={neon}/>;
-  if(phase==="onboarding") return <><CSS neon={neon}/><Onboarding onDone={l=>{setLang(l);setPhase("login");}}/></>;
+  if(phase==="onboarding") return <><CSS neon={neon}/><Onboarding onDone={l=>{setLang(l);setPhase("setup");}}/></>;
   if(phase==="login") return <LoginScreen onLogin={handleLogin} lang={lang} setLang={setLang} neon={neon}/>;
   if(phase==="setup") return <><CSS neon={neon}/><GuidedSetup onDone={async cfg=>{
     const newCfg={...config,...cfg};
