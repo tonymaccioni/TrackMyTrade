@@ -1566,7 +1566,7 @@ function InAppBanner({notifs, onDismiss, neon}) {
       <div className="slide-up" style={{background:`${c}14`,border:`1px solid ${c}40`,borderLeft:`4px solid ${c}`,borderRadius:12,padding:"14px 16px",display:"flex",alignItems:"flex-start",gap:12,backdropFilter:"blur(10px)",pointerEvents:"all",boxShadow:`0 4px 20px ${c}15`}}>
         <div style={{flexShrink:0,marginTop:2}}>
           {n.type==="info"?<IcoClock neon={neon} size={28}/>:
-           n.type==="warn"?<IcoFlame size={28}/>:
+           (n.type==="warn"||n.emoji==="fire")?<IcoFlame size={28}/>:
            n.type==="success"?<IcoWin neon={neon} size={28}/>:
            <IcoWarn size={28}/>}
         </div>
@@ -2024,11 +2024,11 @@ export default function App() {
           const daysSinceLastNotif=getLastNotifDays();
           if(workdaysSince>=3&&!alreadyShown&&isWeekday&&daysSinceLastNotif>=3){
             localStorage.setItem("tmt_last_notif",new Date().toISOString());
-            notifs_.push({type:"info",emoji:"📅",title:lang==="fr"?"Journal en pause":"Journal paused",body:lang==="fr"?`${workdaysSince} jours ouvrables sans trade. Pense à journaliser !`:`${workdaysSince} working days without a trade. Time to journal!`});
+            notifs_.push({type:"info",emoji:"calendar",title:lang==="fr"?"Journal en pause":"Journal paused",body:lang==="fr"?`${workdaysSince} jours ouvrables sans trade. Pense à journaliser !`:`${workdaysSince} working days without a trade. Time to journal!`});
             sessionStorage.setItem(notifKey,"1");
           }}
           const revStreak=trades_.slice(0,3).filter(x=>x.isRevenge).length;
-          if(revStreak>=2) notifs_.push({type:"warn",emoji:"🔥",title:lang==="fr"?"Attention — Revenge":"Warning — Revenge",body:lang==="fr"?"Plusieurs revenge trades récents. Fais une pause.":"Multiple recent revenge trades. Take a break."});
+          if(revStreak>=2) notifs_.push({type:"warn",emoji:"fire",title:lang==="fr"?"Attention — Revenge":"Warning — Revenge",body:lang==="fr"?"Plusieurs revenge trades récents. Fais une pause.":"Multiple recent revenge trades. Take a break."});
         }
         if(notifs_.length) setInAppNotifs(notifs_);
       },2000);
