@@ -2155,7 +2155,7 @@ export default function App() {
   // Forcer le fond sombre dès le premier rendu — évite le flash blanc
   useEffect(()=>{document.body.style.background="#07070d";document.body.style.margin="0";},[]);
   const [phase,setPhase]=useState("splash");
-  const [pendingCreds,setPendingCreds]=useState(null);
+  const pendingCredsRef=useRef(null);
   const [lang,setLang]=useState("fr");
   const [trades,setTrades]=useState([]);
   const [noTrades,setNoTrades]=useState([]);
@@ -2386,7 +2386,7 @@ export default function App() {
       if(u.lang) setLang(u.lang);
       // Nouveau compte → onboarding puis setup
       // Stocker les credentials pour auto-login après onboarding
-      if(u.email&&u.pwd) setPendingCreds({email:u.email,pwd:u.pwd});
+      if(u.email&&u.pwd) pendingCredsRef.current={email:u.email,pwd:u.pwd};
       setPhase("onboarding");
     }
   };
@@ -2395,7 +2395,7 @@ export default function App() {
   if(phase==="onboarding") return <><CSS neon={neon}/><Onboarding onDone={l=>{
     setLang(l);
     // Si on a des credentials stockés → setup direct, sinon login
-    if(pendingCreds){
+    if(pendingCredsRef.current){
       setPhase("setup");
     } else {
       setPhase("login");
