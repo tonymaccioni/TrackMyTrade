@@ -1736,7 +1736,7 @@ function GuidedSetup({onDone,lang}) {
   return (
     <div style={{background:"#0c0c12",minHeight:"100vh",fontFamily:MONO,maxWidth:480,margin:"0 auto",display:"flex",flexDirection:"column"}}>
       <CSS neon={neon}/>
-      <div style={{padding:"24px 24px 16px",borderBottom:`1px solid ${neon}14`}}><div><SplashLogo neon={neon}/></div></div><div style={{marginTop:20}}><Dots total={TOTAL} current={step} neon={neon}/></div></div>
+      <div style={{padding:"24px 24px 16px",borderBottom:`1px solid ${neon}14`,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><SplashLogo neon={neon}/></div><div><Dots total={TOTAL} current={step} neon={neon}/></div></div>
       <div style={{flex:1,padding:"28px 24px",overflow:"auto"}}>
         <div className="fu" key={step}>
           <div style={{fontSize:9,color:"#ffffff44",letterSpacing:3,marginBottom:6}}>{t.step} 0{step+1} / 04</div>
