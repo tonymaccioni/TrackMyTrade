@@ -1,4 +1,3 @@
-import html2canvas from 'html2canvas';
 import { useState, useEffect, useRef, useCallback } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell } from "recharts";
 import { initializeApp } from "firebase/app";
@@ -1269,13 +1268,12 @@ function StatsInsightsModal({trades,lang,neon,onClose}) {
 
 function ShareModal({trade, trades, lang, neon, config, onClose}) {
   const fr = lang === "fr";
-  const M = "'IBM Plex Mono','Courier New',monospace";
+  const MONO = "'IBM Plex Mono','Courier New',monospace";
   const isTrade = !!(trade && trade.asset);
-  const cardRef = useRef(null);
-  const [capturing, setCapturing] = useState(false);
   const rc2 = r => r==="WIN"?neon:r==="LOSS"?"#ff4d4d":"#f0b429";
   const fmtP = v => { if(v===undefined||v===null||v==="") return "—"; const n=Number(v),a=Math.abs(n); return (n>=0?"+":"")+(a%1===0?a.toFixed(0):a.toFixed(1))+"%"; };
 
+  // Stats semaine
   const cutoff = new Date(Date.now()-7*86400000).toISOString().split("T")[0];
   const week = (trades||[]).filter(x=>x.date>=cutoff);
   const wWins = week.filter(x=>x.result==="WIN").length;
@@ -1287,147 +1285,133 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
   const discC = disc>=8?neon:disc>=5?"#f0b429":"#ff4d4d";
   const configItems = (config&&config.items)||[];
   const tChecklist = isTrade?(trade.checklist||[]):[];
-
-  const doCapture = async () => {
-    setCapturing(true);
-    try {
-      const h2c = html2canvas;
-      const canvas = await h2c(cardRef.current, {
-        backgroundColor:"#0a140a", scale:2, useCORS:true, logging:false,
-        allowTaint:true,
-      });
-      const blob = await new Promise(r=>canvas.toBlob(r,"image/png"));
-      const file = new File([blob],"trackmytrade.png",{type:"image/png"});
-      if(navigator.canShare&&navigator.canShare({files:[file]})){
-        await navigator.share({files:[file],title:"TrackMyTrade"});
-      } else {
-        const url=URL.createObjectURL(blob);
-        const a=document.createElement("a");a.href=url;a.download="trackmytrade.png";a.click();
-        URL.revokeObjectURL(url);
-      }
-    } catch(e){
-      console.error(e);
-      if(navigator.share){
-        const text=isTrade?`${trade.result} ${trade.asset||""} ${fmtP(trade.pnlPct)} — TrackMyTrade`:`${wWR}% WR · ${fmtP(wPnl)} — TrackMyTrade`;
-        navigator.share({text,url:"https://trackmytrade.app"}).catch(()=>{});
-      }
-    }
-    setCapturing(false);
-  };
-
   const resC = isTrade?rc2(trade.result||"BE"):neon;
 
+  const doShare = () => {
+    const text = isTrade
+      ? `${trade.result} ${trade.asset||""} ${fmtP(trade.pnlPct)} — TrackMyTrade`
+      : `${wWR}% WR · ${fmtP(wPnl)} · ${week.length} trades — TrackMyTrade`;
+    if(navigator.share) navigator.share({text, url:"https://trackmytrade.app"}).catch(()=>{});
+  };
+
   return (
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.95)",zIndex:500,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:16,overflowY:"auto"}} onClick={onClose}>
-      <div className="slide-up" style={{width:"100%",maxWidth:420,display:"flex",flexDirection:"column",gap:12}} onClick={e=>e.stopPropagation()}>
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.94)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
+      <div className="slide-up" style={{width:"100%",maxWidth:480,background:"#080f08",borderRadius:"20px 20px 0 0",overflow:"hidden",border:`1px solid ${neon}25`,maxHeight:"90vh",overflowY:"auto",paddingBottom:24}} onClick={e=>e.stopPropagation()}>
+        <div style={{height:3,background:`linear-gradient(90deg,${neon},${neon}55)`}}/>
 
-        {/* Carte fidèle au design de l'app */}
-        <div ref={cardRef} style={{background:"#0a140a",borderRadius:16,overflow:"hidden",border:`1px solid ${neon}25`}}>
-          <div style={{height:3,background:`linear-gradient(90deg,${neon},${neon}55)`}}/>
-          <div style={{padding:"14px 16px",borderBottom:`1px solid ${neon}14`}}>
-            <div style={{fontSize:13,fontWeight:700,color:neon,fontFamily:M}}>{isTrade?(fr?"◈ RÉCAP TRADE":"◈ TRADE RECAP"):(fr?"◈ RÉSUMÉ SEMAINE":"◈ WEEKLY RECAP")}</div>
-            <div style={{fontSize:9,color:`${neon}33`,fontFamily:M,marginTop:2}}>TRACKMYTRADE</div>
+        {/* Header */}
+        <div style={{padding:"14px 18px 10px",borderBottom:`1px solid ${neon}14`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{fontSize:14,fontWeight:700,color:neon,fontFamily:MONO}}>{isTrade?(fr?"◈ RÉCAP TRADE":"◈ TRADE RECAP"):(fr?"◈ RÉSUMÉ SEMAINE":"◈ WEEKLY RECAP")}</div>
+            <div style={{fontSize:9,color:`${neon}33`,fontFamily:MONO,marginTop:2}}>TRACKMYTRADE</div>
           </div>
-
-          {isTrade?(
-            <div style={{padding:"12px 14px"}}>
-              {/* Check-in */}
-              {trade.checkin&&(trade.checkin.humeur||trade.checkin.biais)&&(
-                <div style={{background:`${neon}06`,border:`1px solid ${neon}14`,borderRadius:8,padding:"8px 12px",marginBottom:10}}>
-                  <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:6}}>CHECK-IN</div>
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                    {trade.checkin.humeur&&<span style={{fontSize:11,padding:"3px 10px",borderRadius:5,background:`${neon}14`,border:`1px solid ${neon}25`,color:"#c8e6c8",fontFamily:M}}>{trade.checkin.humeur}</span>}
-                    {trade.checkin.biais&&<span style={{fontSize:11,padding:"3px 10px",borderRadius:5,background:`${neon}08`,border:`1px solid ${neon}18`,color:"#c8e6c8",fontFamily:M}}>{trade.checkin.biais}</span>}
-                  </div>
-                </div>
-              )}
-              {/* Asset + résultat */}
-              <div style={{background:`${resC}12`,border:`1px solid ${resC}30`,borderRadius:10,padding:"12px 14px",marginBottom:10,borderLeft:`4px solid ${resC}`}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                  <div>
-                    <div style={{fontSize:18,fontWeight:700,color:"#e8f5e8",fontFamily:M}}>{trade.asset} · {trade.direction}</div>
-                    <div style={{fontSize:10,color:`${neon}55`,fontFamily:M,marginTop:4}}>{trade.date}{trade.time?" · "+trade.time:""}</div>
-                  </div>
-                  <div style={{textAlign:"right"}}>
-                    <div style={{fontSize:22,fontWeight:800,color:resC,fontFamily:M}}>{trade.result}</div>
-                    {trade.pnlPct&&<div style={{fontSize:15,fontWeight:700,color:parseFloat(trade.pnlPct)>=0?neon:"#ff4d4d",fontFamily:M}}>{fmtP(trade.pnlPct)}</div>}
-                  </div>
-                </div>
-              </div>
-              {/* Setup + Rejet */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
-                <div style={{background:"#0d1a0d",border:`1px solid ${neon}18`,borderRadius:8,padding:"10px 12px"}}>
-                  <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:1,marginBottom:6}}>SETUP SCORE</div>
-                  <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    <div style={{width:40,height:40,borderRadius:"50%",border:`3px solid ${neon}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:`0 0 10px ${neon}44`}}>
-                      <span style={{fontSize:12,fontWeight:700,color:neon,fontFamily:M}}>{trade.setupScore}/{trade.checklistMax||configItems.length||7}</span>
-                    </div>
-                    <div style={{fontSize:11,fontWeight:700,color:trade.conforming?neon:"#ff4d4d",fontFamily:M}}>{trade.conforming?(fr?"✓ conforme":"✓ compliant"):(fr?"✗ non-conforme":"✗ non-compliant")}</div>
-                  </div>
-                </div>
-                <div style={{background:"#0d1a0d",border:`1px solid ${neon}18`,borderRadius:8,padding:"10px 12px"}}>
-                  <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:1,marginBottom:6}}>REJET /10</div>
-                  <div style={{display:"flex",alignItems:"baseline",gap:6}}>
-                    <span style={{fontSize:32,fontWeight:800,color:trade.rejetScore>=8?neon:trade.rejetScore>=5?"#f0b429":"#ff4d4d",fontFamily:M}}>{trade.rejetScore>0?trade.rejetScore:"—"}</span>
-                    {trade.rejetScore>0&&<span style={{fontSize:11,color:"#5a7a5a",fontFamily:M}}>{trade.rejetScore>=8?(fr?"Excellent":"Excellent"):trade.rejetScore>=5?(fr?"Correct":"Correct"):(fr?"Faible":"Low")}</span>}
-                  </div>
-                </div>
-              </div>
-              {/* Checklist */}
-              {configItems.length>0&&(
-                <div style={{background:"#0d1a0d",border:`1px solid ${neon}15`,borderRadius:8,padding:"10px 12px"}}>
-                  <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:8}}>CHECKLIST</div>
-                  {configItems.slice(0,7).map((item,i)=>(
-                    <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:i<Math.min(configItems.length,7)-1?`1px solid ${neon}08`:"none"}}>
-                      <span style={{fontSize:13,color:tChecklist.includes(i)?neon:"#2a3a2a",flexShrink:0,fontFamily:M}}>{tChecklist.includes(i)?"✓":"✗"}</span>
-                      <span style={{fontSize:11,color:tChecklist.includes(i)?"#c8e6c8":"#3a5a3a",fontFamily:M}}>{item}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ):(
-            <div style={{padding:"12px 14px"}}>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
-                {[{l:"WIN RATE",v:`${wWR}%`,c:wWR>=50?neon:"#ff4d4d"},{l:"P&L",v:fmtP(wPnl),c:wPnl>=0?neon:"#ff4d4d"},{l:"TRADES",v:`${week.length}`,c:neon}].map(({l,v,c})=>(
-                  <div key={l} style={{background:"#0d1a0d",border:`1px solid ${c}22`,borderRadius:8,padding:"10px 0",textAlign:"center"}}>
-                    <div style={{fontSize:8,color:`${neon}44`,fontFamily:M,letterSpacing:1,marginBottom:4}}>{l}</div>
-                    <div style={{fontSize:20,fontWeight:800,color:c,fontFamily:M}}>{v}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{background:`${discC}08`,border:`1px solid ${discC}18`,borderRadius:8,padding:"12px 14px",marginBottom:10}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                  <span style={{fontSize:9,color:`${neon}44`,fontFamily:M,letterSpacing:2}}>DISCIPLINE</span>
-                  <span style={{fontSize:22,fontWeight:800,color:discC,fontFamily:M}}>{disc}<span style={{fontSize:12,color:`${neon}33`}}>/10</span></span>
-                </div>
-                {[{l:fr?"Conformité":"Compliance",v:week.length?Math.round(wConf/week.length*100):0,c:neon},{l:fr?"Sans revenge":"No revenge",v:week.length?Math.round((1-wRev/week.length)*100):100,c:wRev===0?neon:"#f0b429"}].map(({l,v,c})=>(
-                  <div key={l} style={{marginBottom:6}}>
-                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                      <span style={{fontSize:9,color:`${neon}44`,fontFamily:M}}>{l}</span>
-                      <span style={{fontSize:9,color:c,fontWeight:700,fontFamily:M}}>{v}%</span>
-                    </div>
-                    <div style={{height:3,background:`${neon}10`,borderRadius:2}}><div style={{width:`${v}%`,height:"100%",background:c,borderRadius:2}}/></div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          <div style={{textAlign:"center",padding:"6px 0 10px"}}>
-            <span style={{fontSize:8,color:`${neon}20`,fontFamily:M,letterSpacing:2}}>trackmytrade.app</span>
-          </div>
+          <button onClick={onClose} style={{background:"transparent",border:"none",color:`${neon}44`,fontSize:20,cursor:"pointer"}}>✕</button>
         </div>
 
-        {/* Boutons */}
-        <div style={{display:"flex",gap:10}}>
-          <button onClick={doCapture} disabled={capturing} className="btn" style={{flex:1,background:`${neon}18`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:"14px 0",fontSize:12,fontWeight:700,fontFamily:M,letterSpacing:2,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+        <div style={{padding:"14px 18px"}}>
+        {isTrade?(
+          <>
+            {/* Check-in */}
+            {trade.checkin&&(trade.checkin.humeur||trade.checkin.biais)&&(
+              <div style={{background:`${neon}06`,border:`1px solid ${neon}14`,borderRadius:8,padding:"8px 12px",marginBottom:12}}>
+                <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:6,fontFamily:MONO}}>CHECK-IN</div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  {trade.checkin.humeur&&<span style={{fontSize:11,padding:"4px 10px",borderRadius:6,background:`${neon}14`,border:`1px solid ${neon}25`,color:"#c8e6c8",fontFamily:MONO}}>{trade.checkin.humeur}</span>}
+                  {trade.checkin.biais&&<span style={{fontSize:11,padding:"4px 10px",borderRadius:6,background:`${neon}08`,border:`1px solid ${neon}18`,color:"#c8e6c8",fontFamily:MONO}}>{trade.checkin.biais}</span>}
+                </div>
+              </div>
+            )}
+
+            {/* Asset + Résultat */}
+            <div style={{background:`${resC}12`,border:`1px solid ${resC}30`,borderRadius:10,padding:"14px 16px",marginBottom:12,borderLeft:`4px solid ${resC}`}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                <div>
+                  <div style={{fontSize:20,fontWeight:700,color:"#e8f5e8",fontFamily:MONO,marginBottom:4}}>{trade.asset} · {trade.direction}</div>
+                  <div style={{fontSize:10,color:`${neon}55`,fontFamily:MONO}}>{trade.date}{trade.time?" · "+trade.time:""}</div>
+                </div>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontSize:24,fontWeight:800,color:resC,fontFamily:MONO}}>{trade.result}</div>
+                  {trade.pnlPct&&<div style={{fontSize:16,fontWeight:700,color:parseFloat(trade.pnlPct)>=0?neon:"#ff4d4d",fontFamily:MONO}}>{fmtP(trade.pnlPct)}</div>}
+                </div>
+              </div>
+            </div>
+
+            {/* Setup + Rejet */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+              <div style={{background:`${neon}06`,border:`1px solid ${neon}18`,borderRadius:10,padding:"12px 14px"}}>
+                <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:1,marginBottom:8,fontFamily:MONO}}>SETUP SCORE</div>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <div style={{width:44,height:44,borderRadius:"50%",border:`3px solid ${neon}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:`0 0 12px ${neon}44`}}>
+                    <span style={{fontSize:12,fontWeight:700,color:neon,fontFamily:MONO}}>{trade.setupScore}/{trade.checklistMax||configItems.length||7}</span>
+                  </div>
+                  <div style={{fontSize:12,fontWeight:700,color:trade.conforming?neon:"#ff4d4d",fontFamily:MONO}}>{trade.conforming?(fr?"✓ conforme":"✓ compliant"):(fr?"✗ non-conforme":"✗ non-compliant")}</div>
+                </div>
+              </div>
+              <div style={{background:`${neon}06`,border:`1px solid ${neon}18`,borderRadius:10,padding:"12px 14px"}}>
+                <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:1,marginBottom:4,fontFamily:MONO}}>REJET /10</div>
+                <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+                  <span style={{fontSize:36,fontWeight:800,color:trade.rejetScore>=8?neon:trade.rejetScore>=5?"#f0b429":"#ff4d4d",fontFamily:MONO}}>{trade.rejetScore>0?trade.rejetScore:"—"}</span>
+                  {trade.rejetScore>0&&<span style={{fontSize:11,color:"#5a7a5a",fontFamily:MONO}}>{trade.rejetScore>=8?(fr?"Excellent":"Excellent"):trade.rejetScore>=5?(fr?"Correct":"Correct"):(fr?"Faible":"Low")}</span>}
+                </div>
+              </div>
+            </div>
+
+            {/* Checklist */}
+            {configItems.length>0&&(
+              <div style={{background:`${neon}05`,border:`1px solid ${neon}14`,borderRadius:10,padding:"12px 14px"}}>
+                <div style={{fontSize:9,color:"#3a5a3a",letterSpacing:2,marginBottom:10,fontFamily:MONO}}>CHECKLIST</div>
+                {configItems.slice(0,7).map((item,i)=>(
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:i<Math.min(configItems.length,7)-1?`1px solid ${neon}08`:"none"}}>
+                    <span style={{fontSize:14,color:tChecklist.includes(i)?neon:"#2a3a2a",flexShrink:0,fontFamily:MONO}}>{tChecklist.includes(i)?"✓":"✗"}</span>
+                    <span style={{fontSize:11,color:tChecklist.includes(i)?"#c8e6c8":"#3a5a3a",fontFamily:MONO}}>{item}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        ):(
+          <>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
+              {[{l:"WIN RATE",v:`${wWR}%`,c:wWR>=50?neon:"#ff4d4d"},{l:"P&L",v:fmtP(wPnl),c:wPnl>=0?neon:"#ff4d4d"},{l:"TRADES",v:`${week.length}`,c:neon}].map(({l,v,c})=>(
+                <div key={l} style={{background:`${c}0c`,border:`1px solid ${c}22`,borderRadius:10,padding:"10px 0",textAlign:"center"}}>
+                  <div style={{fontSize:8,color:`${neon}44`,fontFamily:MONO,letterSpacing:1,marginBottom:4}}>{l}</div>
+                  <div style={{fontSize:20,fontWeight:800,color:c,fontFamily:MONO}}>{v}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{background:`${discC}08`,border:`1px solid ${discC}18`,borderRadius:10,padding:"12px 14px",marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <span style={{fontSize:9,color:`${neon}44`,fontFamily:MONO,letterSpacing:2}}>DISCIPLINE</span>
+                <span style={{fontSize:24,fontWeight:800,color:discC,fontFamily:MONO}}>{disc}<span style={{fontSize:12,color:`${neon}33`}}>/10</span></span>
+              </div>
+              {[{l:fr?"Conformité":"Compliance",v:week.length?Math.round(wConf/week.length*100):0,c:neon},{l:fr?"Sans revenge":"No revenge",v:week.length?Math.round((1-wRev/week.length)*100):100,c:wRev===0?neon:"#f0b429"}].map(({l,v,c})=>(
+                <div key={l} style={{marginBottom:6}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                    <span style={{fontSize:9,color:`${neon}44`,fontFamily:MONO}}>{l}</span>
+                    <span style={{fontSize:9,color:c,fontWeight:700,fontFamily:MONO}}>{v}%</span>
+                  </div>
+                  <div style={{height:3,background:`${neon}10`,borderRadius:2}}><div style={{width:`${v}%`,height:"100%",background:c,borderRadius:2}}/></div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Watermark */}
+        <div style={{textAlign:"center",marginTop:10}}>
+          <span style={{fontSize:8,color:`${neon}20`,fontFamily:MONO,letterSpacing:2}}>trackmytrade.app</span>
+        </div>
+        </div>
+
+        {/* Bouton partager */}
+        <div style={{padding:"0 18px"}}>
+          <button onClick={doShare} className="btn" style={{width:"100%",background:`${neon}18`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:"14px 0",fontSize:12,fontWeight:700,fontFamily:MONO,letterSpacing:2,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-            {capturing?(fr?"Génération…":"Generating…"):(fr?"PARTAGER":"SHARE")}
+            {fr?"PARTAGER":"SHARE"}
           </button>
-          <button onClick={onClose} className="btn" style={{background:"transparent",border:`1px solid ${neon}22`,color:`${neon}66`,borderRadius:10,padding:"14px 16px",fontSize:14}}>✕</button>
-        </div>
-        <div style={{fontSize:9,color:`${neon}22`,fontFamily:M,textAlign:"center"}}>
-          {fr?"💡 Appui long sur la carte pour sauvegarder":"💡 Long press card to save"}
+          <div style={{textAlign:"center",marginTop:8,fontSize:9,color:`${neon}22`,fontFamily:MONO}}>
+            {fr?"💡 Capture d'écran pour partager en story":"💡 Screenshot to share as story"}
+          </div>
         </div>
       </div>
     </div>
