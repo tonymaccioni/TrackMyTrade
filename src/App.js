@@ -2155,7 +2155,6 @@ export default function App() {
   // Forcer le fond sombre dès le premier rendu — évite le flash blanc
   useEffect(()=>{document.body.style.background="#07070d";document.body.style.margin="0";},[]);
   const [phase,setPhase]=useState("splash");
-  const pendingCredsRef=useRef(null);
   const [lang,setLang]=useState("fr");
   const [trades,setTrades]=useState([]);
   const [noTrades,setNoTrades]=useState([]);
@@ -2385,22 +2384,12 @@ export default function App() {
     } else {
       if(u.lang) setLang(u.lang);
       // Nouveau compte → onboarding puis setup
-      // Stocker les credentials pour auto-login après onboarding
-      if(u.email&&u.pwd) pendingCredsRef.current={email:u.email,pwd:u.pwd};
       setPhase("onboarding");
     }
   };
 
   if(phase==="splash") return <SplashScreen onDone={()=>setPhase("login")} neon={neon}/>;
-  if(phase==="onboarding") return <><CSS neon={neon}/><Onboarding onDone={l=>{
-    setLang(l);
-    // Si on a des credentials stockés → setup direct, sinon login
-    if(pendingCredsRef.current){
-      setPhase("setup");
-    } else {
-      setPhase("login");
-    }
-  }}/></>;
+  if(phase==="onboarding") return <><CSS neon={neon}/><Onboarding onDone={l=>{setLang(l);setPhase("setup");}}/></>;
   if(phase==="login") return <LoginScreen onLogin={handleLogin} lang={lang} setLang={setLang} neon={neon}/>;
   if(phase==="setup") return <><CSS neon={neon}/><GuidedSetup onDone={async cfg=>{
     const newCfg={...config,...cfg};
