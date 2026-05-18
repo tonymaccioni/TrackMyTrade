@@ -744,7 +744,7 @@ function ResetModal({trades,onReset,onClose,lang,neon}) {
   );
 }
 
-function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
+function LoginScreen({onLogin,onOnboarding,lang,setLang,neon="#00ff9d"}) {
   const t=T[lang];
   const fr=lang==="fr";
   const [mode,setMode]=useState("login");
@@ -768,8 +768,12 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
         else{setError(t.loginError);setLoading(false);}
       } else {
         const ok=await authRegister(em,pwd,lang);
-        if(ok){setSignupDone(true);setLoading(false);}
-        else{setError(t.signupError);setLoading(false);}
+        if(ok){
+          const result=await authLogin(em,pwd);
+          if(result){onLogin({email:em,_uid:result._uid,userData:result});}
+          else{onLogin({email:em,_uid:null,userData:null});}
+          setLoading(false);
+        } else{setError(t.signupError);setLoading(false);}
       }
     } catch(e){setError(e.message||t.loginError);setLoading(false);}
   };
@@ -789,9 +793,9 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
         </div>
         <div style={{fontSize:20,fontWeight:700,color:"#ffffff",fontFamily:MONO,marginBottom:10}}>{fr?"Compte créé !":"Account created!"}</div>
         <div style={{fontSize:13,color:"#ffffffaa",fontFamily:MONO,lineHeight:1.7,marginBottom:28}}>{fr?`Bienvenue sur TrackMyTrade.\nTon compte est prêt.`:`Welcome to TrackMyTrade.\nYour account is ready.`}</div>
-        <button onClick={()=>onLogin({email:email.trim().toLowerCase(),pwd,userData:null})} className="btn"
+        <button onClick={()=>onOnboarding()} className="btn"
           style={{width:"100%",background:`${neon}22`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:16,fontSize:14,fontWeight:700,fontFamily:MONO,letterSpacing:2}}>
-          {fr?"CONTINUER →":"CONTINUE →"}
+          {fr?"COMMENCER L'ONBOARDING →":"START ONBOARDING →"}
         </button>
       </div>
     </div>
@@ -2383,14 +2387,14 @@ export default function App() {
       },2000);
     } else {
       if(u.lang) setLang(u.lang);
-      // Nouveau compte → onboarding puis setup
+      // Nouveau compte → onboarding → setup → dashboard
       setPhase("onboarding");
     }
   };
 
   if(phase==="splash") return <SplashScreen onDone={()=>setPhase("login")} neon={neon}/>;
-  if(phase==="onboarding") return <><CSS neon={neon}/><Onboarding onDone={l=>{setLang(l);setPhase("login");}}/></>;
-  if(phase==="login") return <LoginScreen onLogin={handleLogin} lang={lang} setLang={setLang} neon={neon}/>;
+  if(phase==="onboarding") return <><CSS neon={neon}/><Onboarding onDone={l=>{setLang(l);setPhase("setup");}}/></>;
+  if(phase==="login") return <LoginScreen onLogin={handleLogin} onOnboarding={()=>setPhase("onboarding")} lang={lang} setLang={setLang} neon={neon}/>;
   if(phase==="setup") return <><CSS neon={neon}/><GuidedSetup onDone={async cfg=>{
     const newCfg={...config,...cfg};
     setConfig(newCfg);setForm(emptyForm(cfg.defaultAsset||"XAU/USD"));setPhase("app");
