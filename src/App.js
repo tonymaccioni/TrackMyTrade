@@ -774,11 +774,14 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
     } catch(e){setError(e.message||t.loginError);setLoading(false);}
   };
   // Signup confirmation screen
-  if(signupDone) {
-    // Auto-connecter après 1.5s
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    useEffect(()=>{const t=setTimeout(()=>onLogin({email:email.trim().toLowerCase(),pwd,userData:null}),1500);return()=>clearTimeout(t);},[]);
-    return (
+  // Auto-login après signup — doit être avant tout return conditionnel
+  useEffect(()=>{
+    if(!signupDone) return;
+    const t=setTimeout(()=>onLogin({email:email.trim().toLowerCase(),pwd,userData:null}),1500);
+    return()=>clearTimeout(t);
+  },[signupDone]);
+
+  if(signupDone) return (
     <div style={{background:"#0c0c12",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:28,fontFamily:MONO,maxWidth:480,margin:"0 auto"}}>
       <CSS neon={neon}/>
       <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:24,width:"100%"}}>
@@ -788,9 +791,7 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
             <circle cx="150" cy="60" r="38" fill="none" stroke={neon} strokeWidth="0.6" style={{animation:"p2 2.6s ease-in-out infinite 1.1s",transformOrigin:"150px 60px"}}/>
           </svg>
         </div>
-        <div style={{position:"relative",zIndex:2}}>
-          <Logo size="lg" neon={neon}/>
-        </div>
+        <div style={{position:"relative",zIndex:2}}><Logo size="lg" neon={neon}/></div>
       </div>
       <div className="slide-up" style={{width:"100%",maxWidth:360,textAlign:"center"}}>
         <div style={{display:"flex",justifyContent:"center",marginBottom:24}}>
@@ -803,7 +804,7 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
         </div>
       </div>
     </div>
-  );}
+  );
   return (
     <div style={{background:"#0c0c12",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:28,fontFamily:MONO,maxWidth:480,margin:"0 auto"}}>
       <CSS neon={neon}/>
