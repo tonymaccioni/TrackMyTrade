@@ -2026,7 +2026,7 @@ export default function App() {
             localStorage.setItem("tmt_last_notif",new Date().toISOString());
             notifs_.push({type:"info",emoji:"calendar",title:lang==="fr"?"Journal en pause":"Journal paused",body:lang==="fr"?`${workdaysSince} jours ouvrables sans trade. Pense à journaliser !`:`${workdaysSince} working days without a trade. Time to journal!`});
             sessionStorage.setItem(notifKey,"1");
-          }}
+          }
           const revStreak=trades_.slice(0,3).filter(x=>x.isRevenge).length;
           if(revStreak>=2) notifs_.push({type:"warn",emoji:"fire",title:lang==="fr"?"Attention — Revenge":"Warning — Revenge",body:lang==="fr"?"Plusieurs revenge trades récents. Fais une pause.":"Multiple recent revenge trades. Take a break."});
         }
