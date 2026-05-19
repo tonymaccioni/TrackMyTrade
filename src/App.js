@@ -23,6 +23,7 @@ try {
 // Simple Firestore auth — no Firebase Auth SDK needed
 const encEmail = e => e.replace(/\./g,"_DOT_").replace(/@/g,"_AT_");
 const saveUserData = async (id, data) => { if(!db)return; try { await setDoc(doc(db,"users",id), data, {merge:true}); } catch(e) { console.error("Firestore save:",e); } };
+const saveReview = async (review) => { if(!db)return; try { const id=`review_${Date.now()}`; await setDoc(doc(db,"reviews",id), review); } catch(e) { console.error("Review save:",e); } };
 const loadUserData = async id => { if(!db)return null; try { const s=await getDoc(doc(db,"users",id)); return s.exists()?s.data():null; } catch(e) { return null; } };
 const authLogin = async (email, pwd) => {
   if(!auth) return null;
@@ -59,7 +60,7 @@ const rc = (r, neon="#00ff9d") => r==="WIN"?neon:r==="LOSS"?"#ff4d4d":"#f0b429";
 const fmtPct = v => { if(v===""||v===null||v===undefined) return "—"; const n=Number(v),abs=Math.abs(n); const s=abs%1===0?abs.toFixed(0):abs*10%1===0?abs.toFixed(1):abs.toFixed(2); return `${n>=0?"+":""}${n<0?"-":""}${s}%`; };
 const calcDisc = list => { if(!list||!list.length) return null; return Math.round((list.filter(x=>x.conforming).length/list.length*0.6+list.filter(x=>!x.isRevenge).length/list.length*0.4)*10); };
 const emptyForm = (asset="XAU/USD", tf="M5") => ({date:today(),asset,direction:"BUY",checklist:[],result:"WIN",pnlPreset:"",pnlManual:"",notes:"",rejetScore:0,time:"",timeframe:tf,screenshot:"",isRevenge:false,slDirection:"",checkin:{humeur:"",biais:""}});
-const mkInput = neon => ({width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:8,color:"#ffffff",padding:"12px 14px",fontSize:13,fontFamily:MONO,marginBottom:10,outline:"none"});
+const mkInput = neon => ({width:"100%",background:"rgba(0,0,0,0.3)",backdropFilter:"blur(8px)",border:`1px solid rgba(255,255,255,0.1)`,borderRadius:8,color:"#ffffff",padding:"12px 14px",fontSize:13,fontFamily:MONO,marginBottom:10,outline:"none"});
 // Auth handled by Firebase Auth
 
 const T = {
@@ -185,7 +186,7 @@ const CSS = ({neon="#00ff9d"}) => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800;900&family=IBM+Plex+Mono:wght@400;500;700&display=swap');
     *{box-sizing:border-box;margin:0;padding:0}
-    body{background:#0c0c12}
+    body{background:#07070f}
     input,select,textarea{outline:none;font-family:${MONO};font-size:16px}
     input[type=checkbox]{accent-color:${neon};width:16px;height:16px;cursor:pointer}
     input[type=date],input[type=time]{color-scheme:dark}
@@ -198,6 +199,38 @@ const CSS = ({neon="#00ff9d"}) => (
     @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
     @keyframes fadeIn{from{opacity:0}to{opacity:1}}
     @keyframes pulse{0%,100%{opacity:1;text-shadow:0 0 8px ${neon}66}50%{opacity:0.85;text-shadow:0 0 14px ${neon}aa}}
+    @keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes slideDown{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(20px)}}
+    @keyframes logoBoxGlow{0%,100%{box-shadow:0 0 8px ${neon}22}50%{box-shadow:0 0 20px ${neon}55,0 0 6px ${neon}33}}
+    @keyframes dotPulse{0%,40%,100%{width:6px;background:${neon}22;box-shadow:none}50%{width:22px;background:${neon};box-shadow:0 0 12px ${neon}99}}
+    .slide-up{animation:slideUp 0.28s cubic-bezier(0.34,1.3,0.64,1)}
+    .glass-card{
+      background:rgba(255,255,255,0.04)!important;
+      backdrop-filter:blur(20px);
+      -webkit-backdrop-filter:blur(20px);
+      border:1px solid rgba(255,255,255,0.08)!important;
+      box-shadow:0 8px 32px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.08)!important;
+      position:relative;overflow:hidden;
+    }
+    .glass-card::before{
+      content:'';position:absolute;top:0;left:0;right:0;height:1px;
+      background:linear-gradient(90deg,transparent,rgba(255,255,255,0.12),transparent);
+      pointer-events:none;
+    }
+    .glass-card-neon{
+      background:rgba(${neon==="＃00ff9d"?"0,255,157":"0,255,157"},0.06)!important;
+      backdrop-filter:blur(20px);
+      -webkit-backdrop-filter:blur(20px);
+      border:1px solid rgba(0,255,157,0.15)!important;
+      box-shadow:0 8px 32px rgba(0,0,0,0.3),0 0 40px rgba(0,255,157,0.08),inset 0 1px 0 rgba(0,255,157,0.1)!important;
+    }
+    .glass-input{
+      background:rgba(0,0,0,0.3)!important;
+      backdrop-filter:blur(8px);
+      border:1px solid rgba(255,255,255,0.1)!important;
+    }
+  `}</style>
+);
     @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
     @keyframes ring{0%,100%{opacity:0.06;transform:scale(1)}50%{opacity:0.16;transform:scale(1.04)}}
     .fu{animation:fadeUp 0.45s ease both}
@@ -276,7 +309,7 @@ function AdvancedStats({trades,neon,lang}) {
   const best=Object.entries(aMap).filter(([,v])=>v.t>=2).sort((a,b)=>(b[1].w/b[1].t)-(a[1].w/a[1].t))[0];
   const revs=trades.filter(x=>x.isRevenge);
   return (
-    <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:16,marginBottom:12}}>
+    <div style={{background:"rgba(255,255,255,0.04)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:16,marginBottom:12}}>
       <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>{t.statsTitle}</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
         <div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{t.expectancy}</div><div style={{fontSize:16,fontWeight:700,color:exp>=0?neon:"#ff4d4d",fontFamily:MONO,textShadow:`0 0 14px ${exp>=0?neon:"#ff4d4d"}99`}}>{fmtPct(exp)}</div></div>
@@ -509,7 +542,7 @@ function ConformityBar({trades,threshold,maxItems,neon,lang}) {
   const nWR=nonConf.length?Math.round(nonConf.filter(x=>x.result==="WIN").length/nonConf.length*100):null;
   const cPct=trades.length?(conf.length/trades.length)*100:50;
   return (
-    <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:16,marginBottom:12}}>
+    <div style={{background:"rgba(255,255,255,0.04)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:16,marginBottom:12}}>
       <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>{t.conformityTitle} {threshold}/{maxItems}</div>
       <div style={{display:"flex",height:8,borderRadius:6,overflow:"hidden",marginBottom:14,background:"#ffffff10"}}>
         <div style={{width:`${cPct}%`,background:neon,transition:"width 0.5s"}}/><div style={{flex:1,background:"#ff4d4d44"}}/>
@@ -575,7 +608,7 @@ function PerformanceChart({trades, neon, lang}) {
   }
 
   return (
-    <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:"12px 14px",marginBottom:12}}>
+    <div style={{background:"rgba(255,255,255,0.04)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:"12px 14px",marginBottom:12}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
         <div style={{fontSize:9,color:`${neon}44`,letterSpacing:2,fontFamily:MONO}}>
           {fr?"P&L CUMULÉ":"CUMULATIVE P&L"}
@@ -655,7 +688,7 @@ function TradingCalendar({trades,neon,lang}) {
   for(let i=0;i<sD;i++)cells.push(null);
   for(let d=1;d<=dIM;d++)cells.push(d);
   return (
-    <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:12}}>
+    <div style={{background:"rgba(255,255,255,0.04)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:14,marginBottom:12}}>
       <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:12,textTransform:"uppercase"}}>{t.calendarTitle} · {mN[lang][month]} {year}</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:6}}>{dN[lang].map((d,i)=><div key={i} style={{fontSize:8,color:"#ffffff44",textAlign:"center"}}>{d}</div>)}</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
@@ -1668,13 +1701,13 @@ function Onboarding({onDone}) {
         <div style={{position:"relative",zIndex:2,maxWidth:280,width:"100%",padding:"0 10px"}}>
           <div style={{display:"flex",gap:10,marginBottom:10}}>
             {[["WIN RATE","73%"],["P&L","+4.2%"]].map(([l,v])=>(
-              <div key={l} style={{flex:1,background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:14,padding:"14px 12px",textAlign:"center",boxShadow:`0 4px 24px ${neon}10,inset 0 1px 0 ${neon}15`}}>
+              <div key={l} style={{flex:1,background:"rgba(255,255,255,0.04)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:14,padding:"14px 12px",textAlign:"center",boxShadow:`0 4px 24px ${neon}10,inset 0 1px 0 ${neon}15`}}>
                 <div style={{fontSize:26,fontWeight:900,color:"#ffffff",fontFamily:MONO,lineHeight:1,textShadow:`0 0 20px ${neon}55`}}>{v}</div>
                 <div style={{fontSize:9,color:"#ffffffaa",marginTop:6,letterSpacing:2,textTransform:"uppercase"}}>{l}</div>
               </div>
             ))}
           </div>
-          <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:10,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{background:"rgba(255,255,255,0.04)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:10,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div>
               <div style={{fontSize:9,color:"#ffffffaa",letterSpacing:2,marginBottom:6}}>CONFORMITÉ</div>
               <div style={{height:3,width:140,background:"#ffffff10",borderRadius:2,overflow:"hidden"}}>
@@ -1774,15 +1807,15 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
   );
   return (
     <div className="fi" style={{padding:20}}>
-      <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
+      <div style={{background:"rgba(255,255,255,0.04)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:14,marginBottom:14}}>
         <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.langLabel}</div>
         <div style={{display:"flex",gap:8}}>{[["fr","Français"],["en","English"]].map(([l,label])=><button key={l} onClick={()=>onLangChange(l)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:lang===l?`${neonColor}26`:"#131318",border:`1px solid ${lang===l?neonColor:`${neonColor}22`}`,color:lang===l?neonColor:"#ffffffbb"}}>{label}</button>)}</div>
       </div>
-      <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
+      <div style={{background:"rgba(255,255,255,0.04)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:14,marginBottom:14}}>
         <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.colorLabel}</div>
         <div style={{display:"flex",gap:8}}>{NEON_COLORS.map(c=><button key={c.value} onClick={()=>setNeonColor(c.value)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,background:neonColor===c.value?`${c.value}26`:"#131318",border:`2px solid ${neonColor===c.value?c.value:"transparent"}`,cursor:"pointer"}}><div style={{width:16,height:16,borderRadius:"50%",background:c.value,margin:"0 auto",boxShadow:neonColor===c.value?`0 0 8px ${c.value}`:"none"}}/></button>)}</div>
       </div>
-      <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
+      <div style={{background:"rgba(255,255,255,0.04)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:14,marginBottom:14}}>
         <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.maxTradesLabel}</div>
         <div style={{display:"flex",gap:6}}>
           {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setMaxTrades(n)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:maxTrades===n?`${neonColor}26`:"#131318",border:`1px solid ${maxTrades===n?neonColor:`${neonColor}22`}`,color:maxTrades===n?neonColor:"#ffffffbb"}}>{n}</button>)}
@@ -1816,12 +1849,12 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
           </div>;
         })}
       <button onClick={()=>setItems([...items,""])} style={{width:"100%",background:"transparent",border:`1px dashed ${neon}35`,color:"#ffffff44",borderRadius:8,padding:10,fontSize:12,cursor:"pointer",fontFamily:MONO,marginBottom:16}}>{t.addCriteria}</button>
-      <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:16}}>
+      <div style={{background:"rgba(255,255,255,0.04)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:14,marginBottom:16}}>
         <Toggle label={t.calendarToggle} val={calendarOn} set={setCalendarOn}/>
         <Toggle label={t.enableNotif} val={notifOn} set={setNotifOn}/>
       </div>
       {/* Phase en cours — nom + capital + devise + type + drawdown + objectif */}
-    <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
+    <div style={{background:"rgba(255,255,255,0.04)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:14,marginBottom:14}}>
       <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:12}}>PHASE EN COURS</div>
       <div style={{marginBottom:10}}>
         <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>{lang==="fr"?"NOM DE LA PHASE":"PHASE NAME"}</div>
@@ -2171,6 +2204,9 @@ export default function App() {
   const [showStats,setShowStats]=useState(false);
   const [showImport,setShowImport]=useState(false);
   const [inAppNotifs,setInAppNotifs]=useState([]);
+  const [showHelp,setShowHelp]=useState(false);
+  const [showFeedback,setShowFeedback]=useState(false);
+  const feedbackShownRef=useRef(false);
   const [histSearch,setHistSearch]=useState("");
   const [view,setView]=useState("dashboard");
   const [form,setForm]=useState(emptyForm("XAU/USD","M5"));
@@ -2234,7 +2270,17 @@ export default function App() {
     }
   },[phase,view,trades]);
 
-  const scrollToTop=()=>{if(pageRef.current)pageRef.current.scrollTo({top:0,behavior:"smooth"});};
+  // Feedback après 10 trades
+  useEffect(()=>{
+    if(phase==="app"&&trades.length>=10&&!feedbackShownRef.current){
+      const key="tmt_feedback_shown";
+      if(!localStorage.getItem(key)){
+        feedbackShownRef.current=true;
+        localStorage.setItem(key,"1");
+        setTimeout(()=>setShowFeedback(true),2000);
+      }
+    }
+  },[phase,trades.length]);
   // Phase uses trade.id (timestamp) not date — trades before phase creation excluded even if date is today
   const currentPhaseTs=phases.length>0?phases[phases.length-1].id:0;
   const getPhaseKey=useCallback(tradeId=>{if(phases.length===0)return 0;for(let i=phases.length-1;i>=0;i--){if(tradeId>phases[i].id)return i+1;}return 0;},[phases]);
@@ -2402,7 +2448,11 @@ export default function App() {
   }} lang={lang}/></>;
 
   return (
-    <div style={{display:"flex",background:"#0c0c12",minHeight:"100vh",color:"#ffffff",fontFamily:MONO}}>
+    <div style={{display:"flex",background:"linear-gradient(160deg,#07070f,#05050c)",minHeight:"100vh",color:"#ffffff",fontFamily:MONO,position:"relative",overflow:"hidden"}}>
+      {/* Orbs background glassmorphism */}
+      <div style={{position:"fixed",top:"-10%",left:"-5%",width:280,height:280,borderRadius:"50%",background:`radial-gradient(circle,${neon}12,transparent 70%)`,filter:"blur(60px)",pointerEvents:"none",zIndex:0}}/>
+      <div style={{position:"fixed",bottom:"10%",right:"-5%",width:220,height:220,borderRadius:"50%",background:`radial-gradient(circle,#7c3aed10,transparent 70%)`,filter:"blur(50px)",pointerEvents:"none",zIndex:0}}/>
+      <div style={{position:"fixed",top:"50%",right:"20%",width:160,height:160,borderRadius:"50%",background:`radial-gradient(circle,#3b82f610,transparent 70%)`,filter:"blur(40px)",pointerEvents:"none",zIndex:0}}/>
       <CSS neon={neon}/>
       {notif&&<NotifCard notif={notif} onClose={()=>setNotif(null)}/>}
       <InAppBanner notifs={inAppNotifs} onDismiss={()=>setInAppNotifs(n=>n.slice(1))} neon={neon}/>
@@ -2411,7 +2461,7 @@ export default function App() {
 
       {/* ── SIDEBAR PC ── */}
       {isDesktop&&(
-        <div style={{width:240,minWidth:240,background:"#09090f",borderRight:"1px solid #ffffff0a",display:"flex",flexDirection:"column",height:"100vh",position:"sticky",top:0,flexShrink:0}}>
+        <div style={{width:240,minWidth:240,background:"rgba(6,6,18,0.85)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRight:"1px solid rgba(255,255,255,0.06)",display:"flex",flexDirection:"column",height:"100vh",position:"sticky",top:0,flexShrink:0}}>
           <div style={{padding:"24px 18px 20px",borderBottom:"1px solid #ffffff08"}}>
             <div style={{marginBottom:6}}><SplashLogo neon={neon}/></div>
             <div style={{fontSize:10,color:"#ffffff33",letterSpacing:1}}>{config.strategyName}</div>
@@ -2486,7 +2536,7 @@ export default function App() {
         ))}
       </div>}
 
-      {isDesktop&&<div style={{padding:"24px 32px 20px",borderBottom:"1px solid #ffffff08",background:"linear-gradient(180deg,#111118,#0c0c12)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      {isDesktop&&<div style={{padding:"24px 32px 20px",borderBottom:"1px solid #ffffff08",background:"rgba(6,6,18,0.8)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div>
           <div style={{fontSize:26,fontWeight:900,color:"#ffffff",letterSpacing:-0.5}}>{view==="dashboard"?(lang==="fr"?"Statistiques":"Statistics"):view==="log"?(editingId?lang==="fr"?"✏ Édition":"✏ Edit":lang==="fr"?"Nouveau trade":"New trade"):view==="history"?(lang==="fr"?"Historique":"History"):lang==="fr"?"Paramètres":"Settings"}</div>
           <div style={{fontSize:10,color:"#ffffff33",marginTop:4}}>{config.strategyName}{total>0?` · ${total} trades`:""}</div>
@@ -2510,12 +2560,12 @@ export default function App() {
           )}
           {total>0&&(
             <div style={{display:isDesktop?"grid":"flex",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:12}}>
-              <div style={{flex:1,background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:14,padding:"14px 16px",boxShadow:`0 4px 24px ${winRate>=50?neon+"18":"#ff4d4d18"}, inset 0 1px 0 ${neon}15`}}>
+              <div style={{flex:1,background:"rgba(255,255,255,0.04)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:14,padding:"14px 16px",boxShadow:`0 4px 24px ${winRate>=50?neon+"18":"#ff4d4d18"}, inset 0 1px 0 ${neon}15`}}>
                 <div style={{fontSize:9,color:"#ffffffbb",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>{t.winRate}</div>
                 <div style={{fontSize:32,fontWeight:900,fontFamily:MONO,lineHeight:1,textShadow:`0 0 32px ${winRate>=50?neon+"aa":"#ff4d4daa"}`,color:"#ffffff"}}>{winRate}%</div>
                 <div style={{fontSize:10,color:"#ffffff44",marginTop:6}}>{wins}W · {losses}L · {total-wins-losses}BE</div>
               </div>
-              <div style={{flex:1,background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:14,padding:"14px 16px",boxShadow:`0 4px 24px ${totalPnl>=0?neon+"18":"#ff4d4d18"}, inset 0 1px 0 ${neon}15`}}>
+              <div style={{flex:1,background:"rgba(255,255,255,0.04)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:14,padding:"14px 16px",boxShadow:`0 4px 24px ${totalPnl>=0?neon+"18":"#ff4d4d18"}, inset 0 1px 0 ${neon}15`}}>
                 <div style={{fontSize:9,color:"#ffffffbb",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>{t.totalPnl}</div>
                 <div style={{fontSize:32,fontWeight:900,fontFamily:MONO,lineHeight:1,textShadow:`0 0 32px ${totalPnl>=0?neon+"aa":"#ff4d4daa"}`,color:"#ffffff"}}>{fmtPct(totalPnl)}</div>
                 {config.capital&&<div style={{fontSize:11,fontWeight:700,color:totalPnl>=0?neon:"#ff4d4d",marginTop:4}}>{totalPnl>=0?"+":""}{Math.round(parseFloat(config.capital)*totalPnl/100)}{config.devise||"€"}</div>}
@@ -2524,7 +2574,7 @@ export default function App() {
             </div>
           )}
           {total>=2&&discScore!==null&&(
-            <div style={{background:`linear-gradient(145deg,${scoreColor}12,${scoreColor}05)`,border:`1px solid ${scoreColor}30`,borderRadius:14,padding:"14px 16px",marginBottom:12,boxShadow:`0 8px 32px ${scoreColor}12,inset 0 1px 0 ${scoreColor}18`}}>
+            <div style={{background:`rgba(0,0,0,0.25)`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:`1px solid ${scoreColor}30`,borderRadius:14,padding:"14px 16px",marginBottom:12,boxShadow:`0 8px 32px ${scoreColor}12,inset 0 1px 0 ${scoreColor}18`}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div>
                   <div style={{fontSize:9,color:"#ffffffaa",letterSpacing:2,fontFamily:MONO,marginBottom:4}}>{t.disciplineLabel}</div>
@@ -2756,7 +2806,7 @@ export default function App() {
                 els.push(<div key={x.id} style={{background:"rgba(90,90,90,0.06)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"12px 14px",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:16,color:"#ffffff66"}}>⊘</span><div><div style={{fontSize:12,color:"#ffffffaa",fontFamily:MONO,fontWeight:700}}>{t.noTradeToday}</div><div style={{fontSize:10,color:"#ffffffaa",marginTop:2}}>{x.date}{x.reason?" · "+x.reason:""}</div></div></div><button onClick={()=>{const upd=noTrades.filter(n=>n.id!==x.id);setNoTrades(upd);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{noTrades:upd});}} style={{background:"transparent",border:"none",color:"#ffffff55",fontSize:12,cursor:"pointer"}}>✕</button></div>);
               } else {
                 els.push(
-                  <div key={x.id} className="row" onClick={()=>setDetailTrade(x)} style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0a",borderRadius:14,padding:14,marginBottom:10,borderLeft:`3px solid ${rc(x.result,neon)}`}}>
+                  <div key={x.id} className="row" onClick={()=>setDetailTrade(x)} style={{background:"rgba(255,255,255,0.04)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:14,marginBottom:10,borderLeft:`3px solid ${rc(x.result,neon)}`}}>
                     <div style={{display:"flex",justifyContent:"space-between"}}>
                       <div><div style={{fontSize:13,fontWeight:700,color:"#ffffff"}}>{x.asset} · {x.direction}{x.timeframe&&<span style={{fontSize:9,color:"#ffffff44",marginLeft:6,background:"#ffffff08",padding:"2px 6px",borderRadius:4,fontWeight:400}}>{x.timeframe}</span>}</div><div style={{fontSize:10,color:"#ffffff66",marginTop:3}}>{x.date}{x.time?" · "+x.time:""}</div></div>
                       <div style={{display:"flex",gap:8,alignItems:"center"}}>
@@ -2819,6 +2869,16 @@ export default function App() {
       {showShare&&<ShareModal trade={shareTarget} trades={trades} lang={lang} neon={neon} config={config} onClose={()=>{setShowShare(false);setShareTarget(null);}}/> }
       {showReset&&<ResetModal trades={trades} onReset={handleReset} onClose={()=>setShowReset(false)} lang={lang} neon={neon}/>}
       {showNewPhase&&<NewPhaseModal onConfirm={data=>{handleNewPhase(data);setShowNewPhase(false);}} onClose={()=>setShowNewPhase(false)} lang={lang} neon={neon} phases={phases} config={config}/>}
+      {showHelp&&<HelpPanel neon={neon} onClose={()=>setShowHelp(false)}/>}
+      {showFeedback&&<FeedbackCard neon={neon} userEmail={currentUserRef.current?.email} onClose={()=>setShowFeedback(false)}/>}
+
+      {/* Bouton ? flottant */}
+      {!showHelp&&!showFeedback&&(
+        <button onClick={()=>setShowHelp(true)}
+          style={{position:"fixed",bottom:isDesktop?20:66,right:isDesktop?20:14,width:40,height:40,borderRadius:"50%",background:`linear-gradient(135deg,${neon}22,${neon}0a)`,border:`1.5px solid ${neon}55`,color:neon,fontSize:18,fontWeight:900,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 4px 20px ${neon}44,0 0 0 6px ${neon}0a`,zIndex:50,fontFamily:MONO,transition:"transform 0.2s"}}>
+          ?
+        </button>
+      )}
       </div>
       </div>
     </div>
@@ -2836,7 +2896,7 @@ function NewPhaseModal({onConfirm,onClose,lang,neon,phases,config}){
   const [drawdown,setDrawdown]=useState("");
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(6,6,10,0.88)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
-      <div style={{background:"#0f0f18",borderRadius:"24px 24px 0 0",padding:"20px 20px 36px",width:"100%",maxWidth:480,border:"1px solid #ffffff0f",borderBottom:"none",maxHeight:"90vh",overflowY:"auto"}}>
+      <div style={{background:"rgba(10,10,24,0.95)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderRadius:"24px 24px 0 0",padding:"20px 20px 36px",width:"100%",maxWidth:480,border:"1px solid #ffffff0f",borderBottom:"none",maxHeight:"90vh",overflowY:"auto"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <div>
             <div style={{fontSize:14,fontWeight:800,color:"#ffffff"}}>▶ Nouvelle phase</div>
@@ -2847,7 +2907,7 @@ function NewPhaseModal({onConfirm,onClose,lang,neon,phases,config}){
 
         {/* Nom */}
         <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6}}>NOM DE LA PHASE</div>
-        <input value={name} onChange={e=>setName(e.target.value)} style={{width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO,marginBottom:14,outline:"none"}}/>
+        <input value={name} onChange={e=>setName(e.target.value)} style={{width:"100%",background:"rgba(0,0,0,0.3)",backdropFilter:"blur(8px)",border:`1px solid rgba(255,255,255,0.1)`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO,marginBottom:14,outline:"none"}}/>
 
         {/* Type */}
         <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>TYPE DE COMPTE</div>
@@ -2863,7 +2923,7 @@ function NewPhaseModal({onConfirm,onClose,lang,neon,phases,config}){
         <div style={{display:"flex",gap:10,marginBottom:14}}>
           <div style={{flex:2}}>
             <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6}}>CAPITAL</div>
-            <input type="number" value={capital} onChange={e=>setCapital(e.target.value)} placeholder="10000" style={{width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO,outline:"none"}}/>
+            <input type="number" value={capital} onChange={e=>setCapital(e.target.value)} placeholder="10000" style={{width:"100%",background:"rgba(0,0,0,0.3)",backdropFilter:"blur(8px)",border:`1px solid rgba(255,255,255,0.1)`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO,outline:"none"}}/>
           </div>
           <div style={{flex:1}}>
             <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6}}>DEVISE</div>
@@ -2885,7 +2945,7 @@ function NewPhaseModal({onConfirm,onClose,lang,neon,phases,config}){
           </div>
           <div style={{flex:1}}>
             <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6}}>OBJECTIF P&L %</div>
-            <input type="number" value={obj} onChange={e=>setObj(e.target.value)} placeholder="+10" style={{width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO,outline:"none"}}/>
+            <input type="number" value={obj} onChange={e=>setObj(e.target.value)} placeholder="+10" style={{width:"100%",background:"rgba(0,0,0,0.3)",backdropFilter:"blur(8px)",border:`1px solid rgba(255,255,255,0.1)`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO,outline:"none"}}/>
           </div>
         </div>
 
@@ -2894,6 +2954,174 @@ function NewPhaseModal({onConfirm,onClose,lang,neon,phases,config}){
           style={{width:"100%",background:`linear-gradient(135deg,${neon}22,${neon}0c)`,border:`1.5px solid ${neon}`,borderRadius:14,padding:"15px 0",fontSize:13,fontWeight:900,color:"#ffffff",fontFamily:MONO,cursor:"pointer",boxShadow:`0 4px 28px ${neon}22,inset 0 1px 0 ${neon}30`,letterSpacing:1}}>
           ✓ Lancer {name}
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ── HELP PANEL (? flottant) ──
+const HELP_CONCEPTS = [
+  {color:"#00ff9d",title:"Score de discipline",short:"0 → 10",desc:"Combine ton taux de conformité (60%) et l'absence de revenge trades (40%). C'est ton vrai thermomètre comportemental — bien plus parlant que le WR seul."},
+  {color:"#38bdf8",title:"Conformité",short:"Setup validé",desc:"Un trade est conforme si tu coches au moins X critères avant d'entrer. Les trades conformes ont statistiquement un WR bien supérieur aux autres."},
+  {color:"#a78bfa",title:"Phase",short:"Challenge",desc:"Chaque phase = un challenge ou une période définie. Les stats repartent à zéro mais l'historique reste intact. Parfait pour les Prop Firm traders."},
+  {color:"#f0b429",title:"Revenge trade",short:"Danger",desc:"Trade pris sous émotion après une perte. L'identifier et le taguer, c'est déjà commencer à l'éliminer de ton comportement."},
+  {color:"#ff7eb6",title:"Biais du jour",short:"Direction",desc:"Ton analyse de marché avant de trader. Si ton trade va à l'encontre de ton biais, une alerte s'affiche — pour te forcer à te justifier."},
+  {color:"#fb923c",title:"Checklist",short:"Règles",desc:"Tes critères personnalisés à valider avant chaque trade. Le score checklist mesure la qualité de ton setup, pas seulement le résultat."},
+];
+const TOUR_STEPS = [
+  {color:"#00ff9d",icon:"◈",title:"Phase & Objectif",desc:"La barre en haut suit ta progression vers l'objectif P&L. La barre verte avance avec ton P&L cumulé."},
+  {color:"#38bdf8",icon:"📊",title:"Win Rate & P&L",desc:"Tes deux métriques clés. Le WR mesure ta régularité, le P&L ton résultat financier réel."},
+  {color:"#a78bfa",icon:"🧠",title:"Score de discipline",desc:"De 0 à 10. Conformité + absence de revenge trades. Ton vrai indicateur de progression à long terme."},
+  {color:"#f0b429",icon:"✏",title:"+ TRADE",desc:"Enregistre chaque trade avec checklist, résultat, P&L et notes comportementales. Chaque data point compte."},
+  {color:"#ff7eb6",icon:"≡",title:"Historique",desc:"Tous tes trades filtrables par résultat, actif ou phase. Clique sur un trade pour le détailler ou modifier."},
+];
+
+function HelpPanel({neon,onClose}) {
+  const [tab,setTab]=useState("tour");
+  const [idx,setIdx]=useState(0);
+  const [defIdx,setDefIdx]=useState(0);
+  const s=TOUR_STEPS[idx];
+  const d=HELP_CONCEPTS[defIdx];
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(4,4,12,0.9)",backdropFilter:"blur(8px)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
+      <div style={{width:"100%",maxWidth:480,background:"rgba(10,10,24,0.97)",backdropFilter:"blur(24px)",borderRadius:"22px 22px 0 0",border:`1px solid ${neon}18`,borderBottom:"none",boxShadow:`0 -8px 40px rgba(0,0,0,0.5),0 -2px 16px ${neon}08`}} onClick={e=>e.stopPropagation()}>
+        {/* Drag handle */}
+        <div style={{width:36,height:4,background:"#ffffff18",borderRadius:2,margin:"14px auto 0"}}/>
+        {/* Tabs */}
+        <div style={{display:"flex",gap:0,padding:"14px 16px 0"}}>
+          {[["tour","🧭 Visite"],["defs","◈ Définitions"]].map(([v,l])=>(
+            <button key={v} onClick={()=>setTab(v)} style={{flex:1,background:"transparent",border:"none",borderBottom:`2px solid ${tab===v?neon:"transparent"}`,color:tab===v?neon:"#ffffff55",fontFamily:MONO,fontSize:11,fontWeight:700,padding:"8px 0",cursor:"pointer",transition:"all 0.2s"}}>{l}</button>
+          ))}
+          <button onClick={onClose} style={{background:"transparent",border:"none",color:"#ffffff33",fontSize:18,cursor:"pointer",padding:"0 4px 0 12px"}}>✕</button>
+        </div>
+
+        {/* Tour */}
+        {tab==="tour"&&(
+          <div style={{padding:"20px 16px 28px"}}>
+            <div key={idx} style={{background:`linear-gradient(145deg,${s.color}10,${s.color}04)`,border:`1.5px solid ${s.color}30`,borderRadius:20,padding:"22px 20px",marginBottom:16,animation:"fadeUp 0.22s ease"}}>
+              <style>{`@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}`}</style>
+              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+                <div style={{width:48,height:48,borderRadius:14,background:`${s.color}15`,border:`1.5px solid ${s.color}35`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:"#ffffff",flexShrink:0}}>{s.icon}</div>
+                <div>
+                  <div style={{fontSize:8,color:`${s.color}88`,letterSpacing:2,marginBottom:3,fontFamily:MONO}}>ÉTAPE {idx+1}/{TOUR_STEPS.length}</div>
+                  <div style={{fontSize:16,fontWeight:800,color:"#ffffff"}}>{s.title}</div>
+                </div>
+              </div>
+              <div style={{height:1,background:`linear-gradient(90deg,${s.color}25,transparent)`,marginBottom:14}}/>
+              <div style={{fontSize:13,color:"#ffffffcc",lineHeight:1.8}}>{s.desc}</div>
+            </div>
+            <div style={{display:"flex",gap:6,justifyContent:"center",marginBottom:16}}>
+              {TOUR_STEPS.map((_,i)=>(
+                <button key={i} onClick={()=>setIdx(i)} style={{width:i===idx?22:7,height:7,borderRadius:4,background:i===idx?s.color:"#ffffff18",border:"none",cursor:"pointer",transition:"all 0.3s cubic-bezier(0.34,1.5,0.64,1)",boxShadow:i===idx?`0 0 10px ${s.color}88`:"none"}}/>
+              ))}
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>setIdx(i=>Math.max(0,i-1))} disabled={idx===0} style={{flex:1,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:12,padding:"11px 0",fontSize:11,color:idx===0?"#ffffff22":"#ffffffaa",fontFamily:MONO,cursor:idx===0?"default":"pointer"}}>← Préc.</button>
+              {idx<TOUR_STEPS.length-1
+                ?<button onClick={()=>setIdx(i=>i+1)} style={{flex:2,background:`linear-gradient(135deg,${s.color}20,${s.color}08)`,border:`1.5px solid ${s.color}`,borderRadius:12,padding:"11px 0",fontSize:12,fontWeight:900,color:"#ffffff",fontFamily:MONO,cursor:"pointer"}}>Suivant →</button>
+                :<button onClick={onClose} style={{flex:2,background:`linear-gradient(135deg,${neon}22,${neon}0a)`,border:`1.5px solid ${neon}`,borderRadius:12,padding:"11px 0",fontSize:12,fontWeight:900,color:"#ffffff",fontFamily:MONO,cursor:"pointer"}}>✓ Compris !</button>
+              }
+            </div>
+          </div>
+        )}
+
+        {/* Définitions */}
+        {tab==="defs"&&(
+          <div style={{padding:"20px 16px 28px"}}>
+            <div key={defIdx} style={{background:`linear-gradient(145deg,${d.color}10,${d.color}04)`,border:`1.5px solid ${d.color}30`,borderRadius:20,padding:"22px 20px",marginBottom:16,animation:"fadeUp 0.22s ease"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+                <div style={{fontSize:17,fontWeight:900,color:"#ffffff"}}>{d.title}</div>
+                <div style={{background:`${d.color}18`,border:`1px solid ${d.color}30`,borderRadius:20,padding:"4px 10px",fontSize:9,color:d.color,fontFamily:MONO,fontWeight:700}}>{d.short}</div>
+              </div>
+              <div style={{height:1,background:`linear-gradient(90deg,${d.color}25,transparent)`,marginBottom:14}}/>
+              <div style={{fontSize:13,color:"#ffffffcc",lineHeight:1.8}}>{d.desc}</div>
+            </div>
+            <div style={{display:"flex",gap:6,justifyContent:"center",marginBottom:16}}>
+              {HELP_CONCEPTS.map((_,i)=>(
+                <button key={i} onClick={()=>setDefIdx(i)} style={{width:i===defIdx?22:7,height:7,borderRadius:4,background:i===defIdx?d.color:"#ffffff18",border:"none",cursor:"pointer",transition:"all 0.3s cubic-bezier(0.34,1.5,0.64,1)",boxShadow:i===defIdx?`0 0 10px ${d.color}88`:"none"}}/>
+              ))}
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>setDefIdx(i=>Math.max(0,i-1))} disabled={defIdx===0} style={{flex:1,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:12,padding:"11px 0",fontSize:11,color:defIdx===0?"#ffffff22":"#ffffffaa",fontFamily:MONO,cursor:defIdx===0?"default":"pointer"}}>← Préc.</button>
+              {defIdx<HELP_CONCEPTS.length-1
+                ?<button onClick={()=>setDefIdx(i=>i+1)} style={{flex:2,background:`linear-gradient(135deg,${d.color}20,${d.color}08)`,border:`1.5px solid ${d.color}`,borderRadius:12,padding:"11px 0",fontSize:12,fontWeight:900,color:"#ffffff",fontFamily:MONO,cursor:"pointer"}}>Suivant →</button>
+                :<button onClick={onClose} style={{flex:2,background:`linear-gradient(135deg,${neon}22,${neon}0a)`,border:`1.5px solid ${neon}`,borderRadius:12,padding:"11px 0",fontSize:12,fontWeight:900,color:"#ffffff",fontFamily:MONO,cursor:"pointer"}}>✓ Compris !</button>
+              }
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── FEEDBACK STARS ──
+function NeonStar({filled,size=28}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"
+        fill={filled?"#00ff9d":"transparent"} stroke={filled?"#00ff9d":"rgba(255,255,255,0.25)"}
+        strokeWidth="1.5" strokeLinejoin="round"
+        style={{filter:filled?"drop-shadow(0 0 6px #00ff9d99)":"none",transition:"all 0.15s"}}/>
+    </svg>
+  );
+}
+
+function FeedbackCard({neon,userEmail,onClose}) {
+  const [stars,setStars]=useState(0);
+  const [hover,setHover]=useState(0);
+  const [review,setReview]=useState("");
+  const [sent,setSent]=useState(false);
+  const [loading,setLoading]=useState(false);
+  const active=hover||stars;
+  const labels=["","À améliorer","Pas terrible","Correct","Bien !","Excellent !"];
+
+  const submit=async()=>{
+    if(!stars)return;
+    setLoading(true);
+    await saveReview({stars,review,email:userEmail||"anonymous",date:new Date().toISOString(),app:"TrackMyTrade"});
+    setLoading(false);
+    setSent(true);
+  };
+
+  return (
+    <div style={{position:"fixed",bottom:60,left:"50%",transform:"translateX(-50%)",width:"calc(100% - 28px)",maxWidth:452,zIndex:150,animation:"slideUp 0.35s cubic-bezier(0.34,1.3,0.64,1)"}}>
+      <div style={{background:"rgba(12,12,30,0.97)",backdropFilter:"blur(24px)",border:`1.5px solid ${neon}25`,borderRadius:20,padding:"18px 18px 14px",boxShadow:`0 -4px 40px ${neon}10,0 8px 32px rgba(0,0,0,0.6)`}}>
+        {!sent?(
+          <>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:800,color:"#ffffff",marginBottom:3}}>Tu aimes TrackMyTrade ?</div>
+                <div style={{fontSize:10,color:"#ffffff44",fontFamily:MONO}}>◈ 10 trades enregistrés</div>
+              </div>
+              <button onClick={onClose} style={{background:"rgba(255,255,255,0.06)",border:"none",color:"#ffffff44",width:26,height:26,borderRadius:"50%",cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+            </div>
+            <div style={{display:"flex",justifyContent:"center",gap:6,marginBottom:6}}>
+              {[1,2,3,4,5].map(n=>(
+                <button key={n} onMouseEnter={()=>setHover(n)} onMouseLeave={()=>setHover(0)} onClick={()=>setStars(n)}
+                  style={{background:"none",border:"none",cursor:"pointer",padding:"4px 2px",transform:n<=active?"scale(1.15)":"scale(1)",transition:"transform 0.15s cubic-bezier(0.34,1.5,0.64,1)"}}>
+                  <NeonStar filled={n<=active} size={30}/>
+                </button>
+              ))}
+            </div>
+            {active>0&&<div style={{textAlign:"center",fontSize:10,color:neon,fontFamily:MONO,fontWeight:700,marginBottom:10,letterSpacing:1}}>{labels[active]}</div>}
+            {stars>0&&(
+              <>
+                <textarea value={review} onChange={e=>setReview(e.target.value)} placeholder="Dis-nous ce que tu penses (optionnel)…" style={{width:"100%",background:"rgba(0,0,0,0.3)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,color:"#ffffff",padding:"10px 12px",fontSize:12,fontFamily:MONO,resize:"none",height:72,marginBottom:10,outline:"none"}}/>
+                <button onClick={submit} disabled={loading} style={{width:"100%",background:`linear-gradient(135deg,${neon}22,${neon}08)`,border:`1.5px solid ${neon}`,borderRadius:12,padding:"11px 0",fontSize:12,fontWeight:900,color:"#ffffff",fontFamily:MONO,cursor:"pointer",boxShadow:`0 4px 16px ${neon}22`}}>
+                  {loading?"Envoi…":stars>=4?"⭐ Envoyer mon avis →":"Envoyer mon retour →"}
+                </button>
+              </>
+            )}
+            <button onClick={onClose} style={{width:"100%",background:"none",border:"none",color:"#ffffff22",fontSize:10,fontFamily:MONO,cursor:"pointer",marginTop:8,padding:"4px 0"}}>Plus tard</button>
+          </>
+        ):(
+          <div style={{textAlign:"center",padding:"10px 0"}}>
+            <div style={{display:"flex",justifyContent:"center",marginBottom:10}}><NeonStar filled size={40}/></div>
+            <div style={{fontSize:13,fontWeight:800,color:"#ffffff",marginBottom:4}}>Merci beaucoup ! 🙏</div>
+            <div style={{fontSize:11,color:"#ffffff44",fontFamily:MONO}}>Ton avis nous aide à améliorer l'app.</div>
+          </div>
+        )}
       </div>
     </div>
   );
