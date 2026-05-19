@@ -2982,7 +2982,7 @@ function HelpPanel({neon,onClose}) {
   const d=HELP_CONCEPTS[defIdx];
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(4,4,12,0.9)",backdropFilter:"blur(8px)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
-      <div style={{width:"100%",maxWidth:480,background:"rgba(10,10,24,0.97)",backdropFilter:"blur(24px)",borderRadius:"22px 22px 0 0",border:`1px solid ${neon}18`,borderBottom:"none",boxShadow:`0 -8px 40px rgba(0,0,0,0.5),0 -2px 16px ${neon}08`}} onClick={e=>e.stopPropagation()}>
+      <div style={{width:"100%",maxWidth:480,background:"rgba(14,14,16,0.98)",backdropFilter:"blur(24px)",borderRadius:"22px 22px 0 0",border:`1px solid ${neon}18`,borderBottom:"none",boxShadow:`0 -8px 40px rgba(0,0,0,0.5),0 -2px 16px ${neon}08`}} onClick={e=>e.stopPropagation()}>
         {/* Drag handle */}
         <div style={{width:36,height:4,background:"#ffffff18",borderRadius:2,margin:"14px auto 0"}}/>
         {/* Tabs */}
