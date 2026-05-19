@@ -244,8 +244,6 @@ const CSS = ({neon="#00ff9d"}) => (
     @keyframes fadeInSlow{0%{opacity:0}100%{opacity:1}}
     @keyframes logoBoxGlow{0%,100%{box-shadow:0 0 8px ${neon}22}50%{box-shadow:0 0 20px ${neon}55,0 0 6px ${neon}33}}
     @keyframes dotPulse{0%,40%,100%{width:6px;background:${neon}22;box-shadow:none}50%{width:22px;background:${neon};box-shadow:0 0 12px ${neon}99}}
-  `}</style>
-);
     @keyframes icoCheck{from{stroke-dashoffset:30}to{stroke-dashoffset:0}}
     @keyframes icoX{from{stroke-dashoffset:22}to{stroke-dashoffset:0}}
     @keyframes icoRadar{0%{r:3;opacity:0.7}100%{r:14;opacity:0}}
