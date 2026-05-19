@@ -229,8 +229,6 @@ const CSS = ({neon="#00ff9d"}) => (
       backdrop-filter:blur(8px);
       border:1px solid rgba(255,255,255,0.1)!important;
     }
-  `}</style>
-);
     @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
     @keyframes ring{0%,100%{opacity:0.06;transform:scale(1)}50%{opacity:0.16;transform:scale(1.04)}}
     .fu{animation:fadeUp 0.45s ease both}
@@ -246,6 +244,8 @@ const CSS = ({neon="#00ff9d"}) => (
     @keyframes fadeInSlow{0%{opacity:0}100%{opacity:1}}
     @keyframes logoBoxGlow{0%,100%{box-shadow:0 0 8px ${neon}22}50%{box-shadow:0 0 20px ${neon}55,0 0 6px ${neon}33}}
     @keyframes dotPulse{0%,40%,100%{width:6px;background:${neon}22;box-shadow:none}50%{width:22px;background:${neon};box-shadow:0 0 12px ${neon}99}}
+  `}</style>
+);
     @keyframes icoCheck{from{stroke-dashoffset:30}to{stroke-dashoffset:0}}
     @keyframes icoX{from{stroke-dashoffset:22}to{stroke-dashoffset:0}}
     @keyframes icoRadar{0%{r:3;opacity:0.7}100%{r:14;opacity:0}}
