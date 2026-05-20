@@ -50,7 +50,13 @@ const PRESET_ASSETS = ["XAU/USD","EUR/USD","GBP/USD","NAS100","BTC/USD","ETH/USD
 const DEFAULT_CRITERIA = ["HA M5 claire (pas de doji)","MM20 bien orientée","BB approche sur M1","Bougie de rejet propre","Fenêtre horaire respectée","Pas de distraction","Contexte macro neutre"];
 const MONO = "'Geist Mono','IBM Plex Mono',monospace";
 const PNL_PRESETS = ["-1","-0.5","0","+1","+2","+3","+4","+5"];
-const NEON_COLORS = [{name:"Vert",value:"#00ff9d"},{name:"Bleu",value:"#00d4ff"},{name:"Violet",value:"#bf00ff"},{name:"Rose",value:"#ff00aa"},{name:"Or",value:"#f0b429"}];
+const NEON_COLORS = [{const NEON_SECONDARY = {
+  "#00ff9d":"#00e5ff",
+  "#00d4ff":"#7b6cff",
+  "#bf00ff":"#ff6eb4",
+  "#ff00aa":"#ffd700",
+  "#f0b429":"#ff8c42"
+};}];
 const HUMEUR_PILLS = {fr:["◎ Focus","◌ Neutre","△ Tendu","◷ Fatigué"],en:["◎ Focus","◌ Neutral","△ Tense","◷ Tired"]};
 const BIAIS_PILLS = {fr:["↑ Haussier","→ Range","↓ Baissier"],en:["↑ Bullish","→ Range","↓ Bearish"]};
 const NTR = {fr:["Pas de setup valide","Hors fenêtre","Marché difficile","Journée chargée","Jour de repos"],en:["No valid setup","Out of window","Difficult market","Busy day","Rest day"]};
@@ -270,18 +276,55 @@ const CSS = ({neon="#00ff9d", neon2="#00d4ff"}) => {
 }
 
 function Logo({size="sm",neon="#00ff9d"}) {
+  const cb = NEON_SECONDARY[neon]||"#00e5ff";
   const [box,fs]={sm:[28,18],md:[34,22],lg:[48,30]}[size]||[28,18];
   return (
     <div style={{display:"flex",alignItems:"center",gap:9}}>
-      <div style={{width:box,height:box,borderRadius:7,background:`${neon}1a`,border:`1px solid ${neon}55`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:`0 0 20px ${neon}44, 0 0 8px ${neon}22`}}>
+      <div style={{width:box,height:box,borderRadius:7,background:`${neon}1a`,border:`1px solid ${neon}55`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:`0 0 20px ${neon}44,0 0 8px ${neon}22`}}>
         <svg width={Math.round(box*0.74)} height={Math.round(box*0.74)} viewBox="0 0 24 24" fill="none">
-          <polygon points="12,2 22,12 12,22 2,12" fill={`${neon}22`} stroke={neon} strokeWidth="1.6" strokeLinejoin="round"/>
-          <polygon points="12,7 17,12 12,17 7,12" fill={neon} stroke={neon} strokeWidth="0.5"/>
+          <defs>
+            <linearGradient id="logoG" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={neon}/><stop offset="100%" stopColor={cb}/>
+            </linearGradient>
+          </defs>
+          <polygon points="12,2 22,12 12,22 2,12" fill={`${neon}22`} stroke="url(#logoG)" strokeWidth="1.6" strokeLinejoin="round"/>
+          <polygon points="12,7 17,12 12,17 7,12" fill="url(#logoG)" stroke={neon} strokeWidth="0.5"/>
         </svg>
       </div>
       <span style={{fontSize:fs,fontFamily:MONO,letterSpacing:-0.5,lineHeight:1}}>
-        <b style={{color:neon}}>Track</b><span style={{color:neon+"44",fontWeight:300}}>My</span><b style={{color:neon}}>Trade</b>
+        <b style={{background:`linear-gradient(135deg,${neon},${cb})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",filter:`drop-shadow(0 0 8px ${neon}66)`}}>Track</b>
+        <span style={{color:neon+"33",fontWeight:300}}>My</span>
+        <b style={{background:`linear-gradient(135deg,${neon},${cb})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",filter:`drop-shadow(0 0 8px ${neon}66)`}}>Trade</b>
       </span>
+    </div>
+  );
+}
+
+const GLASS_VARIANTS = {
+  1:{angle:115,left:"-15%",top:"-20%",w:"55%",op:"0.055",shimH:"50%",shimOp:"0.07"},
+  2:{angle:65, left:"55%", top:"-30%",w:"30%",op:"0.045",shimH:"35%",shimOp:"0.05"},
+  3:{angle:100,left:"20%", top:"-10%",w:"40%",op:"0.04", shimH:"40%",shimOp:"0.06"},
+  4:{angle:130,left:"-5%", top:"30%", w:"35%",op:"0.035",shimH:"30%",shimOp:"0.045"},
+  5:{angle:95, left:"10%", top:"-25%",w:"70%",op:"0.05", shimH:"55%",shimOp:"0.065"},
+};
+function GlassCard({children,style,variant=1,glow,ca="#00ff9d",className=""}) {
+  const v=GLASS_VARIANTS[variant]||GLASS_VARIANTS[1];
+  return (
+    <div className={className} style={{position:"relative",overflow:"hidden",borderRadius:18,
+      background:"linear-gradient(135deg,rgba(255,255,255,0.08) 0%,rgba(255,255,255,0.02) 60%,rgba(255,255,255,0.05) 100%)",
+      border:"1px solid rgba(255,255,255,0.09)",backdropFilter:"blur(24px) saturate(1.4)",
+      WebkitBackdropFilter:"blur(24px) saturate(1.4)",
+      boxShadow:glow?`0 0 40px ${ca}22,0 12px 40px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.12)`
+                    :`0 8px 32px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.08)`,...style}}>
+      <div style={{position:"absolute",top:0,left:0,right:0,height:v.shimH,
+        background:`linear-gradient(180deg,rgba(255,255,255,${v.shimOp}) 0%,transparent 100%)`,
+        borderRadius:"18px 18px 0 0",pointerEvents:"none"}}/>
+      <div style={{position:"absolute",top:v.top,left:v.left,width:v.w,height:"160%",
+        background:`linear-gradient(${v.angle}deg,transparent 35%,rgba(255,255,255,${v.op}) 50%,transparent 65%)`,
+        pointerEvents:"none",borderRadius:999}}/>
+      <div style={{position:"absolute",bottom:0,left:0,right:0,height:1,
+        background:"rgba(0,0,0,0.35)",pointerEvents:"none"}}/>
+      {children}
     </div>
   );
 }
@@ -979,7 +1022,9 @@ function SplashScreen({onDone,neon}) {
         </div>
         <div style={{animation:"slideFromRight 0.95s cubic-bezier(0.34,1.3,0.64,1) 0.15s both"}}>
           <div style={{fontSize,fontWeight:900,letterSpacing:-2,lineHeight:1,whiteSpace:"nowrap",textShadow:`0 0 50px ${neon}55`}}>
-            <b style={{color:neon}}>Track</b><span style={{color:"#ffffff1a",fontWeight:300}}>My</span><b style={{color:neon}}>Trade</b>
+            <span style={{background:`linear-gradient(135deg,${neon},${NEON_SECONDARY[neon]||"#00e5ff"})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",filter:`drop-shadow(0 0 20px ${neon}66)`}}>Track</span>
+<span style={{color:"#ffffff1a",fontWeight:300}}>My</span>
+<span style={{background:`linear-gradient(135deg,${neon},${NEON_SECONDARY[neon]||"#00e5ff"})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",filter:`drop-shadow(0 0 20px ${neon}66)`}}>Trade</span>
           </div>
           <div style={{fontSize:isMobile?8:11,color:`${neon}55`,letterSpacing:isMobile?4:6,marginTop:10,animation:"fadeInSlow 0.6s ease 0.8s both"}}>JOURNAL DE TRADING</div>
         </div>
@@ -1489,7 +1534,9 @@ function SplashLogo({neon}) {
       </div>
       <div style={{animation:"slideFromRight 0.7s cubic-bezier(0.34,1.3,0.64,1) both"}}>
         <div style={{fontSize:28,fontWeight:900,letterSpacing:-1.5,lineHeight:1,whiteSpace:"nowrap",textShadow:`0 0 40px ${neon}44`,fontFamily:MONO}}>
-          <b style={{color:neon}}>Track</b><span style={{color:"#ffffff1a",fontWeight:300}}>My</span><b style={{color:neon}}>Trade</b>
+          <span style={{background:`linear-gradient(135deg,${neon},${NEON_SECONDARY[neon]||"#00e5ff"})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",filter:`drop-shadow(0 0 10px ${neon}66)`}}>Track</span>
+<span style={{color:"#ffffff1a",fontWeight:300}}>My</span>
+<span style={{background:`linear-gradient(135deg,${neon},${NEON_SECONDARY[neon]||"#00e5ff"})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",filter:`drop-shadow(0 0 10px ${neon}66)`}}>Trade</span>
         </div>
         <div style={{fontSize:8,color:`${neon}55`,letterSpacing:5,marginTop:6,fontFamily:MONO}}>JOURNAL DE TRADING</div>
       </div>
