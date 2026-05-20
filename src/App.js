@@ -23,7 +23,6 @@ try {
 // Simple Firestore auth — no Firebase Auth SDK needed
 const encEmail = e => e.replace(/\./g,"_DOT_").replace(/@/g,"_AT_");
 const saveUserData = async (id, data) => { if(!db)return; try { await setDoc(doc(db,"users",id), data, {merge:true}); } catch(e) { console.error("Firestore save:",e); } };
-const saveReview = async (review) => { if(!db)return; try { const id=`review_${Date.now()}`; await setDoc(doc(db,"reviews",id), review); } catch(e) { console.error("Review save:",e); } };
 const loadUserData = async id => { if(!db)return null; try { const s=await getDoc(doc(db,"users",id)); return s.exists()?s.data():null; } catch(e) { return null; } };
 const authLogin = async (email, pwd) => {
   if(!auth) return null;
@@ -47,8 +46,8 @@ const authRegister = async (email, pwd, lang) => {
   } catch(e) { return false; }
 };
 
-const PRESET_ASSETS = ["XAU/USD","EUR/USD","GBP/USD","USD/JPY","GBP/JPY","NAS100","US30","SPX500","BTC/USD","ETH/USD","EUR/JPY","AUD/USD","USD/CAD"];
-const DEFAULT_CRITERIA = ["Tendance HTF","Cassure + retest validés","Liquidity Sweep OK?","Réaction propre sur zone clé","Pas de news dans les 30min","Présence d’un FVG","Contexte de marché favorable"];
+const PRESET_ASSETS = ["XAU/USD","EUR/USD","GBP/USD","NAS100","BTC/USD","ETH/USD","US30","SPX500","GBP/JPY","USD/JPY"];
+const DEFAULT_CRITERIA = ["HA M5 claire (pas de doji)","MM20 bien orientée","BB approche sur M1","Bougie de rejet propre","Fenêtre horaire respectée","Pas de distraction","Contexte macro neutre"];
 const MONO = "'Geist Mono','IBM Plex Mono',monospace";
 const PNL_PRESETS = ["-1","-0.5","0","+1","+2","+3","+4","+5"];
 const NEON_COLORS = [{name:"Vert",value:"#00ff9d"},{name:"Bleu",value:"#00d4ff"},{name:"Violet",value:"#bf00ff"},{name:"Rose",value:"#ff00aa"},{name:"Or",value:"#f0b429"}];
@@ -60,7 +59,7 @@ const rc = (r, neon="#00ff9d") => r==="WIN"?neon:r==="LOSS"?"#ff4d4d":"#f0b429";
 const fmtPct = v => { if(v===""||v===null||v===undefined) return "—"; const n=Number(v),abs=Math.abs(n); const s=abs%1===0?abs.toFixed(0):abs*10%1===0?abs.toFixed(1):abs.toFixed(2); return `${n>=0?"+":""}${n<0?"-":""}${s}%`; };
 const calcDisc = list => { if(!list||!list.length) return null; return Math.round((list.filter(x=>x.conforming).length/list.length*0.6+list.filter(x=>!x.isRevenge).length/list.length*0.4)*10); };
 const emptyForm = (asset="XAU/USD", tf="M5") => ({date:today(),asset,direction:"BUY",checklist:[],result:"WIN",pnlPreset:"",pnlManual:"",notes:"",rejetScore:0,time:"",timeframe:tf,screenshot:"",isRevenge:false,slDirection:"",checkin:{humeur:"",biais:""}});
-const mkInput = neon => ({width:"100%",background:"rgba(0,0,0,0.3)",backdropFilter:"blur(8px)",border:`1px solid rgba(255,255,255,0.1)`,borderRadius:8,color:"#ffffff",padding:"12px 14px",fontSize:13,fontFamily:MONO,marginBottom:10,outline:"none"});
+const mkInput = neon => ({width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:8,color:"#ffffff",padding:"12px 14px",fontSize:13,fontFamily:MONO,marginBottom:10,outline:"none"});
 // Auth handled by Firebase Auth
 
 const T = {
@@ -182,11 +181,15 @@ const T = {
   }
 };
 
-const CSS = ({neon="#00ff9d"}) => (
+const CSS = ({neon="#00ff9d", neon2="#00d4ff"}) => {
+  const r = parseInt(neon.slice(1,3),16);
+  const g = parseInt(neon.slice(3,5),16);
+  const b = parseInt(neon.slice(5,7),16);
+  return (
   <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800;900&family=IBM+Plex+Mono:wght@400;500;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;700;800;900&family=Space+Mono:wght@700&display=swap');
     *{box-sizing:border-box;margin:0;padding:0}
-    body{background:#07070f}
+    body{background:#050508}
     input,select,textarea{outline:none;font-family:${MONO};font-size:16px}
     input[type=checkbox]{accent-color:${neon};width:16px;height:16px;cursor:pointer}
     input[type=date],input[type=time]{color-scheme:dark}
@@ -194,54 +197,47 @@ const CSS = ({neon="#00ff9d"}) => (
     .btn{transition:all 0.15s;cursor:pointer}
     .btn:hover{opacity:0.85;transform:translateY(-1px)}
     .row{transition:background 0.2s;cursor:pointer}
-    .row:hover{background:${neon}0a!important}
+    .row:hover{background:rgba(255,255,255,0.04)!important}
     ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:${neon}26}
+
+    /* Aurora background */
+    .aurora-wrap{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+    .aurora-a{position:absolute;top:-20%;left:-10%;width:65%;height:65%;border-radius:50%;background:radial-gradient(ellipse,${neon}14 0%,transparent 70%);animation:auroraA 10s ease-in-out infinite alternate}
+    .aurora-b{position:absolute;bottom:-15%;right:-10%;width:55%;height:55%;border-radius:50%;background:radial-gradient(ellipse,${neon2}10 0%,transparent 70%);animation:auroraB 13s ease-in-out infinite alternate}
+    .aurora-c{position:absolute;top:45%;left:45%;width:40%;height:40%;border-radius:50%;background:radial-gradient(ellipse,${neon}08 0%,transparent 70%);animation:auroraC 16s ease-in-out infinite alternate}
+    @keyframes auroraA{from{transform:translate(0,0) scale(1)}to{transform:translate(6%,4%) scale(1.12)}}
+    @keyframes auroraB{from{transform:translate(0,0) scale(1)}to{transform:translate(-5%,-3%) scale(1.15)}}
+    @keyframes auroraC{from{transform:translate(0,0)}to{transform:translate(-4%,5%)}}
+
+    /* Glass cards */
+    .glass{
+      position:relative;overflow:hidden;border-radius:18px;
+      background:linear-gradient(135deg,rgba(255,255,255,0.08) 0%,rgba(255,255,255,0.02) 60%,rgba(255,255,255,0.05) 100%);
+      border:1px solid rgba(255,255,255,0.09);
+      backdrop-filter:blur(24px) saturate(1.4);
+      -webkit-backdrop-filter:blur(24px) saturate(1.4);
+      box-shadow:0 8px 32px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.10);
+      transition:all 0.3s ease;
+    }
+    .glass::before{content:'';position:absolute;top:0;left:0;right:0;height:45%;background:linear-gradient(180deg,rgba(255,255,255,0.07) 0%,transparent 100%);border-radius:18px 18px 0 0;pointer-events:none}
+    .glass::after{content:'';position:absolute;top:-30%;left:-10%;width:40%;height:160%;background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.04) 50%,transparent 60%);pointer-events:none;border-radius:999px}
+    .glass-glow{box-shadow:0 0 40px ${neon}18,0 12px 40px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.14)!important}
+    .glass:hover{border-color:rgba(255,255,255,0.16);transform:translateY(-1px)}
+
+    /* Gradient text */
+    .grad-text{
+      background:linear-gradient(135deg,${neon},${neon2});
+      -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent;
+      background-clip:text;
+    }
+
+    /* Animations */
     @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
     @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-    @keyframes pulse{0%,100%{opacity:1;text-shadow:0 0 8px ${neon}66}50%{opacity:0.85;text-shadow:0 0 14px ${neon}aa}}
     @keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes slideDown{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(20px)}}
-    @keyframes logoBoxGlow{0%,100%{box-shadow:0 0 8px ${neon}22}50%{box-shadow:0 0 20px ${neon}55,0 0 6px ${neon}33}}
-    @keyframes dotPulse{0%,40%,100%{width:6px;background:${neon}22;box-shadow:none}50%{width:22px;background:${neon};box-shadow:0 0 12px ${neon}99}}
-    .slide-up{animation:slideUp 0.28s cubic-bezier(0.34,1.3,0.64,1)}
-    .glass-card{
-      background:rgba(255,255,255,0.07)!important;
-      backdrop-filter:blur(20px);
-      -webkit-backdrop-filter:blur(20px);
-      border:1px solid rgba(255,255,255,0.12)!important;
-      box-shadow:0 8px 32px rgba(0,0,0,0.4),0 2px 8px rgba(0,0,0,0.2),inset 0 1px 0 rgba(255,255,255,0.12)!important;
-      position:relative;overflow:hidden;
-    }
-    .glass-card::before{
-      content:'';position:absolute;top:0;left:0;right:0;height:1px;
-      background:linear-gradient(90deg,transparent,rgba(255,255,255,0.12),transparent);
-      pointer-events:none;
-    }
-    .glass-card-neon{
-      background:rgba(${neon==="＃00ff9d"?"0,255,157":"0,255,157"},0.06)!important;
-      backdrop-filter:blur(20px);
-      -webkit-backdrop-filter:blur(20px);
-      border:1px solid rgba(0,255,157,0.15)!important;
-      box-shadow:0 8px 32px rgba(0,0,0,0.3),0 0 40px rgba(0,255,157,0.08),inset 0 1px 0 rgba(0,255,157,0.1)!important;
-    }
-    .glass-input{
-      background:rgba(0,0,0,0.3)!important;
-      backdrop-filter:blur(8px);
-      border:1px solid rgba(255,255,255,0.1)!important;
-    }
-    @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes ring{0%,100%{opacity:0.06;transform:scale(1)}50%{opacity:0.16;transform:scale(1.04)}}
-    .fu{animation:fadeUp 0.45s ease both}
-    .fi{animation:fadeIn 0.4s ease both}
-    .glow{animation:pulse 3s ease-in-out infinite}
-    .grid-bg{background-image:linear-gradient(${neon}06 1px,transparent 1px),linear-gradient(90deg,${neon}06 1px,transparent 1px);background-size:32px 32px}
-    .slide-up{animation:slideUp 0.3s ease both}
-    .view-in{animation:fadeIn 0.22s ease both}
-    @keyframes slideFromLeft{0%{opacity:0;transform:translateX(-60px)}65%{transform:translateX(6px)}80%{transform:translateX(-2px)}100%{opacity:1;transform:translateX(0)}}
-    @keyframes slideFromRight{0%{opacity:0;transform:translateX(60px)}65%{transform:translateX(-6px)}80%{transform:translateX(2px)}100%{opacity:1;transform:translateX(0)}}
-    @keyframes p1{0%{opacity:0.2;transform:scale(0.95)}50%{opacity:0.07;transform:scale(1.03)}100%{opacity:0.2;transform:scale(0.95)}}
-    @keyframes p2{0%{opacity:0.25;transform:scale(0.93)}50%{opacity:0.05;transform:scale(1.05)}100%{opacity:0.25;transform:scale(0.93)}}
-    @keyframes fadeInSlow{0%{opacity:0}100%{opacity:1}}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+    @keyframes pulse2{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.85)}}
     @keyframes logoBoxGlow{0%,100%{box-shadow:0 0 8px ${neon}22}50%{box-shadow:0 0 20px ${neon}55,0 0 6px ${neon}33}}
     @keyframes dotPulse{0%,40%,100%{width:6px;background:${neon}22;box-shadow:none}50%{width:22px;background:${neon};box-shadow:0 0 12px ${neon}99}}
     @keyframes icoCheck{from{stroke-dashoffset:30}to{stroke-dashoffset:0}}
@@ -258,12 +254,20 @@ const CSS = ({neon="#00ff9d"}) => (
     @keyframes icoDraw{from{stroke-dashoffset:80}to{stroke-dashoffset:0}}
     @keyframes icoHeartbeat{0%,100%{transform:scale(1)}15%{transform:scale(1.25)}30%{transform:scale(1)}45%{transform:scale(1.15)}60%{transform:scale(1)}}
     @keyframes icoDiamond{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-    @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
     @keyframes barFill{from{width:0}to{width:var(--bar-w)}}
     @keyframes kpiPop{0%{opacity:0;transform:scale(0.7)}70%{transform:scale(1.08)}100%{opacity:1;transform:scale(1)}}
-    @keyframes ring{0%,100%{transform:scale(1);opacity:0.12}50%{transform:scale(1.08);opacity:0.22}}
+    @keyframes slideFromLeft{0%{opacity:0;transform:translateX(-60px)}65%{transform:translateX(6px)}80%{transform:translateX(-2px)}100%{opacity:1;transform:translateX(0)}}
+    @keyframes slideFromRight{0%{opacity:0;transform:translateX(60px)}65%{transform:translateX(-6px)}80%{transform:translateX(2px)}100%{opacity:1;transform:translateX(0)}}
+    @keyframes fadeInSlow{0%{opacity:0}100%{opacity:1}}
+    .slide-up{animation:slideUp 0.3s ease both}
+    .fu{animation:fadeUp 0.45s ease both}
+    .fi{animation:fadeIn 0.4s ease both}
+    .glow{animation:pulse 3s ease-in-out infinite}
+    .view-in{animation:fadeIn 0.22s ease both}
+    .grid-bg{background-image:linear-gradient(${neon}05 1px,transparent 1px),linear-gradient(90deg,${neon}05 1px,transparent 1px);background-size:32px 32px}
   `}</style>
-);
+  );
+}
 
 function Logo({size="sm",neon="#00ff9d"}) {
   const [box,fs]={sm:[28,18],md:[34,22],lg:[48,30]}[size]||[28,18];
@@ -289,7 +293,7 @@ function StreakBadge({trades,neon,lang}) {
   for(let i=1;i<trades.length;i++){if(trades[i].result===type)streak++;else break;}
   if(streak<2||type==="BE") return null;
   const color=type==="WIN"?neon:"#ff4d4d";
-  return <div style={{background:`${color}12`,border:`1px solid ${color}35`,borderRadius:10,padding:"8px 14px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between",boxShadow:`0 2px 12px ${color}18`}}><span style={{fontSize:12,color,fontWeight:700,fontFamily:MONO,textShadow:`0 0 10px ${color}88`}}>{streak} {type==="WIN"?t.streakWin:t.streakLoss}</span>{type==="LOSS"&&<span style={{fontSize:10,color:"#ffffffaa"}}>{t.checkRules}</span>}</div>;
+  return <div className="glass" style={{background:`${color}0c`,borderLeft:`3px solid ${color}`,borderRadius:14,padding:"8px 14px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{fontSize:12,color,fontWeight:700,fontFamily:MONO,textShadow:`0 0 10px ${color}88`}}>{streak} {type==="WIN"?t.streakWin:t.streakLoss}</span>{type==="LOSS"&&<span style={{fontSize:10,color:"#ffffffaa"}}>{t.checkRules}</span>}</div>;
 }
 
 
@@ -307,7 +311,7 @@ function AdvancedStats({trades,neon,lang}) {
   const best=Object.entries(aMap).filter(([,v])=>v.t>=2).sort((a,b)=>(b[1].w/b[1].t)-(a[1].w/a[1].t))[0];
   const revs=trades.filter(x=>x.isRevenge);
   return (
-    <div style={{background:"rgba(255,255,255,0.06)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",border:"1px solid rgba(255,255,255,0.11)",borderRadius:14,padding:16,marginBottom:12}}>
+    <div style={{background:"rgba(255,255,255,0.06)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.1)",border:"1px solid #ffffff0e",borderRadius:14,padding:16,marginBottom:12}}>
       <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>{t.statsTitle}</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
         <div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{t.expectancy}</div><div style={{fontSize:16,fontWeight:700,color:exp>=0?neon:"#ff4d4d",fontFamily:MONO,textShadow:`0 0 14px ${exp>=0?neon:"#ff4d4d"}99`}}>{fmtPct(exp)}</div></div>
@@ -350,7 +354,7 @@ function Dots({total,current,neon="#00ff9d"}) {
 
 function Stat({label,value,color="#00ff9d"}) {
   return (
-    <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${color}28`,borderRadius:14,padding:"14px 16px",flex:1,boxShadow:"0 8px 32px #00000060,inset 0 1px 0 #ffffff08"}}>
+    <div style={{background:"rgba(255,255,255,0.06)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.1)",border:`1px solid ${color}28`,borderRadius:14,padding:"14px 16px",flex:1,boxShadow:"0 8px 32px #00000060,inset 0 1px 0 #ffffff08"}}>
       <div style={{fontSize:9,color:"#ffffffaa",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>{label}</div>
       <div style={{fontSize:22,fontWeight:900,color:"#ffffff",fontFamily:MONO,lineHeight:1,textShadow:`0 0 20px ${color}cc, 0 2px 6px rgba(0,0,0,0.6)`}}>{value}</div>
     </div>
@@ -374,7 +378,7 @@ function NotifCard({notif,onClose}) {
   };
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",padding:24}} onClick={onClose}>
-      <div className="slide-up" style={{background:"#131318",border:`1px solid ${iC}30`,borderRadius:20,width:"100%",maxWidth:320,overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
+      <div className="slide-up" className="glass" style={{borderRadius:20,width:"100%",maxWidth:320,overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
         <div style={{height:3,background:iC,opacity:0.85}}/>
         <div style={{padding:"26px 22px 22px"}}>
           <div style={{display:"flex",justifyContent:"center",marginBottom:18}}><Icon/></div>
@@ -413,7 +417,7 @@ function WeeklyRecapModal({trades,lang,neon,onClose,onShareWeek}) {
   else if(week.length>=3) insights.push(t.insightNoRevenge);
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",padding:24}} onClick={onClose}>
-      <div className="slide-up" style={{background:"#131318",border:`1px solid ${neon}35`,borderRadius:20,width:"100%",maxWidth:340,overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
+      <div className="slide-up" className="glass glass-glow" style={{borderRadius:20,width:"100%",maxWidth:340,overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
         <div style={{height:3,background:neon,opacity:0.85}}/>
         <div style={{padding:"24px 22px 22px"}}>
           <div style={{textAlign:"center",marginBottom:20}}>
@@ -422,7 +426,7 @@ function WeeklyRecapModal({trades,lang,neon,onClose,onShareWeek}) {
           </div>
           <div style={{display:"flex",gap:8,marginBottom:14}}>
             {[{l:"WIN RATE",v:`${wr}%`,c:wr>=50?neon:"#ff4d4d"},{l:"P&L",v:fmtPct(pnl),c:pnl>=0?neon:"#ff4d4d"},{l:t.trades.toUpperCase(),v:week.length,c:neon}].map(({l,v,c})=>(
-              <div key={l} style={{flex:1,background:"#161b22",border:`1px solid ${neon}1a`,borderRadius:8,padding:"10px 6px",textAlign:"center"}}>
+              <div key={l} style={{flex:1,background:`${neon}08`,border:`1px solid ${neon}1a`,borderRadius:8,padding:"10px 6px",textAlign:"center"}}>
                 <div style={{fontSize:18,fontWeight:800,color:c,fontFamily:MONO,lineHeight:1,textShadow:`0 0 18px ${c}cc, 0 2px 5px rgba(0,0,0,0.6)`}}>{v}</div>
                 <div style={{fontSize:8,color:"#ffffffaa",marginTop:4,letterSpacing:1}}>{l}</div>
               </div>
@@ -468,7 +472,7 @@ function TradeDetailModal({trade,config,onClose,onEdit,onShare,lang,neon}) {
   const hasCI=ci&&(ci.humeur||ci.biais);
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={onClose}>
-      <div className="slide-up" style={{background:"#131318",border:`1px solid ${neon}35`,borderRadius:16,width:"100%",maxWidth:480,maxHeight:"88vh",overflow:"auto",padding:20}} onClick={e=>e.stopPropagation()}>
+      <div className="slide-up" className="glass" style={{borderRadius:20,width:"100%",maxWidth:480,maxHeight:"88vh",overflow:"auto",padding:20}} onClick={e=>e.stopPropagation()}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <div style={{fontSize:13,fontWeight:700,color:neon,fontFamily:MONO}}>{t.detailTitle}</div>
           <div style={{display:"flex",gap:8}}>
@@ -480,7 +484,7 @@ function TradeDetailModal({trade,config,onClose,onEdit,onShare,lang,neon}) {
           </div>
         </div>
         {trade.isRevenge&&<div style={{background:"rgba(255,77,77,0.1)",border:"1px solid rgba(255,77,77,0.3)",borderRadius:8,padding:"8px 12px",marginBottom:14,fontSize:11,color:"#ff4d4d",fontFamily:MONO}}>REVENGE TRADE</div>}
-        {hasCI&&<div style={{background:`${neon}05`,border:"1px solid rgba(255,255,255,0.08)",borderRadius:8,padding:"10px 12px",marginBottom:14}}>
+        {hasCI&&<div style={{background:`${neon}05`,border:`1px solid ${neon}18`,borderRadius:8,padding:"10px 12px",marginBottom:14}}>
           <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>CHECK-IN</div>
           <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
             {ci.humeur&&<span style={{fontSize:11,padding:"4px 10px",background:`${neon}12`,border:`1px solid ${neon}26`,borderRadius:6,color:"#ffffff",fontFamily:MONO}}>{ci.humeur}</span>}
@@ -526,7 +530,7 @@ function TradeDetailModal({trade,config,onClose,onEdit,onShare,lang,neon}) {
           ))}
         </div>
         {trade.screenshot&&<div style={{marginBottom:14}}><div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.screenshotLabel}</div><img src={trade.screenshot} alt="" style={{width:"100%",borderRadius:8,border:`1px solid ${neon}26`}}/></div>}
-        {trade.notes&&<div style={{background:"#161b22",border:"1px solid rgba(255,255,255,0.06)",borderRadius:8,padding:12}}><div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:6}}>{t.notesLabel}</div><div style={{fontSize:12,color:"#ffffffaa",lineHeight:1.6,fontStyle:"italic"}}>"{trade.notes}"</div></div>}
+        {trade.notes&&<div style={{background:`${neon}04`,border:`1px solid ${neon}10`,borderRadius:8,padding:12}}><div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:6}}>{t.notesLabel}</div><div style={{fontSize:12,color:"#ffffffaa",lineHeight:1.6,fontStyle:"italic"}}>"{trade.notes}"</div></div>}
       </div>
     </div>
   );
@@ -540,13 +544,13 @@ function ConformityBar({trades,threshold,maxItems,neon,lang}) {
   const nWR=nonConf.length?Math.round(nonConf.filter(x=>x.result==="WIN").length/nonConf.length*100):null;
   const cPct=trades.length?(conf.length/trades.length)*100:50;
   return (
-    <div style={{background:"rgba(255,255,255,0.06)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",border:"1px solid rgba(255,255,255,0.11)",borderRadius:14,padding:16,marginBottom:12}}>
+    <div style={{background:"rgba(255,255,255,0.06)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.1)",border:"1px solid #ffffff0e",borderRadius:14,padding:16,marginBottom:12}}>
       <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>{t.conformityTitle} {threshold}/{maxItems}</div>
       <div style={{display:"flex",height:8,borderRadius:6,overflow:"hidden",marginBottom:14,background:"#ffffff10"}}>
         <div style={{width:`${cPct}%`,background:neon,transition:"width 0.5s"}}/><div style={{flex:1,background:"#ff4d4d44"}}/>
       </div>
       <div style={{display:"flex",gap:10}}>
-        <div style={{flex:1,background:"#ffffff10",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,padding:12}}>
+        <div style={{flex:1,background:"#ffffff10",border:`1px solid ${neon}28`,borderRadius:8,padding:12}}>
           <div style={{fontSize:9,color:neon,letterSpacing:1,marginBottom:8}}>{t.conformShort}</div>
           <div style={{fontSize:22,fontWeight:800,color:neon,fontFamily:MONO,textShadow:`0 0 20px ${neon}cc, 0 2px 6px rgba(0,0,0,0.6)`}}>{conf.length}</div>
           {cWR!==null&&<div style={{marginTop:8,padding:"4px 8px",background:`${neon}18`,borderRadius:6}}><span style={{fontSize:14,fontWeight:700,color:neon,textShadow:`0 0 12px ${neon}99`}}>{cWR}%</span><span style={{fontSize:10,color:"#ffffffaa",marginLeft:6}}>{t.winRateLabel}</span></div>}
@@ -606,7 +610,7 @@ function PerformanceChart({trades, neon, lang}) {
   }
 
   return (
-    <div style={{background:"rgba(255,255,255,0.06)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",border:"1px solid rgba(255,255,255,0.11)",borderRadius:14,padding:"12px 14px",marginBottom:12}}>
+    <div style={{background:"rgba(255,255,255,0.06)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.1)",border:"1px solid #ffffff0e",borderRadius:14,padding:"12px 14px",marginBottom:12}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
         <div style={{fontSize:9,color:`${neon}44`,letterSpacing:2,fontFamily:MONO}}>
           {fr?"P&L CUMULÉ":"CUMULATIVE P&L"}
@@ -686,7 +690,7 @@ function TradingCalendar({trades,neon,lang}) {
   for(let i=0;i<sD;i++)cells.push(null);
   for(let d=1;d<=dIM;d++)cells.push(d);
   return (
-    <div style={{background:"rgba(255,255,255,0.06)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",border:"1px solid rgba(255,255,255,0.11)",borderRadius:14,padding:14,marginBottom:12}}>
+    <div style={{background:"rgba(255,255,255,0.06)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.1)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:12}}>
       <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:12,textTransform:"uppercase"}}>{t.calendarTitle} · {mN[lang][month]} {year}</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:6}}>{dN[lang].map((d,i)=><div key={i} style={{fontSize:8,color:"#ffffff44",textAlign:"center"}}>{d}</div>)}</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
@@ -748,7 +752,7 @@ function ResetModal({trades,onReset,onClose,lang,neon}) {
   };
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",padding:24}} onClick={onClose}>
-      <div className="slide-up" style={{background:"#131318",border:"1px solid rgba(255,77,77,0.3)",borderRadius:20,width:"100%",maxWidth:340,overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
+      <div className="slide-up" className="glass" style={{borderRadius:20,width:"100%",maxWidth:340,overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
         <div style={{height:3,background:"#ff4d4d",opacity:0.8}}/>
         <div style={{padding:"26px 22px 22px"}}>
           {step==="confirm"?(
@@ -775,7 +779,7 @@ function ResetModal({trades,onReset,onClose,lang,neon}) {
   );
 }
 
-function LoginScreen({onLogin,onOnboarding,lang,setLang,neon="#00ff9d"}) {
+function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
   const t=T[lang];
   const fr=lang==="fr";
   const [mode,setMode]=useState("login");
@@ -799,18 +803,14 @@ function LoginScreen({onLogin,onOnboarding,lang,setLang,neon="#00ff9d"}) {
         else{setError(t.loginError);setLoading(false);}
       } else {
         const ok=await authRegister(em,pwd,lang);
-        if(ok){
-          const result=await authLogin(em,pwd);
-          if(result){onLogin({email:em,_uid:result._uid,userData:result,isNew:true});}
-          else{onLogin({email:em,_uid:null,userData:null,isNew:true});}
-          setLoading(false);
-        } else{setError(t.signupError);setLoading(false);}
+        if(ok){setSignupDone(true);setLoading(false);}
+        else{setError(t.signupError);setLoading(false);}
       }
     } catch(e){setError(e.message||t.loginError);setLoading(false);}
   };
   // Signup confirmation screen
   if(signupDone) return (
-    <div style={{background:"#0d1117",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:28,fontFamily:MONO,maxWidth:480,margin:"0 auto"}}>
+    <div style={{background:"#0c0c12",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:28,fontFamily:MONO,maxWidth:480,margin:"0 auto"}}>
       <CSS neon={neon}/>
       <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:24,width:"100%",height:120,overflow:"hidden"}}>
         <GridBackground neon={neon} height={120}/>
@@ -824,15 +824,15 @@ function LoginScreen({onLogin,onOnboarding,lang,setLang,neon="#00ff9d"}) {
         </div>
         <div style={{fontSize:20,fontWeight:700,color:"#ffffff",fontFamily:MONO,marginBottom:10}}>{fr?"Compte créé !":"Account created!"}</div>
         <div style={{fontSize:13,color:"#ffffffaa",fontFamily:MONO,lineHeight:1.7,marginBottom:28}}>{fr?`Bienvenue sur TrackMyTrade.\nTon compte est prêt.`:`Welcome to TrackMyTrade.\nYour account is ready.`}</div>
-        <button onClick={()=>onOnboarding()} className="btn"
+        <button onClick={()=>onLogin({email:email.trim().toLowerCase(),pwd,userData:null})} className="btn"
           style={{width:"100%",background:`${neon}22`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:16,fontSize:14,fontWeight:700,fontFamily:MONO,letterSpacing:2}}>
-          {fr?"COMMENCER L'ONBOARDING →":"START ONBOARDING →"}
+          {fr?"CONFIGURER MA STRATÉGIE →":"SET UP MY STRATEGY →"}
         </button>
       </div>
     </div>
   );
   return (
-    <div style={{background:"#0d1117",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:28,fontFamily:MONO,maxWidth:480,margin:"0 auto"}}>
+    <div style={{background:"#0c0c12",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:28,fontFamily:MONO,maxWidth:480,margin:"0 auto"}}>
       <CSS neon={neon}/>
       <div style={{position:"absolute",top:20,right:20,display:"flex",gap:6}}>
         {["fr","en"].map(l=><button key={l} onClick={()=>setLang(l)} className="btn" style={{background:lang===l?`${neon}26`:"transparent",border:`1px solid ${lang===l?neon:`${neon}33`}`,color:lang===l?neon:"#ffffffaa",borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:700,fontFamily:MONO}}>{l.toUpperCase()}</button>)}
@@ -1222,19 +1222,19 @@ function StatsInsightsModal({trades,lang,neon,onClose}) {
 
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:400,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
-      <div className="slide-up" style={{background:"#0d1117",border:"1px solid rgba(255,255,255,0.1)",borderRadius:"20px 20px 0 0",width:"100%",maxWidth:480,maxHeight:"88vh",overflowY:"auto",paddingBottom:40}} onClick={e=>e.stopPropagation()}>
+      <div className="slide-up" style={{background:"#0f0f18",border:`1px solid ${neon}28`,borderRadius:"20px 20px 0 0",width:"100%",maxWidth:480,maxHeight:"88vh",overflowY:"auto",paddingBottom:40}} onClick={e=>e.stopPropagation()}>
         {/* Barre top */}
-        <div style={{height:3,background:`linear-gradient(90deg,${neon},${neon}55)`,borderRadius:"20px 20px 0 0"}}/>
+        <div style={{height:3,background:neon,opacity:0.7,borderRadius:"20px 20px 0 0"}}/>
         {/* Header sticky */}
-        <div style={{position:"sticky",top:0,background:"#0d1117",padding:"16px 20px 12px",borderBottom:"1px solid rgba(255,255,255,0.08)",zIndex:1}}>
+        <div style={{position:"sticky",top:0,background:"#0f0f18",padding:"16px 20px 12px",borderBottom:`1px solid ${neon}10`,zIndex:1}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
               <IcoDiamond neon={neon} size={22}/>
               <div style={{fontSize:14,fontWeight:700,color:neon,fontFamily:MONO2}}>{fr?"RÉSUMÉ COMPLET":"FULL SUMMARY"}</div>
             </div>
-            <button onClick={onClose} style={{background:"transparent",border:"none",color:"rgba(255,255,255,0.4)",fontSize:20,cursor:"pointer"}}>✕</button>
+            <button onClick={onClose} style={{background:"transparent",border:"none",color:`${neon}55`,fontSize:20,cursor:"pointer"}}>✕</button>
           </div>
-          <div style={{fontSize:10,color:"rgba(255,255,255,0.3)",marginTop:4,fontFamily:MONO2}}>{trades.length} {fr?"trades analysés":"trades analyzed"}</div>
+          <div style={{fontSize:10,color:`${neon}33`,marginTop:4,fontFamily:MONO2}}>{trades.length} {fr?"trades analysés":"trades analyzed"}</div>
         </div>
 
         {/* KPI animés */}
@@ -1244,26 +1244,26 @@ function StatsInsightsModal({trades,lang,neon,onClose}) {
             {l:"P&L",v:fmtP(totalPnl),c:totalPnl>=0?neon:"#ff4d4d",delay:"0.12s"},
             {l:"TRADES",v:`${trades.length}`,c:neon,delay:"0.19s"},
           ].map(({l,v,c,delay})=>(
-            <div key={l} style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:10,padding:"10px 0",textAlign:"center",animation:`kpiPop 0.5s cubic-bezier(0.34,1.56,0.64,1) ${delay} both`}}>
-              <div style={{fontSize:8,color:"#8b949e",fontFamily:MONO2,letterSpacing:1,marginBottom:4}}>{l}</div>
+            <div key={l} style={{background:`${c}0c`,border:`1px solid ${c}22`,borderRadius:10,padding:"10px 0",textAlign:"center",animation:`kpiPop 0.5s cubic-bezier(0.34,1.56,0.64,1) ${delay} both`}}>
+              <div style={{fontSize:8,color:`${neon}44`,fontFamily:MONO2,letterSpacing:1,marginBottom:4}}>{l}</div>
               <div style={{fontSize:20,fontWeight:800,color:c,fontFamily:MONO2,lineHeight:1}}>{v}</div>
             </div>
           ))}
         </div>
 
         {/* Discipline */}
-        <div style={{margin:"0 20px 14px",background:"rgba(255,255,255,0.04)",border:`1px solid ${discC}18`,borderRadius:10,padding:"12px 14px"}}>
+        <div style={{margin:"0 20px 14px",background:`${discC}08`,border:`1px solid ${discC}18`,borderRadius:10,padding:"12px 14px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-            <span style={{fontSize:9,color:"#8b949e",fontFamily:MONO2,letterSpacing:2}}>{fr?"DISCIPLINE":"DISCIPLINE"}</span>
-            <span style={{fontSize:22,fontWeight:800,color:discC,fontFamily:MONO2}}>{disc}<span style={{fontSize:12,color:"rgba(255,255,255,0.3)"}}>/10</span></span>
+            <span style={{fontSize:9,color:`${neon}44`,fontFamily:MONO2,letterSpacing:2}}>{fr?"DISCIPLINE":"DISCIPLINE"}</span>
+            <span style={{fontSize:22,fontWeight:800,color:discC,fontFamily:MONO2}}>{disc}<span style={{fontSize:12,color:`${neon}33`}}>/10</span></span>
           </div>
           {[{l:fr?"Conformité":"Compliance",v:confPct,c:neon,delay:"0.3s"},{l:fr?"Sans revenge":"No revenge",v:noRevPct,c:revs.length===0?neon:"#f0b429",delay:"0.5s"}].map(({l,v,c,delay})=>(
             <div key={l} style={{marginBottom:8}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                <span style={{fontSize:9,color:"#8b949e",fontFamily:MONO2}}>{l}</span>
+                <span style={{fontSize:9,color:`${neon}44`,fontFamily:MONO2}}>{l}</span>
                 <span style={{fontSize:9,color:c,fontWeight:700,fontFamily:MONO2}}>{v}%</span>
               </div>
-              <div style={{height:3,background:"rgba(255,255,255,0.08)",borderRadius:2,overflow:"hidden"}}>
+              <div style={{height:3,background:`${neon}10`,borderRadius:2,overflow:"hidden"}}>
                 <div style={{["--bar-w"]:`${v}%`,height:"100%",background:c,borderRadius:2,animation:`barFill 0.8s ease ${delay} both`}}/>
               </div>
             </div>
@@ -1275,7 +1275,7 @@ function StatsInsightsModal({trades,lang,neon,onClose}) {
           {insights.map((ins,i)=>{
             const c=typeColor[ins.type];
             return (
-              <div key={i} style={{background:"rgba(255,255,255,0.03)",border:`1px solid ${c}18`,borderRadius:12,padding:"12px 14px",borderLeft:`3px solid ${c}`,display:"flex",gap:10,alignItems:"flex-start",animation:`fadeUp 0.35s ease ${0.1+i*0.08}s both`}}>
+              <div key={i} style={{background:`${c}07`,border:`1px solid ${c}18`,borderRadius:12,padding:"12px 14px",borderLeft:`3px solid ${c}`,display:"flex",gap:10,alignItems:"flex-start",animation:`fadeUp 0.35s ease ${0.1+i*0.08}s both`}}>
                 <div style={{flexShrink:0,marginTop:2}}>{renderIcon(ins.icon,c,24)}</div>
                 <p style={{fontSize:12,color:"#ffffff",lineHeight:1.7,fontFamily:MONO2,margin:0}}>{ins.txt}</p>
               </div>
@@ -1303,19 +1303,16 @@ function StatsInsightsModal({trades,lang,neon,onClose}) {
 
 function ShareModal({trade, trades, lang, neon, config, onClose}) {
   const fr = lang === "fr";
-  const MONO = "'IBM Plex Mono','Courier New',monospace";
-  const isTrade = !!(trade && trade.asset);
-  const [sharing, setSharing] = useState(false);
-  const fmtP = v => { if(v===undefined||v===null||v==="") return "—"; const n=Number(v),a=Math.abs(n); return (n>=0?"+":"")+(a%1===0?a.toFixed(0):a.toFixed(1))+"%"; };
+  const M = "'Geist Mono','IBM Plex Mono',monospace";
+  const fmtP = v => {
+    if(v===undefined||v===null||v==="") return "—";
+    const n=Number(v), a=Math.abs(n);
+    return (n>=0?"+":"")+(a%1===0?a.toFixed(0):a.toFixed(1))+"%";
+  };
   const rc2 = r => r==="WIN"?neon:r==="LOSS"?"#ff4d4d":"#f0b429";
+  const isTrade = !!(trade && trade.asset);
 
-  // Couleurs GitHub dark option A
-  const BG = "#0d1117";
-  const BG2 = "#161b22";
-  const TEXT = "#e6edf3";
-  const MUTED = "#8b949e";
-  const BORDER = "rgba(255,255,255,0.08)";
-
+  // Stats semaine
   const cutoff = new Date(Date.now()-7*86400000).toISOString().split("T")[0];
   const week = (trades||[]).filter(x=>x.date>=cutoff);
   const wWins = week.filter(x=>x.result==="WIN").length;
@@ -1325,286 +1322,160 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
   const wRev = week.filter(x=>x.isRevenge).length;
   const disc = week.length?Math.round((wConf/week.length*0.6+(1-wRev/week.length)*0.4)*10):0;
   const discC = disc>=8?neon:disc>=5?"#f0b429":"#ff4d4d";
-  const configItems = (config&&config.items)||[];
-  const tChecklist = isTrade?(trade.checklist||[]):[];
-  const resC = isTrade?rc2(trade.result||"BE"):neon;
+  const confPct = week.length?Math.round(wConf/week.length*100):0;
+  const noRevPct = week.length?Math.round((1-wRev/week.length)*100):100;
 
-  const generateAndShare = async () => {
-    setSharing(true);
+  // Insights semaine
+  const insights = [];
+  if(week.length>=3) {
+    const nc = week.filter(x=>!x.conforming);
+    const cWRv = wConf?Math.round(week.filter(x=>x.conforming&&x.result==="WIN").length/wConf*100):0;
+    const ncWR = nc.length?Math.round(nc.filter(x=>x.result==="WIN").length/nc.length*100):0;
+    if(wConf>=2&&nc.length>=2&&cWRv-ncWR>10)
+      insights.push({c:neon, txt:fr?`Conformes : ${cWRv}% WR vs ${ncWR}% non-conformes`:`Compliant: ${cWRv}% WR vs ${ncWR}% non-compliant`});
+    if(wRev>0)
+      insights.push({c:"#ff4d4d", txt:fr?`${wRev} revenge trade${wRev>1?"s":""} — à corriger`:`${wRev} revenge trade${wRev>1?"s":""} — fix this`});
+    else
+      insights.push({c:neon, txt:fr?"Aucun revenge trade ✓":"No revenge trades ✓"});
+  }
+
+  const doShare = () => {
     try {
-      const F = "'Courier New',monospace";
-      const W = 480;
-      const numItems = Math.min(configItems.length,7);
-      const hasCheckin = isTrade&&trade.checkin&&(trade.checkin.humeur||trade.checkin.biais);
-      const H = isTrade ? 80+(hasCheckin?58:0)+88+98+(numItems*38)+50 : 400;
-      const canvas = document.createElement("canvas");
-      const DPR = 2;
-      canvas.width=W*DPR; canvas.height=H*DPR;
-      const ctx = canvas.getContext("2d");
-      ctx.scale(DPR,DPR);
-
-      const rr = (x,y,w,h,r,fill,stroke,sw=1) => {
-        ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);
-        ctx.arcTo(x+w,y,x+w,y+r,r);ctx.lineTo(x+w,y+h-r);
-        ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.lineTo(x+r,y+h);
-        ctx.arcTo(x,y+h,x,y+h-r,r);ctx.lineTo(x,y+r);
-        ctx.arcTo(x,y,x+r,y,r);ctx.closePath();
-        if(fill){ctx.fillStyle=fill;ctx.fill();}
-        if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=sw;ctx.stroke();}
-      };
-
-      // Fond #0d1117
-      ctx.fillStyle=BG; ctx.fillRect(0,0,W,H);
-
-      // Barre top
-      const g=ctx.createLinearGradient(0,0,W,0);
-      g.addColorStop(0,neon);g.addColorStop(1,neon+"55");
-      ctx.fillStyle=g; ctx.fillRect(0,0,W,4);
-
-      // Header #161b22
-      ctx.fillStyle=BG2; ctx.fillRect(0,4,W,54);
-      ctx.strokeStyle=BORDER; ctx.lineWidth=1;
-      ctx.beginPath();ctx.moveTo(0,58);ctx.lineTo(W,58);ctx.stroke();
-      ctx.font=`bold 15px ${F}`; ctx.fillStyle=neon;
-      ctx.fillText(isTrade?"◈ RÉCAP TRADE":"◈ RÉSUMÉ SEMAINE",20,28);
-      ctx.font=`9px ${F}`; ctx.fillStyle=MUTED; ctx.fillText("TRACKMYTRADE",20,46);
-      ctx.textAlign="right"; ctx.font=`9px ${F}`; ctx.fillStyle=MUTED;
-      ctx.fillText(isTrade?(trade.date||""):`7 jours · ${week.length} trades`,W-20,28);
-      ctx.textAlign="left";
-
-      if(isTrade){
-        const rc=rc2(trade.result||"BE");
-        let y=68;
-
-        // Check-in
-        if(hasCheckin){
-          rr(14,y,W-28,48,8,BG2,BORDER);
-          ctx.font=`8px ${F}`; ctx.fillStyle=MUTED; ctx.fillText("CHECK-IN",26,y+14);
-          let bx=26;
-          [trade.checkin.humeur,trade.checkin.biais].filter(Boolean).forEach(txt=>{
-            const tw=ctx.measureText(txt).width+18;
-            rr(bx,y+18,tw,22,5,"rgba(255,255,255,0.06)",BORDER);
-            ctx.font=`10px ${F}`; ctx.fillStyle=TEXT; ctx.fillText(txt,bx+9,y+33); bx+=tw+6;
-          });
-          y+=60;
-        }
-
-        // Asset + résultat
-        rr(14,y,W-28,74,10,rc+"12",rc+"35");
-        ctx.fillStyle=rc; ctx.fillRect(14,y,5,74);
-        ctx.font=`bold 20px ${F}`; ctx.fillStyle=TEXT;
-        ctx.fillText(`${trade.asset||""} · ${trade.direction||""}`,27,y+27);
-        ctx.font=`10px ${F}`; ctx.fillStyle=MUTED; ctx.fillText(trade.date||"",27,y+48);
-        ctx.font=`bold 24px ${F}`; ctx.fillStyle=rc;
-        ctx.textAlign="right"; ctx.fillText(trade.result||"",W-18,y+30);
-        if(trade.pnlPct){
-          ctx.font=`bold 14px ${F}`;
-          ctx.fillStyle=parseFloat(trade.pnlPct)>=0?neon:"#ff4d4d";
-          ctx.fillText(fmtP(trade.pnlPct),W-18,y+52);
-        }
-        ctx.textAlign="left";
-        y+=86;
-
-        // Setup + Rejet
-        const hw=(W-36)/2;
-        rr(14,y,hw,88,10,BG2,BORDER);
-        ctx.font=`8px ${F}`; ctx.fillStyle=MUTED; ctx.fillText("SETUP SCORE",26,y+16);
-        const sc=trade.setupScore||0, mx=trade.checklistMax||numItems||7;
-        const cx=14+42,cy=y+54,cr=25;
-        ctx.strokeStyle="rgba(255,255,255,0.1)"; ctx.lineWidth=5;
-        ctx.beginPath();ctx.arc(cx,cy,cr,-Math.PI/2,Math.PI*1.5);ctx.stroke();
-        ctx.strokeStyle=neon; ctx.lineWidth=5;
-        ctx.beginPath();ctx.arc(cx,cy,cr,-Math.PI/2,-Math.PI/2+Math.PI*2*(mx>0?sc/mx:0));ctx.stroke();
-        ctx.font=`bold 12px ${F}`; ctx.fillStyle=neon;
-        ctx.textAlign="center"; ctx.fillText(`${sc}/${mx}`,cx,cy+4); ctx.textAlign="left";
-        ctx.font=`bold 11px ${F}`; ctx.fillStyle=trade.conforming?neon:"#ff4d4d";
-        ctx.fillText(trade.conforming?"✓ conforme":"✗ non-conf.",14+hw*0.45+8,y+52);
-
-        rr(22+hw,y,hw,88,10,BG2,BORDER);
-        ctx.font=`8px ${F}`; ctx.fillStyle=MUTED; ctx.fillText("REJET /10",34+hw,y+16);
-        ctx.font=`bold 42px ${F}`;
-        ctx.fillStyle=trade.rejetScore>=8?neon:trade.rejetScore>=5?"#f0b429":"#ff4d4d";
-        ctx.fillText(trade.rejetScore>0?`${trade.rejetScore}`:"—",34+hw,y+70);
-        if(trade.rejetScore>0){
-          ctx.font=`9px ${F}`; ctx.fillStyle=MUTED;
-          ctx.fillText(trade.rejetScore>=8?"Excellent":trade.rejetScore>=5?"Correct":"Faible",34+hw+50,y+70);
-        }
-        y+=100;
-
-        // Checklist
-        if(numItems>0){
-          const ch=numItems*38+24;
-          rr(14,y,W-28,ch,10,BG2,BORDER);
-          ctx.font=`8px ${F}`; ctx.fillStyle=MUTED; ctx.fillText("CHECKLIST",26,y+16);
-          configItems.slice(0,7).forEach((item,i)=>{
-            const iy=y+24+i*38;
-            if(i>0){ctx.strokeStyle=BORDER;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(26,iy-5);ctx.lineTo(W-26,iy-5);ctx.stroke();}
-            const chk=tChecklist.includes(i);
-            ctx.font=`bold 13px ${F}`; ctx.fillStyle=chk?neon:"rgba(255,255,255,0.15)";
-            ctx.fillText(chk?"✓":"✗",26,iy+16);
-            ctx.font=`11px ${F}`; ctx.fillStyle=chk?TEXT:MUTED;
-            ctx.fillText(item.length>46?item.slice(0,46)+"…":item,50,iy+16);
-          });
-        }
-      } else {
-        let y=68;
-        const sw=(W-36)/3-4;
-        [{l:"WIN RATE",v:`${wWR}%`,c:wWR>=50?neon:"#ff4d4d"},{l:"P&L",v:fmtP(wPnl),c:wPnl>=0?neon:"#ff4d4d"},{l:"TRADES",v:`${week.length}`,c:TEXT}].forEach(({l,v,c},i)=>{
-          const sx=14+i*(sw+8);
-          rr(sx,y,sw,66,8,BG2,BORDER);
-          ctx.font=`8px ${F}`; ctx.fillStyle=MUTED; ctx.fillText(l,sx+10,y+16);
-          ctx.font=`bold 24px ${F}`; ctx.fillStyle=c; ctx.fillText(v,sx+10,y+50);
-        });
-        y+=80;
-        rr(14,y,W-28,84,10,BG2,BORDER);
-        ctx.font=`8px ${F}`; ctx.fillStyle=MUTED; ctx.fillText("DISCIPLINE",26,y+16);
-        ctx.font=`bold 32px ${F}`; ctx.fillStyle=discC; ctx.fillText(`${disc}`,26,y+58);
-        ctx.font=`13px ${F}`; ctx.fillStyle=MUTED; ctx.fillText("/10",26+ctx.measureText(`${disc}`).width+4,y+58);
-        const bx=110,bw=W-128;
-        [{l:fr?"Conformité":"Compliance",v:week.length?Math.round(wConf/week.length*100):0,c:neon},{l:fr?"Sans revenge":"No revenge",v:week.length?Math.round((1-wRev/week.length)*100):100,c:wRev===0?neon:"#f0b429"}].forEach(({l,v,c},i)=>{
-          const by=y+20+i*34;
-          ctx.font=`8px ${F}`; ctx.fillStyle=MUTED; ctx.fillText(l,bx,by+4);
-          ctx.font=`bold 8px ${F}`; ctx.fillStyle=c;
-          ctx.textAlign="right"; ctx.fillText(`${v}%`,W-18,by+4); ctx.textAlign="left";
-          rr(bx,by+9,bw,4,2,"rgba(255,255,255,0.08)",null);
-          rr(bx,by+9,Math.max(4,bw*v/100),4,2,c,null);
-        });
+      const text = isTrade
+        ? `${trade.result} · ${trade.asset} · ${fmtP(trade.pnlPct)} — TrackMyTrade`
+        : fr
+          ? `Semaine : ${wWR}% WR · ${fmtP(wPnl)} P&L · ${week.length} trades · Discipline ${disc}/10 — TrackMyTrade`
+          : `Week: ${wWR}% WR · ${fmtP(wPnl)} P&L · ${week.length} trades · Discipline ${disc}/10 — TrackMyTrade`;
+      if(navigator.share) {
+        navigator.share({text, url:"https://trackmytrade.app"}).catch(()=>{});
+      } else if(navigator.clipboard) {
+        navigator.clipboard.writeText(text);
       }
-
-      // Watermark
-      ctx.font=`8px ${F}`; ctx.fillStyle="rgba(255,255,255,0.15)";
-      ctx.textAlign="center"; ctx.fillText("trackmytrade.app",W/2,H-10);
-      ctx.textAlign="left";
-
-      const blob=await new Promise(r=>canvas.toBlob(r,"image/png",0.95));
-      const file=new File([blob],"trackmytrade.png",{type:"image/png"});
-      if(navigator.canShare&&navigator.canShare({files:[file]})){
-        await navigator.share({files:[file],title:"TrackMyTrade"});
-      } else {
-        const url=URL.createObjectURL(blob);
-        const a=document.createElement("a");a.href=url;a.download="trackmytrade.png";a.click();
-        URL.revokeObjectURL(url);
-      }
-    } catch(e){
-      console.error(e);
-      if(navigator.share){
-        const text=isTrade?`${trade.result} ${trade.asset} ${fmtP(trade.pnlPct)} — TrackMyTrade`:`${wWR}% WR · ${fmtP(wPnl)} — TrackMyTrade`;
-        navigator.share({text,url:"https://trackmytrade.app"}).catch(()=>{});
-      }
-    }
-    setSharing(false);
+    } catch(e) { console.error("share error:", e); }
   };
 
+  // Stats trade sécurisées
+  const tResult = isTrade ? (trade.result||"—") : "—";
+  const tPnl = isTrade ? fmtP(trade.pnlPct) : "—";
+  const tScore = isTrade ? `${trade.setupScore||0}/${trade.checklistMax||(config&&config.items?config.items.length:7)}` : "—";
+  const tChecklist = isTrade ? (trade.checklist||[]) : [];
+  const tConforming = isTrade ? !!trade.conforming : false;
+  const tRevenge = isTrade ? !!trade.isRevenge : false;
+  const tRejet = isTrade ? (trade.rejetScore||0) : 0;
+  const tHumeur = isTrade ? (trade.checkin&&trade.checkin.humeur ? trade.checkin.humeur : null) : null;
+  const tNotes = isTrade ? (trade.notes||null) : null;
+  const tAsset = isTrade ? (trade.asset||"") : "";
+  const tDir = isTrade ? (trade.direction||"") : "";
+  const configItems = (config&&config.items)||[];
+
   return (
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.94)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
-      <div className="slide-up" style={{width:"100%",maxWidth:480,background:BG,borderRadius:"20px 20px 0 0",overflow:"hidden",border:`1px solid ${BORDER}`,maxHeight:"88vh",overflowY:"auto",paddingBottom:24}} onClick={e=>e.stopPropagation()}>
-        <div style={{height:3,background:`linear-gradient(90deg,${neon},${neon}55)`}}/>
-        <div style={{padding:"14px 18px 10px",borderBottom:`1px solid ${BORDER}`,display:"flex",justifyContent:"space-between",alignItems:"center",background:BG2}}>
-          <div>
-            <div style={{fontSize:14,fontWeight:700,color:neon,fontFamily:MONO}}>{isTrade?(fr?"◈ RÉCAP TRADE":"◈ TRADE RECAP"):(fr?"◈ RÉSUMÉ SEMAINE":"◈ WEEKLY RECAP")}</div>
-            <div style={{fontSize:9,color:MUTED,fontFamily:MONO,marginTop:2}}>TRACKMYTRADE</div>
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.94)",zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",padding:16,overflowY:"auto"}} onClick={onClose}>
+      <div className="slide-up" style={{width:"100%",maxWidth:360,background:"#0f0f18",borderRadius:20,overflow:"hidden",border:`1px solid ${neon}28`}} onClick={e=>e.stopPropagation()}>
+        <div style={{height:4,background:`linear-gradient(90deg,${neon},${neon}55)`}}/>
+        <div style={{padding:"18px 18px 0"}}>
+          {/* Header */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+            <span style={{fontSize:9,color:`${neon}44`,fontFamily:M,letterSpacing:3}}>TRACKMYTRADE</span>
+            <button onClick={onClose} style={{background:"transparent",border:"none",color:`${neon}44`,fontSize:20,cursor:"pointer",lineHeight:1}}>✕</button>
           </div>
-          <button onClick={onClose} style={{background:"transparent",border:"none",color:MUTED,fontSize:20,cursor:"pointer"}}>✕</button>
-        </div>
-        <div style={{padding:"14px 18px"}}>
-          {isTrade?(
-            <>
-              {trade.checkin&&(trade.checkin.humeur||trade.checkin.biais)&&(
-                <div style={{background:BG2,border:`1px solid ${BORDER}`,borderRadius:8,padding:"8px 12px",marginBottom:10}}>
-                  <div style={{fontSize:9,color:MUTED,letterSpacing:2,marginBottom:6,fontFamily:MONO}}>CHECK-IN</div>
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                    {trade.checkin.humeur&&<span style={{fontSize:11,padding:"4px 10px",borderRadius:6,background:"rgba(255,255,255,0.06)",border:`1px solid ${BORDER}`,color:TEXT,fontFamily:MONO}}>{trade.checkin.humeur}</span>}
-                    {trade.checkin.biais&&<span style={{fontSize:11,padding:"4px 10px",borderRadius:6,background:"rgba(255,255,255,0.06)",border:`1px solid ${BORDER}`,color:TEXT,fontFamily:MONO}}>{trade.checkin.biais}</span>}
-                  </div>
-                </div>
-              )}
-              <div style={{background:`${resC}12`,border:`1px solid ${resC}35`,borderRadius:10,padding:"14px 16px",marginBottom:10,borderLeft:`5px solid ${resC}`}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                  <div>
-                    <div style={{fontSize:20,fontWeight:700,color:TEXT,fontFamily:MONO,marginBottom:4}}>{trade.asset} · {trade.direction}</div>
-                    <div style={{fontSize:10,color:MUTED,fontFamily:MONO}}>{trade.date}{trade.time?" · "+trade.time:""}</div>
-                  </div>
-                  <div style={{textAlign:"right"}}>
-                    <div style={{fontSize:24,fontWeight:800,color:resC,fontFamily:MONO,display:"flex",alignItems:"center",gap:6}}>
-                      {trade.result==="WIN"?<IcoWin neon={neon} size={20}/>:trade.result==="LOSS"?<IcoLoss size={20}/>:<IcoBE size={20}/>}
-                      {trade.result}
-                    </div>
-                    {trade.pnlPct&&<div style={{fontSize:16,fontWeight:700,color:parseFloat(trade.pnlPct)>=0?neon:"#ff4d4d",fontFamily:MONO}}>{fmtP(trade.pnlPct)}</div>}
-                  </div>
-                </div>
+          <div style={{fontSize:15,fontWeight:700,color:neon,fontFamily:M,marginBottom:3}}>
+            {isTrade?(fr?"◈ RÉCAP TRADE":"◈ TRADE RECAP"):(fr?"◈ RÉSUMÉ SEMAINE":"◈ WEEKLY RECAP")}
+          </div>
+          <div style={{fontSize:9,color:`${neon}33`,fontFamily:M,marginBottom:14}}>
+            {isTrade
+              ? `${trade.date||""}${trade.time?" · "+trade.time:""}`
+              : fr?`7 derniers jours · ${week.length} trades`:`Last 7 days · ${week.length} trades`}
+          </div>
+
+          {/* Stats 3 colonnes */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:10}}>
+            {(isTrade
+              ? [{l:"RÉSULTAT",v:tResult,c:rc2(tResult)},{l:"P&L",v:tPnl,c:parseFloat(trade.pnlPct||0)>=0?neon:"#ff4d4d"},{l:"SCORE",v:tScore,c:tConforming?neon:"#ff4d4d"}]
+              : [{l:"WIN RATE",v:`${wWR}%`,c:wWR>=50?neon:"#ff4d4d"},{l:"P&L",v:fmtP(wPnl),c:wPnl>=0?neon:"#ff4d4d"},{l:"TRADES",v:`${week.length}`,c:neon}]
+            ).map(({l,v,c},i)=>(
+              <div key={i} style={{background:`${c}0c`,border:`1px solid ${c}22`,borderRadius:10,padding:"10px 0",textAlign:"center"}}>
+                <div style={{fontSize:8,color:`${neon}44`,fontFamily:M,letterSpacing:1,marginBottom:4}}>{l}</div>
+                <div style={{fontSize:18,fontWeight:800,color:c,fontFamily:M,lineHeight:1}}>{v}</div>
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-                <div style={{background:BG2,border:`1px solid ${BORDER}`,borderRadius:10,padding:"12px 14px"}}>
-                  <div style={{fontSize:9,color:MUTED,letterSpacing:1,marginBottom:8,fontFamily:MONO}}>SETUP SCORE</div>
-                  <div style={{display:"flex",alignItems:"center",gap:10}}>
-                    <div style={{width:44,height:44,borderRadius:"50%",border:`3px solid ${neon}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:`0 0 10px ${neon}33`}}>
-                      <span style={{fontSize:12,fontWeight:700,color:neon,fontFamily:MONO}}>{trade.setupScore}/{trade.checklistMax||configItems.length||7}</span>
-                    </div>
-                    <div style={{fontSize:12,fontWeight:700,color:trade.conforming?neon:"#ff4d4d",fontFamily:MONO}}>{trade.conforming?(fr?"✓ conforme":"✓ compliant"):(fr?"✗ non-conf.":"✗ non-comp.")}</div>
-                  </div>
-                </div>
-                <div style={{background:BG2,border:`1px solid ${BORDER}`,borderRadius:10,padding:"12px 14px"}}>
-                  <div style={{fontSize:9,color:MUTED,letterSpacing:1,marginBottom:4,fontFamily:MONO}}>REJET /10</div>
-                  <div style={{display:"flex",alignItems:"baseline",gap:8}}>
-                    <span style={{fontSize:36,fontWeight:800,color:trade.rejetScore>=8?neon:trade.rejetScore>=5?"#f0b429":"#ff4d4d",fontFamily:MONO}}>{trade.rejetScore>0?trade.rejetScore:"—"}</span>
-                    {trade.rejetScore>0&&<span style={{fontSize:11,color:MUTED,fontFamily:MONO}}>{trade.rejetScore>=8?"Excellent":trade.rejetScore>=5?"Correct":"Faible"}</span>}
-                  </div>
-                </div>
+            ))}
+          </div>
+
+          {/* Bloc trade */}
+          {isTrade&&(
+            <div style={{background:`${rc2(tResult)}08`,border:`1px solid ${rc2(tResult)}20`,borderRadius:10,padding:"12px 14px",marginBottom:10,borderLeft:`3px solid ${rc2(tResult)}`}}>
+              <div style={{fontSize:15,fontWeight:700,color:"#ffffff",fontFamily:M,marginBottom:8}}>{tAsset} · {tDir}</div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:tNotes?8:0}}>
+                <span style={{fontSize:10,padding:"3px 8px",borderRadius:5,background:tConforming?`${neon}14`:"rgba(255,77,77,0.1)",color:tConforming?neon:"#ff4d4d",fontFamily:M}}>
+                  {tConforming?(fr?"✓ conforme":"✓ compliant"):(fr?"✗ non-conforme":"✗ non-compliant")}
+                </span>
+                {tRevenge&&<span style={{fontSize:10,padding:"3px 8px",borderRadius:5,background:"rgba(255,77,77,0.1)",color:"#ff4d4d",fontFamily:M}}>REVENGE</span>}
+                {tRejet>0&&<span style={{fontSize:10,padding:"3px 8px",borderRadius:5,background:`${neon}0a`,color:`${neon}77`,fontFamily:M}}>Rejet {tRejet}/10</span>}
+                {tHumeur&&<span style={{fontSize:10,padding:"3px 8px",borderRadius:5,background:`${neon}08`,color:`${neon}66`,fontFamily:M}}>{tHumeur}</span>}
               </div>
-              {configItems.length>0&&(
-                <div style={{background:BG2,border:`1px solid ${BORDER}`,borderRadius:10,padding:"12px 14px"}}>
-                  <div style={{fontSize:9,color:MUTED,letterSpacing:2,marginBottom:10,fontFamily:MONO}}>CHECKLIST</div>
-                  {configItems.slice(0,7).map((item,i)=>(
-                    <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:i<Math.min(configItems.length,7)-1?`1px solid ${BORDER}`:"none"}}>
-                      <span style={{fontSize:14,color:tChecklist.includes(i)?neon:"rgba(255,255,255,0.15)",flexShrink:0,fontFamily:MONO}}>{tChecklist.includes(i)?"✓":"✗"}</span>
-                      <span style={{fontSize:11,color:tChecklist.includes(i)?TEXT:MUTED,fontFamily:MONO}}>{item}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          ):(
-            <>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
-                {[{l:"WIN RATE",v:`${wWR}%`,c:wWR>=50?neon:"#ff4d4d"},{l:"P&L",v:fmtP(wPnl),c:wPnl>=0?neon:"#ff4d4d"},{l:"TRADES",v:`${week.length}`,c:TEXT}].map(({l,v,c})=>(
-                  <div key={l} style={{background:BG2,border:`1px solid ${BORDER}`,borderRadius:10,padding:"10px 0",textAlign:"center"}}>
-                    <div style={{fontSize:8,color:MUTED,fontFamily:MONO,letterSpacing:1,marginBottom:4}}>{l}</div>
-                    <div style={{fontSize:20,fontWeight:800,color:c,fontFamily:MONO}}>{v}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{background:BG2,border:`1px solid ${BORDER}`,borderRadius:10,padding:"12px 14px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                  <span style={{fontSize:9,color:MUTED,fontFamily:MONO,letterSpacing:2}}>DISCIPLINE</span>
-                  <span style={{fontSize:24,fontWeight:800,color:discC,fontFamily:MONO}}>{disc}<span style={{fontSize:12,color:MUTED}}>/10</span></span>
-                </div>
-                {[{l:fr?"Conformité":"Compliance",v:week.length?Math.round(wConf/week.length*100):0,c:neon},{l:fr?"Sans revenge":"No revenge",v:week.length?Math.round((1-wRev/week.length)*100):100,c:wRev===0?neon:"#f0b429"}].map(({l,v,c})=>(
-                  <div key={l} style={{marginBottom:6}}>
-                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                      <span style={{fontSize:9,color:MUTED,fontFamily:MONO}}>{l}</span>
-                      <span style={{fontSize:9,color:c,fontWeight:700,fontFamily:MONO}}>{v}%</span>
-                    </div>
-                    <div style={{height:3,background:"rgba(255,255,255,0.08)",borderRadius:2}}><div style={{width:`${v}%`,height:"100%",background:c,borderRadius:2}}/></div>
-                  </div>
-                ))}
-              </div>
-            </>
+              {tNotes&&<div style={{fontSize:11,color:`${neon}55`,fontStyle:"italic",lineHeight:1.5}}>"{tNotes.length>80?tNotes.slice(0,80)+"…":tNotes}"</div>}
+            </div>
           )}
-          <div style={{textAlign:"center",marginTop:12}}>
-            <span style={{fontSize:8,color:"rgba(255,255,255,0.2)",fontFamily:MONO,letterSpacing:2}}>trackmytrade.app</span>
+
+          {/* Checklist trade */}
+          {isTrade&&configItems.length>0&&(
+            <div style={{background:`${neon}05`,border:`1px solid ${neon}10`,borderRadius:10,padding:"10px 12px",marginBottom:10}}>
+              {configItems.slice(0,7).map((item,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0",borderBottom:i<Math.min(configItems.length,7)-1?`1px solid ${neon}08`:"none"}}>
+                  <span style={{fontSize:11,color:tChecklist.includes(i)?neon:"#ffffff44",flexShrink:0}}>{tChecklist.includes(i)?"✓":"✗"}</span>
+                  <span style={{fontSize:10,color:tChecklist.includes(i)?"#ffffff":"#ffffffaa",fontFamily:M}}>{item}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Discipline semaine */}
+          {!isTrade&&(
+            <div style={{background:`${discC}08`,border:`1px solid ${discC}18`,borderRadius:10,padding:"12px 14px",marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <span style={{fontSize:9,color:`${neon}44`,fontFamily:M,letterSpacing:2}}>DISCIPLINE</span>
+                <span style={{fontSize:24,fontWeight:800,color:discC,fontFamily:M}}>{disc}<span style={{fontSize:12,color:`${neon}33`}}>/10</span></span>
+              </div>
+              {[{l:fr?"Conformité":"Compliance",v:confPct,c:neon},{l:fr?"Sans revenge":"No revenge",v:noRevPct,c:wRev===0?neon:"#f0b429"}].map(({l,v,c})=>(
+                <div key={l} style={{marginBottom:8}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                    <span style={{fontSize:9,color:`${neon}44`,fontFamily:M}}>{l}</span>
+                    <span style={{fontSize:9,color:c,fontWeight:700,fontFamily:M}}>{v}%</span>
+                  </div>
+                  <div style={{height:3,background:`${neon}10`,borderRadius:2}}>
+                    <div style={{width:`${v}%`,height:"100%",background:c,borderRadius:2}}/>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Insights semaine */}
+          {!isTrade&&insights.map((ins,i)=>(
+            <div key={i} style={{background:`${ins.c}07`,border:`1px solid ${ins.c}15`,borderRadius:8,padding:"9px 12px",marginBottom:6,borderLeft:`3px solid ${ins.c}`}}>
+              <span style={{fontSize:11,color:"#ffffff",fontFamily:M,lineHeight:1.5}}>{ins.txt}</span>
+            </div>
+          ))}
+
+          <div style={{textAlign:"center",padding:"10px 0 4px"}}>
+            <span style={{fontSize:8,color:`${neon}18`,fontFamily:M,letterSpacing:2}}>trackmytrade.app</span>
           </div>
         </div>
-        <div style={{padding:"0 18px"}}>
-          <button onClick={generateAndShare} disabled={sharing} className="btn"
-            style={{width:"100%",background:`${neon}18`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:"14px 0",fontSize:12,fontWeight:700,fontFamily:MONO,letterSpacing:2,display:"flex",alignItems:"center",justifyContent:"center",gap:8,opacity:sharing?0.7:1}}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-            {sharing?(fr?"Génération…":"Generating…"):(fr?"PARTAGER":"SHARE")}
+
+        {/* Bouton partager */}
+        <div style={{padding:"0 18px 18px"}}>
+          <button onClick={doShare} className="btn" style={{width:"100%",marginTop:12,background:`${neon}18`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:"13px 0",fontSize:12,fontWeight:700,fontFamily:M,letterSpacing:2,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+            {fr?"PARTAGER":"SHARE"}
           </button>
         </div>
       </div>
     </div>
   );
 }
+
 
 function SplashLogo({neon}) {
   return (
@@ -1699,13 +1570,13 @@ function Onboarding({onDone}) {
         <div style={{position:"relative",zIndex:2,maxWidth:280,width:"100%",padding:"0 10px"}}>
           <div style={{display:"flex",gap:10,marginBottom:10}}>
             {[["WIN RATE","73%"],["P&L","+4.2%"]].map(([l,v])=>(
-              <div key={l} style={{flex:1,background:"rgba(255,255,255,0.06)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:14,padding:"14px 12px",textAlign:"center",boxShadow:`0 4px 24px ${neon}10,inset 0 1px 0 ${neon}15`}}>
+              <div key={l} style={{flex:1,background:"rgba(255,255,255,0.06)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.1)",border:`1px solid ${neon}22`,borderRadius:14,padding:"14px 12px",textAlign:"center",boxShadow:`0 4px 24px ${neon}10,inset 0 1px 0 ${neon}15`}}>
                 <div style={{fontSize:26,fontWeight:900,color:"#ffffff",fontFamily:MONO,lineHeight:1,textShadow:`0 0 20px ${neon}55`}}>{v}</div>
                 <div style={{fontSize:9,color:"#ffffffaa",marginTop:6,letterSpacing:2,textTransform:"uppercase"}}>{l}</div>
               </div>
             ))}
           </div>
-          <div style={{background:"rgba(255,255,255,0.06)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:10,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{background:"rgba(255,255,255,0.06)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.1)",border:`1px solid ${neon}22`,borderRadius:10,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div>
               <div style={{fontSize:9,color:"#ffffffaa",letterSpacing:2,marginBottom:6}}>CONFORMITÉ</div>
               <div style={{height:3,width:140,background:"#ffffff10",borderRadius:2,overflow:"hidden"}}>
@@ -1742,23 +1613,23 @@ function Onboarding({onDone}) {
 function GuidedSetup({onDone,lang}) {
   const t=T[lang];const neon="#00ff9d";
   const [step,setStep]=useState(0);const [stratName,setStratName]=useState("");
-  const [selAssets,setSelAssets]=useState([]);const [customAsset,setCustomAsset]=useState("");
-  const [criteria,setCriteria]=useState([...DEFAULT_CRITERIA]);const [threshold,setThreshold]=useState(5);const [newItem,setNewItem]=useState("");
+  const [selAssets,setSelAssets]=useState(["XAU/USD"]);const [customAsset,setCustomAsset]=useState("");
+  const [criteria,setCriteria]=useState([...DEFAULT_CRITERIA]);const [threshold,setThreshold]=useState(6);const [newItem,setNewItem]=useState("");
   const allAssets=[...new Set([...PRESET_ASSETS,...selAssets.filter(a=>!PRESET_ASSETS.includes(a))])];
-  const TOTAL=4;const titles=[t.assets,t.criteria,t.threshold,t.strategy];const descs=[t.assetsDesc,t.criteriaDesc,t.thresholdDesc,t.strategyDesc];
-  const canNext=step===0?selAssets.length>0:step===1?criteria.length>=2:true;
+  const TOTAL=4;const titles=[t.strategy,t.assets,t.criteria,t.threshold];const descs=[t.strategyDesc,t.assetsDesc,t.criteriaDesc,t.thresholdDesc];
+  const canNext=step===1?selAssets.length>0:step===2?criteria.length>=2:true;
   const launch=()=>onDone({strategyName:stratName.trim()||"Ma Stratégie",defaultAsset:selAssets[0]||"XAU/USD",items:criteria,threshold,customAssets:selAssets});
   const inSt=mkInput(neon);
   const renderContent=()=>{
-    if(step===3) return <input value={stratName} onChange={e=>setStratName(e.target.value)} placeholder="Ex: XAU/USD Scalping BB" style={{...inSt,fontSize:14,padding:14}} autoFocus/>;
-    if(step===0) return <div><div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:10}}>{allAssets.map(a=><button key={a} onClick={()=>setSelAssets(p=>p.includes(a)?p.filter(x=>x!==a):[...p,a])} className="btn" style={{background:selAssets.includes(a)?`${neon}26`:"#131318",border:`1px solid ${selAssets.includes(a)?neon:`${neon}22`}`,color:selAssets.includes(a)?neon:"#ffffffaa",borderRadius:8,padding:"9px 14px",fontSize:12,fontWeight:700,fontFamily:MONO}}>{a}</button>)}</div><div style={{display:"flex",gap:8}}><input value={customAsset} onChange={e=>setCustomAsset(e.target.value)} placeholder={t.customAsset} onKeyDown={e=>{if(e.key==="Enter"&&customAsset.trim()){setSelAssets(p=>[...p,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} style={{...inSt,marginBottom:0,flex:1}}/><button onClick={()=>{if(customAsset.trim()){setSelAssets(p=>[...p,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} className="btn" style={{background:`${neon}1a`,border:`1px solid ${neon}55`,color:neon,borderRadius:8,padding:"0 16px",fontSize:18}}>+</button></div></div>;
-    if(step===1) return <div>{criteria.map((c,i)=><div key={i} style={{display:"flex",gap:8,marginBottom:8}}><input value={c} onChange={e=>{const n=[...criteria];n[i]=e.target.value;setCriteria(n);}} style={{...inSt,marginBottom:0,flex:1}}/><button onClick={()=>setCriteria(criteria.filter((_,idx)=>idx!==i))} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d",borderRadius:6,padding:"8px 10px",cursor:"pointer"}}>✕</button></div>)}<div style={{display:"flex",gap:8}}><input value={newItem} onChange={e=>setNewItem(e.target.value)} placeholder={lang==="fr"?"Ajouter…":"Add…"} onKeyDown={e=>{if(e.key==="Enter"&&newItem.trim()){setCriteria([...criteria,newItem.trim()]);setNewItem("");}}} style={{...inSt,marginBottom:0,flex:1}}/><button onClick={()=>{if(newItem.trim()){setCriteria([...criteria,newItem.trim()]);setNewItem("");}}} className="btn" style={{background:`${neon}1a`,border:`1px solid ${neon}55`,color:neon,borderRadius:8,padding:"0 16px",fontSize:18}}>+</button></div></div>;
+    if(step===0) return <input value={stratName} onChange={e=>setStratName(e.target.value)} placeholder="Ex: XAU/USD Scalping BB" style={{...inSt,fontSize:14,padding:14}} autoFocus/>;
+    if(step===1) return <div><div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:10}}>{allAssets.map(a=><button key={a} onClick={()=>setSelAssets(p=>p.includes(a)?p.filter(x=>x!==a):[...p,a])} className="btn" style={{background:selAssets.includes(a)?`${neon}26`:"#131318",border:`1px solid ${selAssets.includes(a)?neon:`${neon}22`}`,color:selAssets.includes(a)?neon:"#ffffffaa",borderRadius:8,padding:"9px 14px",fontSize:12,fontWeight:700,fontFamily:MONO}}>{a}</button>)}</div><div style={{display:"flex",gap:8}}><input value={customAsset} onChange={e=>setCustomAsset(e.target.value)} placeholder={t.customAsset} onKeyDown={e=>{if(e.key==="Enter"&&customAsset.trim()){setSelAssets(p=>[...p,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} style={{...inSt,marginBottom:0,flex:1}}/><button onClick={()=>{if(customAsset.trim()){setSelAssets(p=>[...p,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} className="btn" style={{background:`${neon}1a`,border:`1px solid ${neon}55`,color:neon,borderRadius:8,padding:"0 16px",fontSize:18}}>+</button></div></div>;
+    if(step===2) return <div>{criteria.map((c,i)=><div key={i} style={{display:"flex",gap:8,marginBottom:8}}><input value={c} onChange={e=>{const n=[...criteria];n[i]=e.target.value;setCriteria(n);}} style={{...inSt,marginBottom:0,flex:1}}/><button onClick={()=>setCriteria(criteria.filter((_,idx)=>idx!==i))} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d",borderRadius:6,padding:"8px 10px",cursor:"pointer"}}>✕</button></div>)}<div style={{display:"flex",gap:8}}><input value={newItem} onChange={e=>setNewItem(e.target.value)} placeholder={lang==="fr"?"Ajouter…":"Add…"} onKeyDown={e=>{if(e.key==="Enter"&&newItem.trim()){setCriteria([...criteria,newItem.trim()]);setNewItem("");}}} style={{...inSt,marginBottom:0,flex:1}}/><button onClick={()=>{if(newItem.trim()){setCriteria([...criteria,newItem.trim()]);setNewItem("");}}} className="btn" style={{background:`${neon}1a`,border:`1px solid ${neon}55`,color:neon,borderRadius:8,padding:"0 16px",fontSize:18}}>+</button></div></div>;
     return <div><div style={{display:"flex",gap:8,marginBottom:20}}>{Array.from({length:Math.min(7,criteria.length-1)},(_,i)=>i+2).map(n=><button key={n} onClick={()=>setThreshold(n)} className="btn" style={{flex:1,padding:"12px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:threshold===n?`${neon}33`:"#131318",border:`1px solid ${threshold===n?neon:`${neon}22`}`,color:threshold===n?neon:"#ffffffaa"}}>{n}</button>)}</div><div style={{background:`${neon}0d`,border:`1px solid ${neon}22`,borderRadius:10,padding:16}}><div style={{fontSize:12,color:neon,marginBottom:4}}>✓ {threshold}/{criteria.length}</div><div style={{fontSize:10,color:"#ffffff44"}}>{threshold/criteria.length>=0.875?`↑ ${t.highStd}`:threshold/criteria.length>=0.6?`· ${t.balanced}`:`↓ ${t.lowStd}`}</div></div></div>;
   };
   return (
     <div style={{background:"#0c0c12",minHeight:"100vh",fontFamily:MONO,maxWidth:480,margin:"0 auto",display:"flex",flexDirection:"column"}}>
       <CSS neon={neon}/>
-      <div style={{padding:"24px 24px 16px",borderBottom:`1px solid ${neon}14`,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><SplashLogo neon={neon}/></div><div><Dots total={TOTAL} current={step} neon={neon}/></div></div>
+      <div style={{padding:"24px 24px 16px",borderBottom:`1px solid ${neon}14`}}><div><SplashLogo neon={neon}/>{config.phaseName&&<div style={{fontSize:9,color:`${neon}33`,fontFamily:MONO,marginTop:2,letterSpacing:1}}>{config.phaseName}</div>}</div><div style={{marginTop:20}}><Dots total={TOTAL} current={step} neon={neon}/></div></div>
       <div style={{flex:1,padding:"28px 24px",overflow:"auto"}}>
         <div className="fu" key={step}>
           <div style={{fontSize:9,color:"#ffffff44",letterSpacing:3,marginBottom:6}}>{t.step} 0{step+1} / 04</div>
@@ -1805,15 +1676,15 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
   );
   return (
     <div className="fi" style={{padding:20}}>
-      <div style={{background:"rgba(255,255,255,0.06)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",border:"1px solid rgba(255,255,255,0.11)",borderRadius:14,padding:14,marginBottom:14}}>
+      <div style={{background:"rgba(255,255,255,0.06)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.1)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
         <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.langLabel}</div>
         <div style={{display:"flex",gap:8}}>{[["fr","Français"],["en","English"]].map(([l,label])=><button key={l} onClick={()=>onLangChange(l)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:lang===l?`${neonColor}26`:"#131318",border:`1px solid ${lang===l?neonColor:`${neonColor}22`}`,color:lang===l?neonColor:"#ffffffbb"}}>{label}</button>)}</div>
       </div>
-      <div style={{background:"rgba(255,255,255,0.06)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",border:"1px solid rgba(255,255,255,0.11)",borderRadius:14,padding:14,marginBottom:14}}>
+      <div style={{background:"rgba(255,255,255,0.06)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.1)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
         <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.colorLabel}</div>
         <div style={{display:"flex",gap:8}}>{NEON_COLORS.map(c=><button key={c.value} onClick={()=>setNeonColor(c.value)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,background:neonColor===c.value?`${c.value}26`:"#131318",border:`2px solid ${neonColor===c.value?c.value:"transparent"}`,cursor:"pointer"}}><div style={{width:16,height:16,borderRadius:"50%",background:c.value,margin:"0 auto",boxShadow:neonColor===c.value?`0 0 8px ${c.value}`:"none"}}/></button>)}</div>
       </div>
-      <div style={{background:"rgba(255,255,255,0.06)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",border:"1px solid rgba(255,255,255,0.11)",borderRadius:14,padding:14,marginBottom:14}}>
+      <div style={{background:"rgba(255,255,255,0.06)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.1)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
         <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.maxTradesLabel}</div>
         <div style={{display:"flex",gap:6}}>
           {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setMaxTrades(n)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:maxTrades===n?`${neonColor}26`:"#131318",border:`1px solid ${maxTrades===n?neonColor:`${neonColor}22`}`,color:maxTrades===n?neonColor:"#ffffffbb"}}>{n}</button>)}
@@ -1847,12 +1718,12 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
           </div>;
         })}
       <button onClick={()=>setItems([...items,""])} style={{width:"100%",background:"transparent",border:`1px dashed ${neon}35`,color:"#ffffff44",borderRadius:8,padding:10,fontSize:12,cursor:"pointer",fontFamily:MONO,marginBottom:16}}>{t.addCriteria}</button>
-      <div style={{background:"rgba(255,255,255,0.06)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",border:"1px solid rgba(255,255,255,0.11)",borderRadius:14,padding:14,marginBottom:16}}>
+      <div style={{background:"rgba(255,255,255,0.06)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.1)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:16}}>
         <Toggle label={t.calendarToggle} val={calendarOn} set={setCalendarOn}/>
         <Toggle label={t.enableNotif} val={notifOn} set={setNotifOn}/>
       </div>
       {/* Phase en cours — nom + capital + devise + type + drawdown + objectif */}
-    <div style={{background:"rgba(255,255,255,0.06)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",border:"1px solid rgba(255,255,255,0.11)",borderRadius:14,padding:14,marginBottom:14}}>
+    <div style={{background:"rgba(255,255,255,0.06)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.1)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
       <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:12}}>PHASE EN COURS</div>
       <div style={{marginBottom:10}}>
         <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>{lang==="fr"?"NOM DE LA PHASE":"PHASE NAME"}</div>
@@ -1911,10 +1782,6 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
         </div>
       )}
       <div style={{height:1,background:"rgba(255,77,77,0.1)",margin:"6px 0 10px"}}/>
-      <button onClick={()=>onImport&&onImport()} className="btn" style={{width:"100%",background:`${neon}08`,border:`1px solid ${neon}22`,borderRadius:10,padding:12,color:neon,fontSize:11,fontWeight:700,fontFamily:MONO,letterSpacing:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:10}}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        {lang==="fr"?"IMPORTER CSV (MT4/MT5/cTrader)":"IMPORT CSV (MT4/MT5/cTrader)"}
-      </button>
       <button onClick={onReset} className="btn" style={{width:"100%",background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d88",borderRadius:10,padding:12,fontSize:12,fontFamily:MONO,marginBottom:10}}>{t.resetBtn}</button>
       <button onClick={onLogout} className="btn" style={{width:"100%",background:"transparent",border:"1px solid rgba(255,77,77,0.1)",color:"#ff4d4d88",borderRadius:10,padding:12,fontSize:11,fontFamily:MONO}}>{t.logout}</button>
     </div>
@@ -1926,11 +1793,6 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
 const NOTIF_PERMISSION_KEY = "tmt_notif_perm";
 
 function InAppBanner({notifs, onDismiss, neon}) {
-  useEffect(()=>{
-    if(!notifs||!notifs.length) return;
-    const t = setTimeout(()=>onDismiss(), 3000);
-    return ()=>clearTimeout(t);
-  },[notifs]);
   if(!notifs||!notifs.length) return null;
   const n = notifs[0];
   const colors = {
@@ -1942,7 +1804,7 @@ function InAppBanner({notifs, onDismiss, neon}) {
   const c = colors[n.type] || neon;
   return (
     <div style={{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,zIndex:600,padding:"8px 12px",pointerEvents:"none"}}>
-      <div className="slide-up" style={{background:`${c}12`,border:`1px solid ${c}35`,borderLeft:`3px solid ${c}`,borderRadius:10,padding:"10px 14px",display:"flex",alignItems:"flex-start",gap:10,backdropFilter:"blur(8px)",pointerEvents:"all"}}>
+      <div className="slide-up" className="glass" style={{borderLeft:`3px solid ${c}`,borderRadius:12,padding:"10px 14px",display:"flex",alignItems:"flex-start",gap:10,pointerEvents:"all"}}>
         <span style={{fontSize:16,flexShrink:0}}>{n.emoji||"◈"}</span>
         <div style={{flex:1}}>
           <div style={{fontSize:12,fontWeight:700,color:c,fontFamily:"'Geist Mono','IBM Plex Mono',monospace",marginBottom:2}}>{n.title}</div>
@@ -2159,7 +2021,7 @@ function ExportModal({trades,onClose,lang,neon}) {
   const wins=trades.filter(x=>x.result==="WIN").length;
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
-      <div className="slide-up" style={{background:"#131318",border:`1px solid ${neon}35`,borderRadius:"16px 16px 0 0",width:"100%",maxWidth:480,padding:20}}>
+      <div className="slide-up" className="glass" style={{borderRadius:"20px 20px 0 0",width:"100%",maxWidth:480,padding:20}}>
         <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}>
           <div style={{fontSize:13,fontWeight:700,color:neon,fontFamily:MONO}}>{t.exportTitle}</div>
           <button onClick={onClose} style={{background:"transparent",border:"none",color:"#ffffffaa",fontSize:18,cursor:"pointer"}}>✕</button>
@@ -2202,9 +2064,6 @@ export default function App() {
   const [showStats,setShowStats]=useState(false);
   const [showImport,setShowImport]=useState(false);
   const [inAppNotifs,setInAppNotifs]=useState([]);
-  const [showHelp,setShowHelp]=useState(false);
-  const [showFeedback,setShowFeedback]=useState(false);
-  const feedbackShownRef=useRef(false);
   const [histSearch,setHistSearch]=useState("");
   const [view,setView]=useState("dashboard");
   const [form,setForm]=useState(emptyForm("XAU/USD","M5"));
@@ -2250,35 +2109,14 @@ export default function App() {
   },[]);
 
   useEffect(()=>{
-    const now=new Date();
-    const day=now.getDay(); // 1=lundi, 3=mercredi
-    const hour=now.getHours();
-    const isRecapTime=(day===1&&hour>=10)||(day===3&&hour>=18);
-    if(phase==="app"&&view==="dashboard"&&!weeklyShownRef.current&&trades.length>=2&&isRecapTime){
+    const isMonday=new Date().getDay()===1;
+    if(phase==="app"&&view==="dashboard"&&!weeklyShownRef.current&&trades.length>=2&&isMonday){
       const cutoff=new Date(Date.now()-7*86400000).toISOString().split("T")[0];
-      if(trades.some(x=>x.date>=cutoff)){
-        const wk="tmt_weekly_"+new Date().toISOString().split("T")[0];
-        if(!localStorage.getItem(wk)){
-          localStorage.setItem(wk,"1");
-          weeklyShownRef.current=true;
-          const id=setTimeout(()=>setShowWeeklyRecap(true),1000);
-          return ()=>clearTimeout(id);
-        }
-      }
+      if(trades.some(x=>x.date>=cutoff)){weeklyShownRef.current=true;const id=setTimeout(()=>setShowWeeklyRecap(true),1000);return ()=>clearTimeout(id);}
     }
   },[phase,view,trades]);
 
-  // Feedback après 10 trades
-  useEffect(()=>{
-    if(phase==="app"&&trades.length>=10&&!feedbackShownRef.current){
-      const key="tmt_feedback_shown";
-      if(!localStorage.getItem(key)){
-        feedbackShownRef.current=true;
-        localStorage.setItem(key,"1");
-        setTimeout(()=>setShowFeedback(true),2000);
-      }
-    }
-  },[phase,trades.length]);
+  const scrollToTop=()=>{if(pageRef.current)pageRef.current.scrollTo({top:0,behavior:"smooth"});};
   // Phase uses trade.id (timestamp) not date — trades before phase creation excluded even if date is today
   const currentPhaseTs=phases.length>0?phases[phases.length-1].id:0;
   const getPhaseKey=useCallback(tradeId=>{if(phases.length===0)return 0;for(let i=phases.length-1;i>=0;i--){if(tradeId>phases[i].id)return i+1;}return 0;},[phases]);
@@ -2417,11 +2255,7 @@ export default function App() {
         if(trades_.length>=3){
           const last=trades_[0];
           const days=last?Math.floor((Date.now()-new Date(last.date))/86400000):999;
-          const nk="tmt_notif_"+new Date().toISOString().split("T")[0];
-          if(days>=3&&!localStorage.getItem(nk)){
-            localStorage.setItem(nk,"1");
-            notifs_.push({type:"info",emoji:"calendar",title:lang==="fr"?"Journal en pause":"Journal paused",body:lang==="fr"?`${days} jours sans trade. Pense à journaliser !`:`${days} days without a trade. Time to journal!`});
-          }
+          if(days>=3) notifs_.push({type:"info",emoji:"📅",title:lang==="fr"?"Journal en pause":"Journal paused",body:lang==="fr"?`${days} jours sans trade. Pense à journaliser !`:`${days} days without a trade. Time to journal!`});
           const revStreak=trades_.slice(0,3).filter(x=>x.isRevenge).length;
           if(revStreak>=2) notifs_.push({type:"warn",emoji:"🔥",title:lang==="fr"?"Attention — Revenge":"Warning — Revenge",body:lang==="fr"?"Plusieurs revenge trades récents. Fais une pause.":"Multiple recent revenge trades. Take a break."});
         }
@@ -2429,16 +2263,14 @@ export default function App() {
       },2000);
     } else {
       if(u.lang) setLang(u.lang);
-      // Nouveau compte (isNew) → onboarding → setup
-      // Compte existant sans setup → setup directement
-      if(u.isNew) setPhase("onboarding");
-      else setPhase("setup");
+      // Nouveau compte → onboarding puis setup
+      setPhase("onboarding");
     }
   };
 
   if(phase==="splash") return <SplashScreen onDone={()=>setPhase("login")} neon={neon}/>;
-  if(phase==="onboarding") return <><CSS neon={neon}/><Onboarding onDone={l=>{setLang(l);setPhase("setup");}}/></>;
-  if(phase==="login") return <LoginScreen onLogin={handleLogin} onOnboarding={()=>setPhase("onboarding")} lang={lang} setLang={setLang} neon={neon}/>;
+  if(phase==="onboarding") return <><CSS neon={neon}/><Onboarding onDone={l=>{setLang(l);setPhase("login");}}/></>;
+  if(phase==="login") return <LoginScreen onLogin={handleLogin} lang={lang} setLang={setLang} neon={neon}/>;
   if(phase==="setup") return <><CSS neon={neon}/><GuidedSetup onDone={async cfg=>{
     const newCfg={...config,...cfg};
     setConfig(newCfg);setForm(emptyForm(cfg.defaultAsset||"XAU/USD"));setPhase("app");
@@ -2446,11 +2278,7 @@ export default function App() {
   }} lang={lang}/></>;
 
   return (
-    <div style={{display:"flex",background:"linear-gradient(160deg,#07070f,#05050c)",minHeight:"100vh",color:"#ffffff",fontFamily:MONO,position:"relative",overflow:"hidden"}}>
-      {/* Orbs background glassmorphism */}
-      <div style={{position:"fixed",top:"-10%",left:"-5%",width:340,height:340,borderRadius:"50%",background:`radial-gradient(circle,${neon}22,transparent 70%)`,filter:"blur(70px)",pointerEvents:"none",zIndex:0}}/>
-      <div style={{position:"fixed",bottom:"10%",right:"-5%",width:280,height:280,borderRadius:"50%",background:`radial-gradient(circle,#7c3aed22,transparent 70%)`,filter:"blur(60px)",pointerEvents:"none",zIndex:0}}/>
-      <div style={{position:"fixed",top:"50%",right:"20%",width:200,height:200,borderRadius:"50%",background:`radial-gradient(circle,#3b82f618,transparent 70%)`,filter:"blur(50px)",pointerEvents:"none",zIndex:0}}/>
+    <div style={{display:"flex",background:"#0c0c12",minHeight:"100vh",color:"#ffffff",fontFamily:MONO}}>
       <CSS neon={neon}/>
       {notif&&<NotifCard notif={notif} onClose={()=>setNotif(null)}/>}
       <InAppBanner notifs={inAppNotifs} onDismiss={()=>setInAppNotifs(n=>n.slice(1))} neon={neon}/>
@@ -2459,7 +2287,7 @@ export default function App() {
 
       {/* ── SIDEBAR PC ── */}
       {isDesktop&&(
-        <div style={{width:240,minWidth:240,background:"rgba(6,6,18,0.85)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRight:"1px solid rgba(255,255,255,0.06)",display:"flex",flexDirection:"column",height:"100vh",position:"sticky",top:0,flexShrink:0}}>
+        <div style={{width:240,minWidth:240,background:"#09090f",borderRight:"1px solid #ffffff0a",display:"flex",flexDirection:"column",height:"100vh",position:"sticky",top:0,flexShrink:0}}>
           <div style={{padding:"24px 18px 20px",borderBottom:"1px solid #ffffff08"}}>
             <div style={{marginBottom:6}}><SplashLogo neon={neon}/></div>
             <div style={{fontSize:10,color:"#ffffff33",letterSpacing:1}}>{config.strategyName}</div>
@@ -2469,7 +2297,7 @@ export default function App() {
             const pct=objectif.pnl?Math.min(100,Math.max(0,cur/(parseFloat(objectif.pnl)||1)*100)):0;
             return <div style={{padding:"10px 18px",borderBottom:"1px solid #ffffff08"}}>
               <div style={{fontSize:9,color:neon,fontWeight:700,marginBottom:4}}>{config.phaseName||"PHASE"}{config.capital?` · ${parseInt(config.capital).toLocaleString()}${config.devise||"€"}`:""}</div>
-              {objectif.pnl&&<div style={{height:3,background:"#ffffff10",borderRadius:3,marginBottom:4}}><div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${neon}66,${neon})`,borderRadius:3,boxShadow:`0 0 6px ${neon}55`}}/></div>}
+              {objectif.pnl&&<div style={{height:3,background:"#ffffff10",borderRadius:3,marginBottom:4}}><div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${neon},${neon==="#00ff9d"?"#00d4ff":neon+"99"})`,borderRadius:3,boxShadow:`0 0 8px ${neon}66`}}/></div>}
               <div style={{display:"flex",justifyContent:"space-between"}}>
                 <span style={{fontSize:8,color:"#ffffff44"}}>{lang==="fr"?"Phase en cours":"Current phase"}</span>
                 <span style={{fontSize:10,fontWeight:700,color:cur>=0?neon:"#ff4d4d"}}>{cur>=0?"+":""}{cur.toFixed(1)}%{objectif.pnl?<span style={{fontSize:8,color:"#ffffff44",fontWeight:400}}> / +{objectif.pnl}%</span>:null}</span>
@@ -2502,7 +2330,7 @@ export default function App() {
       <div ref={pageRef} className={isDesktop?"":"grid-bg"} style={{flex:1,overflowY:"auto",height:"100vh",maxWidth:isDesktop?"none":480,margin:isDesktop?0:"0 auto",paddingBottom:isDesktop?0:80,minWidth:0}}>
         <div style={{maxWidth:isDesktop?960:480,margin:"0 auto"}}>
 
-      {!isDesktop&&<div style={{padding:"16px 20px 10px",borderBottom:`1px solid ${neon}1a`,background:"linear-gradient(180deg,#111118 0%,#0c0c12 100%)",backdropFilter:"blur(8px)"}}>
+      {!isDesktop&&<div style={{padding:"16px 20px 10px",borderBottom:`1px solid ${neon}1a`,background:"linear-gradient(180deg,rgba(8,8,16,0.95) 0%,rgba(5,5,12,0.95) 100%)",backdropFilter:"blur(8px)"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div><SplashLogo neon={neon}/><div style={{fontSize:10,color:"#ffffff44",marginTop:4}}>{config.strategyName}</div></div>
           <button onClick={()=>setShowExport(true)} className="btn" style={{background:`${neon}0f`,border:`1px solid ${neon}26`,borderRadius:8,padding:"7px 11px",color:`${neon}99`,fontSize:13}}>↓</button>
@@ -2513,7 +2341,7 @@ export default function App() {
         const cur=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
         const target=parseFloat(objectif.pnl)||1;
         const pct=objectif.pnl?Math.min(100,Math.max(0,cur/target*100)):0;
-        return <div style={{background:"rgba(6,6,18,0.7)",backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",borderBottom:`1px solid #ffffff06`,padding:"7px 18px 6px"}}>
+        return <div style={{background:"rgba(9,9,16,0.6)",borderBottom:`1px solid #ffffff06`,padding:"7px 18px 6px"}}>
           {objectif.pnl&&<div style={{height:3,background:"#ffffff10",borderRadius:3,marginBottom:6}}>
             <div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${neon}66,${neon})`,borderRadius:3,transition:"width 0.6s ease",boxShadow:`0 0 8px ${neon}55`}}/>
           </div>}
@@ -2534,7 +2362,7 @@ export default function App() {
         ))}
       </div>}
 
-      {isDesktop&&<div style={{padding:"24px 32px 20px",borderBottom:"1px solid #ffffff08",background:"rgba(8,8,22,0.85)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",boxShadow:"0 1px 0 rgba(255,255,255,0.06)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      {isDesktop&&<div style={{padding:"24px 32px 20px",borderBottom:"1px solid #ffffff08",background:"linear-gradient(180deg,#111118,#0c0c12)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div>
           <div style={{fontSize:26,fontWeight:900,color:"#ffffff",letterSpacing:-0.5}}>{view==="dashboard"?(lang==="fr"?"Statistiques":"Statistics"):view==="log"?(editingId?lang==="fr"?"✏ Édition":"✏ Edit":lang==="fr"?"Nouveau trade":"New trade"):view==="history"?(lang==="fr"?"Historique":"History"):lang==="fr"?"Paramètres":"Settings"}</div>
           <div style={{fontSize:10,color:"#ffffff33",marginTop:4}}>{config.strategyName}{total>0?` · ${total} trades`:""}</div>
@@ -2558,25 +2386,25 @@ export default function App() {
           )}
           {total>0&&(
             <div style={{display:isDesktop?"grid":"flex",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:12}}>
-              <div style={{flex:1,background:"rgba(255,255,255,0.06)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:14,padding:"14px 16px",boxShadow:`0 4px 24px ${winRate>=50?neon+"18":"#ff4d4d18"}, inset 0 1px 0 ${neon}15`}}>
+              <div style={{flex:1,background:"rgba(255,255,255,0.06)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.1)",border:`1px solid ${neon}22`,borderRadius:14,padding:"14px 16px",boxShadow:`0 4px 24px ${winRate>=50?neon+"18":"#ff4d4d18"}, inset 0 1px 0 ${neon}15`}}>
                 <div style={{fontSize:9,color:"#ffffffbb",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>{t.winRate}</div>
-                <div style={{fontSize:32,fontWeight:900,fontFamily:MONO,lineHeight:1,textShadow:`0 0 32px ${winRate>=50?neon+"aa":"#ff4d4daa"}`,color:"#ffffff"}}>{winRate}%</div>
+                <div className="grad-text" style={{fontSize:32,fontWeight:900,fontFamily:"'Space Mono',monospace",lineHeight:1}}>{winRate}%</div>
                 <div style={{fontSize:10,color:"#ffffff44",marginTop:6}}>{wins}W · {losses}L · {total-wins-losses}BE</div>
               </div>
-              <div style={{flex:1,background:"rgba(255,255,255,0.06)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:14,padding:"14px 16px",boxShadow:`0 4px 24px ${totalPnl>=0?neon+"18":"#ff4d4d18"}, inset 0 1px 0 ${neon}15`}}>
+              <div style={{flex:1,background:"rgba(255,255,255,0.06)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.1)",border:`1px solid ${neon}22`,borderRadius:14,padding:"14px 16px",boxShadow:`0 4px 24px ${totalPnl>=0?neon+"18":"#ff4d4d18"}, inset 0 1px 0 ${neon}15`}}>
                 <div style={{fontSize:9,color:"#ffffffbb",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>{t.totalPnl}</div>
-                <div style={{fontSize:32,fontWeight:900,fontFamily:MONO,lineHeight:1,textShadow:`0 0 32px ${totalPnl>=0?neon+"aa":"#ff4d4daa"}`,color:"#ffffff"}}>{fmtPct(totalPnl)}</div>
+                <div className="grad-text" style={{fontSize:32,fontWeight:900,fontFamily:"'Space Mono',monospace",lineHeight:1}}>{fmtPct(totalPnl)}</div>
                 {config.capital&&<div style={{fontSize:11,fontWeight:700,color:totalPnl>=0?neon:"#ff4d4d",marginTop:4}}>{totalPnl>=0?"+":""}{Math.round(parseFloat(config.capital)*totalPnl/100)}{config.devise||"€"}</div>}
                 <div style={{fontSize:10,color:"#ffffff44",marginTop:config.capital?2:6}}>{total} {t.trades}</div>
               </div>
             </div>
           )}
           {total>=2&&discScore!==null&&(
-            <div style={{background:`rgba(0,0,0,0.25)`,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:`1px solid ${scoreColor}30`,borderRadius:14,padding:"14px 16px",marginBottom:12,boxShadow:`0 8px 32px ${scoreColor}12,inset 0 1px 0 ${scoreColor}18`}}>
+            <div style={{background:`linear-gradient(145deg,${scoreColor}12,${scoreColor}05)`,border:`1px solid ${scoreColor}30`,borderRadius:14,padding:"14px 16px",marginBottom:12,boxShadow:`0 8px 32px ${scoreColor}12,inset 0 1px 0 ${scoreColor}18`}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div>
                   <div style={{fontSize:9,color:"#ffffffaa",letterSpacing:2,fontFamily:MONO,marginBottom:4}}>{t.disciplineLabel}</div>
-                  <div style={{fontSize:42,fontWeight:900,fontFamily:MONO,lineHeight:1,textShadow:`0 0 40px ${scoreColor}cc, 0 0 8px ${scoreColor}88, 0 2px 10px rgba(0,0,0,0.7)`,color:"#ffffff"}}>{discScore}<span style={{fontSize:15,color:"#ffffff44",textShadow:"none"}}>/10</span></div>
+                  <div className="grad-text" style={{fontSize:42,fontWeight:900,fontFamily:"'Space Mono',monospace",lineHeight:1}}>{discScore}<span style={{fontSize:15,color:"#ffffff44",textShadow:"none"}}>/10</span></div>
                   <div style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:6,background:`${scoreColor}15`,borderRadius:20,padding:"3px 10px",border:`1px solid ${scoreColor}30`}}>
                     <div style={{width:5,height:5,borderRadius:"50%",background:scoreColor,boxShadow:`0 0 6px ${scoreColor}`}}/>
                     <span style={{fontSize:8,color:scoreColor,fontWeight:700,letterSpacing:1}}>{discScore>=8?t.disciplineExcellent:discScore>=6?t.disciplineGood:discScore>=4?t.disciplineWork:t.disciplinePoor}</span>
@@ -2594,7 +2422,7 @@ export default function App() {
             </div>
           )}
           {trades.length>0&&(
-            <div className="row" onClick={()=>setDetailTrade(trades[0])} style={{background:`${rc(trades[0].result,neon)}0a`,border:`1px solid ${rc(trades[0].result,neon)}35`,borderRadius:12,padding:14,marginBottom:12,borderLeft:`3px solid ${rc(trades[0].result,neon)}`,boxShadow:`0 4px 20px ${rc(trades[0].result,neon)}14`}}>
+            <div className="row" onClick={()=>setDetailTrade(trades[0])} className="glass" style={{background:`${rc(trades[0].result,neon)}0c`,borderLeft:`3px solid ${rc(trades[0].result,neon)}`,borderRadius:16,padding:14,marginBottom:12,boxShadow:`0 4px 20px ${rc(trades[0].result,neon)}14`}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                 <div style={{flex:1}}>
                   <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>{t.lastTrade} · {trades[0].date}{trades[0].time?" · "+trades[0].time:""}</div>
@@ -2693,7 +2521,7 @@ export default function App() {
               <div style={{width:16,height:16,borderRadius:"50%",background:(form.isRevenge||isRevengeNow)?"#ff4d4d":"#ffffffaa",position:"absolute",top:3,left:(form.isRevenge||isRevengeNow)?24:4,transition:"all 0.2s"}}/>
             </button>
           </div>
-          <div style={{background:"#131318",border:`1px solid ${neon}26`,borderRadius:10,padding:14,marginBottom:10}}>
+          <div className="glass" style={{borderRadius:14,padding:14,marginBottom:10}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
               <div><div style={{fontSize:9,color:"#ffffff44",letterSpacing:2}}>{t.checklistSetup}</div><div style={{fontSize:10,marginTop:4,color:form.checklist.length>=config.threshold?neon:"#ff4d4d"}}>{form.checklist.length>=config.threshold?t.conform:`⚠ ${config.threshold-form.checklist.length} ${t.missing}`}</div></div>
               <ScoreRing score={form.checklist.length} max={config.items.length} threshold={config.threshold} neon={neon}/>
@@ -2804,7 +2632,7 @@ export default function App() {
                 els.push(<div key={x.id} style={{background:"rgba(90,90,90,0.06)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"12px 14px",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:16,color:"#ffffff66"}}>⊘</span><div><div style={{fontSize:12,color:"#ffffffaa",fontFamily:MONO,fontWeight:700}}>{t.noTradeToday}</div><div style={{fontSize:10,color:"#ffffffaa",marginTop:2}}>{x.date}{x.reason?" · "+x.reason:""}</div></div></div><button onClick={()=>{const upd=noTrades.filter(n=>n.id!==x.id);setNoTrades(upd);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{noTrades:upd});}} style={{background:"transparent",border:"none",color:"#ffffff55",fontSize:12,cursor:"pointer"}}>✕</button></div>);
               } else {
                 els.push(
-                  <div key={x.id} className="row" onClick={()=>setDetailTrade(x)} style={{background:"rgba(255,255,255,0.06)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:14,padding:14,marginBottom:10,borderLeft:`3px solid ${rc(x.result,neon)}`}}>
+                  <div key={x.id} className="row" onClick={()=>setDetailTrade(x)} style={{background:"rgba(255,255,255,0.06)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",border:"1px solid rgba(255,255,255,0.1)",border:"1px solid #ffffff0a",borderRadius:14,padding:14,marginBottom:10,borderLeft:`3px solid ${rc(x.result,neon)}`}}>
                     <div style={{display:"flex",justifyContent:"space-between"}}>
                       <div><div style={{fontSize:13,fontWeight:700,color:"#ffffff"}}>{x.asset} · {x.direction}{x.timeframe&&<span style={{fontSize:9,color:"#ffffff44",marginLeft:6,background:"#ffffff08",padding:"2px 6px",borderRadius:4,fontWeight:400}}>{x.timeframe}</span>}</div><div style={{fontSize:10,color:"#ffffff66",marginTop:3}}>{x.date}{x.time?" · "+x.time:""}</div></div>
                       <div style={{display:"flex",gap:8,alignItems:"center"}}>
@@ -2867,16 +2695,6 @@ export default function App() {
       {showShare&&<ShareModal trade={shareTarget} trades={trades} lang={lang} neon={neon} config={config} onClose={()=>{setShowShare(false);setShareTarget(null);}}/> }
       {showReset&&<ResetModal trades={trades} onReset={handleReset} onClose={()=>setShowReset(false)} lang={lang} neon={neon}/>}
       {showNewPhase&&<NewPhaseModal onConfirm={data=>{handleNewPhase(data);setShowNewPhase(false);}} onClose={()=>setShowNewPhase(false)} lang={lang} neon={neon} phases={phases} config={config}/>}
-      {showHelp&&<HelpPanel neon={neon} onClose={()=>setShowHelp(false)}/>}
-      {showFeedback&&<FeedbackCard neon={neon} userEmail={currentUserRef.current?.email} onClose={()=>setShowFeedback(false)}/>}
-
-      {/* Bouton ? flottant */}
-      {!showHelp&&!showFeedback&&(
-        <button onClick={()=>setShowHelp(true)}
-          style={{position:"fixed",bottom:isDesktop?20:66,right:isDesktop?20:14,width:40,height:40,borderRadius:"50%",background:`linear-gradient(135deg,${neon}22,${neon}0a)`,border:`1.5px solid ${neon}55`,color:neon,fontSize:18,fontWeight:900,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 4px 20px ${neon}44,0 0 0 6px ${neon}0a`,zIndex:50,fontFamily:MONO,transition:"transform 0.2s"}}>
-          ?
-        </button>
-      )}
       </div>
       </div>
     </div>
@@ -2894,7 +2712,7 @@ function NewPhaseModal({onConfirm,onClose,lang,neon,phases,config}){
   const [drawdown,setDrawdown]=useState("");
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(6,6,10,0.88)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
-      <div style={{background:"rgba(10,10,24,0.95)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderRadius:"24px 24px 0 0",padding:"20px 20px 36px",width:"100%",maxWidth:480,border:"1px solid #ffffff0f",borderBottom:"none",maxHeight:"90vh",overflowY:"auto"}}>
+      <div style={{background:"#0f0f18",borderRadius:"24px 24px 0 0",padding:"20px 20px 36px",width:"100%",maxWidth:480,border:"1px solid #ffffff0f",borderBottom:"none",maxHeight:"90vh",overflowY:"auto"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <div>
             <div style={{fontSize:14,fontWeight:800,color:"#ffffff"}}>▶ Nouvelle phase</div>
@@ -2905,7 +2723,7 @@ function NewPhaseModal({onConfirm,onClose,lang,neon,phases,config}){
 
         {/* Nom */}
         <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6}}>NOM DE LA PHASE</div>
-        <input value={name} onChange={e=>setName(e.target.value)} style={{width:"100%",background:"rgba(0,0,0,0.3)",backdropFilter:"blur(8px)",border:`1px solid rgba(255,255,255,0.1)`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO,marginBottom:14,outline:"none"}}/>
+        <input value={name} onChange={e=>setName(e.target.value)} style={{width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO,marginBottom:14,outline:"none"}}/>
 
         {/* Type */}
         <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>TYPE DE COMPTE</div>
@@ -2921,7 +2739,7 @@ function NewPhaseModal({onConfirm,onClose,lang,neon,phases,config}){
         <div style={{display:"flex",gap:10,marginBottom:14}}>
           <div style={{flex:2}}>
             <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6}}>CAPITAL</div>
-            <input type="number" value={capital} onChange={e=>setCapital(e.target.value)} placeholder="10000" style={{width:"100%",background:"rgba(0,0,0,0.3)",backdropFilter:"blur(8px)",border:`1px solid rgba(255,255,255,0.1)`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO,outline:"none"}}/>
+            <input type="number" value={capital} onChange={e=>setCapital(e.target.value)} placeholder="10000" style={{width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO,outline:"none"}}/>
           </div>
           <div style={{flex:1}}>
             <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6}}>DEVISE</div>
@@ -2943,7 +2761,7 @@ function NewPhaseModal({onConfirm,onClose,lang,neon,phases,config}){
           </div>
           <div style={{flex:1}}>
             <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6}}>OBJECTIF P&L %</div>
-            <input type="number" value={obj} onChange={e=>setObj(e.target.value)} placeholder="+10" style={{width:"100%",background:"rgba(0,0,0,0.3)",backdropFilter:"blur(8px)",border:`1px solid rgba(255,255,255,0.1)`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO,outline:"none"}}/>
+            <input type="number" value={obj} onChange={e=>setObj(e.target.value)} placeholder="+10" style={{width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO,outline:"none"}}/>
           </div>
         </div>
 
@@ -2952,174 +2770,6 @@ function NewPhaseModal({onConfirm,onClose,lang,neon,phases,config}){
           style={{width:"100%",background:`linear-gradient(135deg,${neon}22,${neon}0c)`,border:`1.5px solid ${neon}`,borderRadius:14,padding:"15px 0",fontSize:13,fontWeight:900,color:"#ffffff",fontFamily:MONO,cursor:"pointer",boxShadow:`0 4px 28px ${neon}22,inset 0 1px 0 ${neon}30`,letterSpacing:1}}>
           ✓ Lancer {name}
         </button>
-      </div>
-    </div>
-  );
-}
-
-// ── HELP PANEL (? flottant) ──
-const HELP_CONCEPTS = [
-  {color:"#00ff9d",title:"Score de discipline",short:"0 → 10",desc:"Combine ton taux de conformité (60%) et l'absence de revenge trades (40%). C'est ton vrai thermomètre comportemental — bien plus parlant que le WR seul."},
-  {color:"#38bdf8",title:"Conformité",short:"Setup validé",desc:"Un trade est conforme si tu coches au moins X critères avant d'entrer. Les trades conformes ont statistiquement un WR bien supérieur aux autres."},
-  {color:"#a78bfa",title:"Phase",short:"Challenge",desc:"Chaque phase = un challenge ou une période définie. Les stats repartent à zéro mais l'historique reste intact. Parfait pour les Prop Firm traders."},
-  {color:"#f0b429",title:"Revenge trade",short:"Danger",desc:"Trade pris sous émotion après une perte. L'identifier et le taguer, c'est déjà commencer à l'éliminer de ton comportement."},
-  {color:"#ff7eb6",title:"Biais du jour",short:"Direction",desc:"Ton analyse de marché avant de trader. Si ton trade va à l'encontre de ton biais, une alerte s'affiche — pour te forcer à te justifier."},
-  {color:"#fb923c",title:"Checklist",short:"Règles",desc:"Tes critères personnalisés à valider avant chaque trade. Le score checklist mesure la qualité de ton setup, pas seulement le résultat."},
-];
-const TOUR_STEPS = [
-  {color:"#00ff9d",icon:"◈",title:"Phase & Objectif",desc:"La barre en haut suit ta progression vers l'objectif P&L. La barre verte avance avec ton P&L cumulé."},
-  {color:"#38bdf8",icon:"📊",title:"Win Rate & P&L",desc:"Tes deux métriques clés. Le WR mesure ta régularité, le P&L ton résultat financier réel."},
-  {color:"#a78bfa",icon:"🧠",title:"Score de discipline",desc:"De 0 à 10. Conformité + absence de revenge trades. Ton vrai indicateur de progression à long terme."},
-  {color:"#f0b429",icon:"✏",title:"+ TRADE",desc:"Enregistre chaque trade avec checklist, résultat, P&L et notes comportementales. Chaque data point compte."},
-  {color:"#ff7eb6",icon:"≡",title:"Historique",desc:"Tous tes trades filtrables par résultat, actif ou phase. Clique sur un trade pour le détailler ou modifier."},
-];
-
-function HelpPanel({neon,onClose}) {
-  const [tab,setTab]=useState("tour");
-  const [idx,setIdx]=useState(0);
-  const [defIdx,setDefIdx]=useState(0);
-  const s=TOUR_STEPS[idx];
-  const d=HELP_CONCEPTS[defIdx];
-  return (
-    <div style={{position:"fixed",inset:0,background:"rgba(4,4,12,0.9)",backdropFilter:"blur(8px)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
-      <div style={{width:"100%",maxWidth:480,background:"rgba(14,14,16,0.98)",backdropFilter:"blur(24px)",borderRadius:"22px 22px 0 0",border:`1px solid ${neon}18`,borderBottom:"none",boxShadow:`0 -8px 40px rgba(0,0,0,0.5),0 -2px 16px ${neon}08`}} onClick={e=>e.stopPropagation()}>
-        {/* Drag handle */}
-        <div style={{width:36,height:4,background:"#ffffff18",borderRadius:2,margin:"14px auto 0"}}/>
-        {/* Tabs */}
-        <div style={{display:"flex",gap:0,padding:"14px 16px 0"}}>
-          {[["tour","🧭 Visite"],["defs","◈ Définitions"]].map(([v,l])=>(
-            <button key={v} onClick={()=>setTab(v)} style={{flex:1,background:"transparent",border:"none",borderBottom:`2px solid ${tab===v?neon:"transparent"}`,color:tab===v?neon:"#ffffff55",fontFamily:MONO,fontSize:11,fontWeight:700,padding:"8px 0",cursor:"pointer",transition:"all 0.2s"}}>{l}</button>
-          ))}
-          <button onClick={onClose} style={{background:"transparent",border:"none",color:"#ffffff33",fontSize:18,cursor:"pointer",padding:"0 4px 0 12px"}}>✕</button>
-        </div>
-
-        {/* Tour */}
-        {tab==="tour"&&(
-          <div style={{padding:"20px 16px 28px"}}>
-            <div key={idx} style={{background:`linear-gradient(145deg,${s.color}10,${s.color}04)`,border:`1.5px solid ${s.color}30`,borderRadius:20,padding:"22px 20px",marginBottom:16,animation:"fadeUp 0.22s ease"}}>
-              <style>{`@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}`}</style>
-              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-                <div style={{width:48,height:48,borderRadius:14,background:`${s.color}15`,border:`1.5px solid ${s.color}35`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:"#ffffff",flexShrink:0}}>{s.icon}</div>
-                <div>
-                  <div style={{fontSize:8,color:`${s.color}88`,letterSpacing:2,marginBottom:3,fontFamily:MONO}}>ÉTAPE {idx+1}/{TOUR_STEPS.length}</div>
-                  <div style={{fontSize:16,fontWeight:800,color:"#ffffff"}}>{s.title}</div>
-                </div>
-              </div>
-              <div style={{height:1,background:`linear-gradient(90deg,${s.color}25,transparent)`,marginBottom:14}}/>
-              <div style={{fontSize:13,color:"#ffffffcc",lineHeight:1.8}}>{s.desc}</div>
-            </div>
-            <div style={{display:"flex",gap:6,justifyContent:"center",marginBottom:16}}>
-              {TOUR_STEPS.map((_,i)=>(
-                <button key={i} onClick={()=>setIdx(i)} style={{width:i===idx?22:7,height:7,borderRadius:4,background:i===idx?s.color:"#ffffff18",border:"none",cursor:"pointer",transition:"all 0.3s cubic-bezier(0.34,1.5,0.64,1)",boxShadow:i===idx?`0 0 10px ${s.color}88`:"none"}}/>
-              ))}
-            </div>
-            <div style={{display:"flex",gap:8}}>
-              <button onClick={()=>setIdx(i=>Math.max(0,i-1))} disabled={idx===0} style={{flex:1,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:12,padding:"11px 0",fontSize:11,color:idx===0?"#ffffff22":"#ffffffaa",fontFamily:MONO,cursor:idx===0?"default":"pointer"}}>← Préc.</button>
-              {idx<TOUR_STEPS.length-1
-                ?<button onClick={()=>setIdx(i=>i+1)} style={{flex:2,background:`linear-gradient(135deg,${s.color}20,${s.color}08)`,border:`1.5px solid ${s.color}`,borderRadius:12,padding:"11px 0",fontSize:12,fontWeight:900,color:"#ffffff",fontFamily:MONO,cursor:"pointer"}}>Suivant →</button>
-                :<button onClick={onClose} style={{flex:2,background:`linear-gradient(135deg,${neon}22,${neon}0a)`,border:`1.5px solid ${neon}`,borderRadius:12,padding:"11px 0",fontSize:12,fontWeight:900,color:"#ffffff",fontFamily:MONO,cursor:"pointer"}}>✓ Compris !</button>
-              }
-            </div>
-          </div>
-        )}
-
-        {/* Définitions */}
-        {tab==="defs"&&(
-          <div style={{padding:"20px 16px 28px"}}>
-            <div key={defIdx} style={{background:`linear-gradient(145deg,${d.color}10,${d.color}04)`,border:`1.5px solid ${d.color}30`,borderRadius:20,padding:"22px 20px",marginBottom:16,animation:"fadeUp 0.22s ease"}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-                <div style={{fontSize:17,fontWeight:900,color:"#ffffff"}}>{d.title}</div>
-                <div style={{background:`${d.color}18`,border:`1px solid ${d.color}30`,borderRadius:20,padding:"4px 10px",fontSize:9,color:d.color,fontFamily:MONO,fontWeight:700}}>{d.short}</div>
-              </div>
-              <div style={{height:1,background:`linear-gradient(90deg,${d.color}25,transparent)`,marginBottom:14}}/>
-              <div style={{fontSize:13,color:"#ffffffcc",lineHeight:1.8}}>{d.desc}</div>
-            </div>
-            <div style={{display:"flex",gap:6,justifyContent:"center",marginBottom:16}}>
-              {HELP_CONCEPTS.map((_,i)=>(
-                <button key={i} onClick={()=>setDefIdx(i)} style={{width:i===defIdx?22:7,height:7,borderRadius:4,background:i===defIdx?d.color:"#ffffff18",border:"none",cursor:"pointer",transition:"all 0.3s cubic-bezier(0.34,1.5,0.64,1)",boxShadow:i===defIdx?`0 0 10px ${d.color}88`:"none"}}/>
-              ))}
-            </div>
-            <div style={{display:"flex",gap:8}}>
-              <button onClick={()=>setDefIdx(i=>Math.max(0,i-1))} disabled={defIdx===0} style={{flex:1,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:12,padding:"11px 0",fontSize:11,color:defIdx===0?"#ffffff22":"#ffffffaa",fontFamily:MONO,cursor:defIdx===0?"default":"pointer"}}>← Préc.</button>
-              {defIdx<HELP_CONCEPTS.length-1
-                ?<button onClick={()=>setDefIdx(i=>i+1)} style={{flex:2,background:`linear-gradient(135deg,${d.color}20,${d.color}08)`,border:`1.5px solid ${d.color}`,borderRadius:12,padding:"11px 0",fontSize:12,fontWeight:900,color:"#ffffff",fontFamily:MONO,cursor:"pointer"}}>Suivant →</button>
-                :<button onClick={onClose} style={{flex:2,background:`linear-gradient(135deg,${neon}22,${neon}0a)`,border:`1.5px solid ${neon}`,borderRadius:12,padding:"11px 0",fontSize:12,fontWeight:900,color:"#ffffff",fontFamily:MONO,cursor:"pointer"}}>✓ Compris !</button>
-              }
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── FEEDBACK STARS ──
-function NeonStar({filled,size=28}) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"
-        fill={filled?"#00ff9d":"transparent"} stroke={filled?"#00ff9d":"rgba(255,255,255,0.25)"}
-        strokeWidth="1.5" strokeLinejoin="round"
-        style={{filter:filled?"drop-shadow(0 0 6px #00ff9d99)":"none",transition:"all 0.15s"}}/>
-    </svg>
-  );
-}
-
-function FeedbackCard({neon,userEmail,onClose}) {
-  const [stars,setStars]=useState(0);
-  const [hover,setHover]=useState(0);
-  const [review,setReview]=useState("");
-  const [sent,setSent]=useState(false);
-  const [loading,setLoading]=useState(false);
-  const active=hover||stars;
-  const labels=["","À améliorer","Pas terrible","Correct","Bien !","Excellent !"];
-
-  const submit=async()=>{
-    if(!stars)return;
-    setLoading(true);
-    await saveReview({stars,review,email:userEmail||"anonymous",date:new Date().toISOString(),app:"TrackMyTrade"});
-    setLoading(false);
-    setSent(true);
-  };
-
-  return (
-    <div style={{position:"fixed",bottom:60,left:"50%",transform:"translateX(-50%)",width:"calc(100% - 28px)",maxWidth:452,zIndex:150,animation:"slideUp 0.35s cubic-bezier(0.34,1.3,0.64,1)"}}>
-      <div style={{background:"rgba(12,12,30,0.97)",backdropFilter:"blur(24px)",border:`1.5px solid ${neon}25`,borderRadius:20,padding:"18px 18px 14px",boxShadow:`0 -4px 40px ${neon}10,0 8px 32px rgba(0,0,0,0.6)`}}>
-        {!sent?(
-          <>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
-              <div>
-                <div style={{fontSize:13,fontWeight:800,color:"#ffffff",marginBottom:3}}>Tu aimes TrackMyTrade ?</div>
-                <div style={{fontSize:10,color:"#ffffff44",fontFamily:MONO}}>◈ 10 trades enregistrés</div>
-              </div>
-              <button onClick={onClose} style={{background:"rgba(255,255,255,0.06)",border:"none",color:"#ffffff44",width:26,height:26,borderRadius:"50%",cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
-            </div>
-            <div style={{display:"flex",justifyContent:"center",gap:6,marginBottom:6}}>
-              {[1,2,3,4,5].map(n=>(
-                <button key={n} onMouseEnter={()=>setHover(n)} onMouseLeave={()=>setHover(0)} onClick={()=>setStars(n)}
-                  style={{background:"none",border:"none",cursor:"pointer",padding:"4px 2px",transform:n<=active?"scale(1.15)":"scale(1)",transition:"transform 0.15s cubic-bezier(0.34,1.5,0.64,1)"}}>
-                  <NeonStar filled={n<=active} size={30}/>
-                </button>
-              ))}
-            </div>
-            {active>0&&<div style={{textAlign:"center",fontSize:10,color:neon,fontFamily:MONO,fontWeight:700,marginBottom:10,letterSpacing:1}}>{labels[active]}</div>}
-            {stars>0&&(
-              <>
-                <textarea value={review} onChange={e=>setReview(e.target.value)} placeholder="Dis-nous ce que tu penses (optionnel)…" style={{width:"100%",background:"rgba(0,0,0,0.3)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,color:"#ffffff",padding:"10px 12px",fontSize:12,fontFamily:MONO,resize:"none",height:72,marginBottom:10,outline:"none"}}/>
-                <button onClick={submit} disabled={loading} style={{width:"100%",background:`linear-gradient(135deg,${neon}22,${neon}08)`,border:`1.5px solid ${neon}`,borderRadius:12,padding:"11px 0",fontSize:12,fontWeight:900,color:"#ffffff",fontFamily:MONO,cursor:"pointer",boxShadow:`0 4px 16px ${neon}22`}}>
-                  {loading?"Envoi…":stars>=4?"⭐ Envoyer mon avis →":"Envoyer mon retour →"}
-                </button>
-              </>
-            )}
-            <button onClick={onClose} style={{width:"100%",background:"none",border:"none",color:"#ffffff22",fontSize:10,fontFamily:MONO,cursor:"pointer",marginTop:8,padding:"4px 0"}}>Plus tard</button>
-          </>
-        ):(
-          <div style={{textAlign:"center",padding:"10px 0"}}>
-            <div style={{display:"flex",justifyContent:"center",marginBottom:10}}><NeonStar filled size={40}/></div>
-            <div style={{fontSize:13,fontWeight:800,color:"#ffffff",marginBottom:4}}>Merci beaucoup ! 🙏</div>
-            <div style={{fontSize:11,color:"#ffffff44",fontFamily:MONO}}>Ton avis nous aide à améliorer l'app.</div>
-          </div>
-        )}
       </div>
     </div>
   );
