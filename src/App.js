@@ -50,13 +50,15 @@ const PRESET_ASSETS = ["XAU/USD","EUR/USD","GBP/USD","NAS100","BTC/USD","ETH/USD
 const DEFAULT_CRITERIA = ["HA M5 claire (pas de doji)","MM20 bien orientée","BB approche sur M1","Bougie de rejet propre","Fenêtre horaire respectée","Pas de distraction","Contexte macro neutre"];
 const MONO = "'Geist Mono','IBM Plex Mono',monospace";
 const PNL_PRESETS = ["-1","-0.5","0","+1","+2","+3","+4","+5"];
-const NEON_COLORS = [{const NEON_SECONDARY = {
+const NEON_COLORS = [{name:"Vert",value:"#00ff9d"},{name:"Bleu",value:"#00d4ff"},{name:"Violet",value:"#bf00ff"},{name:"Rose",value:"#ff00aa"},{name:"Or",value:"#f0b429"}];
+
+const NEON_SECONDARY = {
   "#00ff9d":"#00e5ff",
   "#00d4ff":"#7b6cff",
   "#bf00ff":"#ff6eb4",
   "#ff00aa":"#ffd700",
   "#f0b429":"#ff8c42"
-};}];
+};
 const HUMEUR_PILLS = {fr:["◎ Focus","◌ Neutre","△ Tendu","◷ Fatigué"],en:["◎ Focus","◌ Neutral","△ Tense","◷ Tired"]};
 const BIAIS_PILLS = {fr:["↑ Haussier","→ Range","↓ Baissier"],en:["↑ Bullish","→ Range","↓ Bearish"]};
 const NTR = {fr:["Pas de setup valide","Hors fenêtre","Marché difficile","Journée chargée","Jour de repos"],en:["No valid setup","Out of window","Difficult market","Busy day","Rest day"]};
