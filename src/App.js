@@ -216,6 +216,9 @@ const CSS = ({neon="#00ff9d", neon2="#00d4ff"}) => {
     @keyframes auroraA{from{transform:translate(0,0) scale(1)}to{transform:translate(6%,4%) scale(1.12)}}
     @keyframes auroraB{from{transform:translate(0,0) scale(1)}to{transform:translate(-5%,-3%) scale(1.15)}}
     @keyframes auroraC{from{transform:translate(0,0)}to{transform:translate(-4%,5%)}}
+    @keyframes slideIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
 
     /* Glass cards */
     .glass{
@@ -309,25 +312,41 @@ const GLASS_VARIANTS = {
   4:{angle:130,left:"-5%", top:"30%", w:"35%",op:"0.035",shimH:"30%",shimOp:"0.045"},
   5:{angle:95, left:"10%", top:"-25%",w:"70%",op:"0.05", shimH:"55%",shimOp:"0.065"},
 };
-function GlassCard({children,style,variant=1,glow,ca="#00ff9d",className=""}) {
-  const v=GLASS_VARIANTS[variant]||GLASS_VARIANTS[1];
+function GlassCard({ children, style, className="", glow, ca, onClick }) {
   return (
-    <div className={className} style={{position:"relative",overflow:"hidden",borderRadius:18,
-      background:"linear-gradient(135deg,rgba(255,255,255,0.08) 0%,rgba(255,255,255,0.02) 60%,rgba(255,255,255,0.05) 100%)",
-      border:"1px solid rgba(255,255,255,0.09)",backdropFilter:"blur(24px) saturate(1.4)",
-      WebkitBackdropFilter:"blur(24px) saturate(1.4)",
-      boxShadow:glow?`0 0 40px ${ca}22,0 12px 40px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.12)`
-                    :`0 8px 32px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.08)`,...style}}>
-      <div style={{position:"absolute",top:0,left:0,right:0,height:v.shimH,
-        background:`linear-gradient(180deg,rgba(255,255,255,${v.shimOp}) 0%,transparent 100%)`,
-        borderRadius:"18px 18px 0 0",pointerEvents:"none"}}/>
-      <div style={{position:"absolute",top:v.top,left:v.left,width:v.w,height:"160%",
-        background:`linear-gradient(${v.angle}deg,transparent 35%,rgba(255,255,255,${v.op}) 50%,transparent 65%)`,
-        pointerEvents:"none",borderRadius:999}}/>
-      <div style={{position:"absolute",bottom:0,left:0,right:0,height:1,
-        background:"rgba(0,0,0,0.35)",pointerEvents:"none"}}/>
+    <div onClick={onClick} className={className} style={{
+      background:"linear-gradient(135deg,rgba(255,255,255,0.07) 0%,rgba(255,255,255,0.02) 100%)",
+      border:"1px solid rgba(255,255,255,0.10)",
+      borderRadius:20,
+      backdropFilter:"blur(20px)",
+      boxShadow: glow
+        ? `0 0 30px ${glow}33,0 8px 32px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.12)`
+        : `0 8px 32px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.08)`,
+      position:"relative", overflow:"hidden", ...style,
+    }}>
+      <div style={{
+        position:"absolute",top:0,left:0,right:0,height:"40%",
+        background:"linear-gradient(180deg,rgba(255,255,255,0.06) 0%,rgba(255,255,255,0) 100%)",
+        borderRadius:"20px 20px 0 0",pointerEvents:"none",
+      }}/>
       {children}
     </div>
+  );
+}
+
+function ProgressRing({ value, size=52, stroke=4, color }) {
+  const r = (size-stroke)/2;
+  const circ = 2*Math.PI*r;
+  const dash = (value/100)*circ;
+  return (
+    <svg width={size} height={size} style={{transform:"rotate(-90deg)"}}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none"
+        stroke="rgba(255,255,255,0.08)" strokeWidth={stroke}/>
+      <circle cx={size/2} cy={size/2} r={r} fill="none"
+        stroke={color} strokeWidth={stroke}
+        strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
+        style={{filter:`drop-shadow(0 0 6px ${color})`,transition:"stroke-dasharray 1s ease"}}/>
+    </svg>
   );
 }
 
@@ -2673,7 +2692,8 @@ export default function App() {
                   const phTr=trades.filter(z=>z.date>=phStart&&z.date<phEnd);
                   const phWR=phTr.length?Math.round(phTr.filter(z=>z.result==="WIN").length/phTr.length*100):0;
                   const phPnl=phTr.reduce((s,z)=>s+(parseFloat(z.pnlPct)||0),0);
-                  els.push(<div key={`sep-${lastPk}`} style={{display:"flex",alignItems:"center",gap:8,margin:"4px 0 14px"}}><div style={{flex:1,height:1,background:`${neon}18`}}/><div style={{background:`${neon}08`,border:`1px solid ${neon}20`,borderRadius:8,padding:"5px 12px",textAlign:"center",flexShrink:0}}><span style={{fontSize:9,color:neon,fontFamily:MONO,fontWeight:700,letterSpacing:1}}>PHASE {lastPk+1}</span><span style={{fontSize:9,color:"#ffffff44",fontFamily:MONO}}> · {t.phaseSince} {phStart}</span><span style={{fontSize:9,color:"#ffffffaa",fontFamily:MONO}}> · {phTr.length}t · {phWR}% · {fmtPct(phPnl)}</span></div><div style={{flex:1,height:1,background:`${neon}18`}}/></div>);
+                  els.push(<div key={`sep-${lastPk}`} style={{display:"flex",alignItems:"center",gap:8,margin:"4px 0 14px"}}><div style={{flex:1,height:1,background:`${neon}18`}}/><div style={{background:`${neon}08`,border:`1px solid ${neon}20`,borderRadius:8,padding:"5px 12px",textAlign:"center",flexShrink:0}}><span style={{fontSize:9,color:neon,fontFamily:MONO,fontWeight:700,letterSpacing:1}}>PHASE {lastPk+1}</span><span style={{fontSize:9,color:"#ffffff44",fontFamily:MONO}}> · {t.phaseSince} {phStart}</span><span style={{fontSize:9,color:"#ffffffaa",fontFamily:MONO}}> · {phTr.length}t · {phWR}% · {fmtPct(phPnl)}</span></div><div style={{flex:1,height:1,background:`${neon}18`}}/></div>);animation: `slideIn 0.4s ease ${(els.length)*0.06}s both`
+    }}
                 }
                 lastPk=pk;
               }
