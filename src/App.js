@@ -59,7 +59,7 @@ const rc = (r, neon="#00ff9d") => r==="WIN"?neon:r==="LOSS"?"#ff4d4d":"#f0b429";
 const fmtPct = v => { if(v===""||v===null||v===undefined) return "—"; const n=Number(v),abs=Math.abs(n); const s=abs%1===0?abs.toFixed(0):abs*10%1===0?abs.toFixed(1):abs.toFixed(2); return `${n>=0?"+":""}${n<0?"-":""}${s}%`; };
 const calcDisc = list => { if(!list||!list.length) return null; return Math.round((list.filter(x=>x.conforming).length/list.length*0.6+list.filter(x=>!x.isRevenge).length/list.length*0.4)*10); };
 const emptyForm = (asset="XAU/USD", tf="M5") => ({date:today(),asset,direction:"BUY",checklist:[],result:"WIN",pnlPreset:"",pnlManual:"",notes:"",rejetScore:0,time:"",timeframe:tf,screenshot:"",isRevenge:false,slDirection:"",checkin:{humeur:"",biais:""}});
-const mkInput = neon => ({width:"100%",background:"#131320",border:`1px solid ${neon}33`,borderRadius:8,color:"#ffffff",padding:"12px 14px",fontSize:13,fontFamily:MONO,marginBottom:10,outline:"none"});
+const mkInput = neon => ({width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:8,color:"#ffffff",padding:"12px 14px",fontSize:13,fontFamily:MONO,marginBottom:10,outline:"none"});
 // Auth handled by Firebase Auth
 
 const T = {
@@ -185,7 +185,7 @@ const CSS = ({neon="#00ff9d"}) => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800;900&family=IBM+Plex+Mono:wght@400;500;700&display=swap');
     *{box-sizing:border-box;margin:0;padding:0}
-    body{background:#09090f}
+    body{background:#0c0c12}
     input,select,textarea{outline:none;font-family:${MONO};font-size:16px}
     input[type=checkbox]{accent-color:${neon};width:16px;height:16px;cursor:pointer}
     input[type=date],input[type=time]{color-scheme:dark}
@@ -193,49 +193,27 @@ const CSS = ({neon="#00ff9d"}) => (
     .btn{transition:all 0.15s;cursor:pointer}
     .btn:hover{opacity:0.85;transform:translateY(-1px)}
     .row{transition:background 0.2s;cursor:pointer}
-    .row:hover{background:rgba(255,255,255,0.04)!important}
+    .row:hover{background:${neon}0a!important}
     ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:${neon}26}
-
-    /* ── AURORA (pointer-events:none partout) ── */
-    .aurora-bg{position:fixed;inset:0;pointer-events:none!important;z-index:0;overflow:hidden}
-    .au1{position:absolute;width:65%;height:65%;top:-20%;left:-10%;border-radius:50%;background:radial-gradient(ellipse,${neon}0e 0%,transparent 65%);animation:auA 14s ease-in-out infinite alternate;filter:blur(50px)}
-    .au2{position:absolute;width:55%;height:55%;bottom:-20%;right:-10%;border-radius:50%;background:radial-gradient(ellipse,rgba(0,150,255,0.08) 0%,transparent 65%);animation:auB 18s ease-in-out infinite alternate;filter:blur(60px)}
-    .au3{position:absolute;width:40%;height:40%;top:35%;left:35%;border-radius:50%;background:radial-gradient(ellipse,rgba(100,0,255,0.05) 0%,transparent 65%);animation:auC 22s ease-in-out infinite alternate;filter:blur(70px)}
     @keyframes auA{from{transform:translate(0,0)}to{transform:translate(8%,6%)}}
     @keyframes auB{from{transform:translate(0,0)}to{transform:translate(-7%,-5%)}}
     @keyframes auC{from{transform:translate(0,0)}to{transform:translate(-5%,8%)}}
-
-    /* ── CARD PREMIUM 3D ── */
-    .card{
-      position:relative;overflow:hidden;
-      background:linear-gradient(145deg,#1d1d2e 0%,#131320 100%) !important;
-      border:1px solid rgba(255,255,255,0.08) !important;
-      border-radius:16px;
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.12),
-        inset 0 -1px 0 rgba(0,0,0,0.4),
-        0 8px 32px rgba(0,0,0,0.7),
-        0 2px 8px rgba(0,0,0,0.4) !important;
-      transition:transform 0.25s cubic-bezier(0.16,1,0.3,1),box-shadow 0.25s ease;
-    }
-    .card:hover{
-      transform:translateY(-3px);
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.16),
-        inset 0 -1px 0 rgba(0,0,0,0.5),
-        0 16px 48px rgba(0,0,0,0.85),
-        0 4px 12px rgba(0,0,0,0.5) !important;
-    }
-    .card::before{content:'';position:absolute;inset:0;border-radius:inherit;background:linear-gradient(115deg,rgba(255,255,255,0.06) 0%,transparent 45%,rgba(0,0,0,0.08) 100%);pointer-events:none;z-index:0}
-    .card::after{content:'';position:absolute;top:0;left:12%;right:12%;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.3) 45%,rgba(255,255,255,0.3) 55%,transparent);pointer-events:none;z-index:0}
-    .card>*{position:relative;z-index:1}
-    .card-neon{background:linear-gradient(145deg,#162018 0%,#0d1510 100%) !important;border-color:rgba(0,255,157,0.15) !important;box-shadow:inset 0 1px 0 rgba(0,255,157,0.18),inset 0 -1px 0 rgba(0,0,0,0.4),0 8px 32px rgba(0,0,0,0.7),0 0 60px ${neon}07 !important}
-
-    /* animations */
     @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
     @keyframes fadeIn{from{opacity:0}to{opacity:1}}
     @keyframes pulse{0%,100%{opacity:1;text-shadow:0 0 8px ${neon}66}50%{opacity:0.85;text-shadow:0 0 14px ${neon}aa}}
-    @keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes ring{0%,100%{opacity:0.06;transform:scale(1)}50%{opacity:0.16;transform:scale(1.04)}}
+    .fu{animation:fadeUp 0.45s ease both}
+    .fi{animation:fadeIn 0.4s ease both}
+    .glow{animation:pulse 3s ease-in-out infinite}
+    .grid-bg{background-image:linear-gradient(${neon}06 1px,transparent 1px),linear-gradient(90deg,${neon}06 1px,transparent 1px);background-size:32px 32px}
+    .slide-up{animation:slideUp 0.3s ease both}
+    .view-in{animation:fadeIn 0.22s ease both}
+    @keyframes slideFromLeft{0%{opacity:0;transform:translateX(-60px)}65%{transform:translateX(6px)}80%{transform:translateX(-2px)}100%{opacity:1;transform:translateX(0)}}
+    @keyframes slideFromRight{0%{opacity:0;transform:translateX(60px)}65%{transform:translateX(-6px)}80%{transform:translateX(2px)}100%{opacity:1;transform:translateX(0)}}
+    @keyframes p1{0%{opacity:0.2;transform:scale(0.95)}50%{opacity:0.07;transform:scale(1.03)}100%{opacity:0.2;transform:scale(0.95)}}
+    @keyframes p2{0%{opacity:0.25;transform:scale(0.93)}50%{opacity:0.05;transform:scale(1.05)}100%{opacity:0.25;transform:scale(0.93)}}
+    @keyframes fadeInSlow{0%{opacity:0}100%{opacity:1}}
     @keyframes logoBoxGlow{0%,100%{box-shadow:0 0 8px ${neon}22}50%{box-shadow:0 0 20px ${neon}55,0 0 6px ${neon}33}}
     @keyframes dotPulse{0%,40%,100%{width:6px;background:${neon}22;box-shadow:none}50%{width:22px;background:${neon};box-shadow:0 0 12px ${neon}99}}
     @keyframes icoCheck{from{stroke-dashoffset:30}to{stroke-dashoffset:0}}
@@ -247,23 +225,18 @@ const CSS = ({neon="#00ff9d"}) => (
     @keyframes icoSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
     @keyframes icoPulse{0%,100%{opacity:0.5;transform:scale(0.92)}50%{opacity:1;transform:scale(1.08)}}
     @keyframes icoFlame{0%,100%{transform:scaleY(1) skewX(0deg)}25%{transform:scaleY(1.07) skewX(-2deg)}75%{transform:scaleY(0.93) skewX(2deg)}}
-    @keyframes icoFlame2{0%,100%{transform:scaleY(1)}33%{transform:scaleY(1.09) skewX(2deg)}66%{transform:scaleY(0.91) skewX(-2deg)}}
+    @keyframes icoFlame2{0%,100%{transform:scaleY(1) skewX(0deg)}33%{transform:scaleY(1.09) skewX(2deg)}66%{transform:scaleY(0.91) skewX(-2deg)}}
     @keyframes icoClock{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
     @keyframes icoDraw{from{stroke-dashoffset:80}to{stroke-dashoffset:0}}
     @keyframes icoHeartbeat{0%,100%{transform:scale(1)}15%{transform:scale(1.25)}30%{transform:scale(1)}45%{transform:scale(1.15)}60%{transform:scale(1)}}
     @keyframes icoDiamond{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+    @keyframes auA{from{transform:translate(0,0)}to{transform:translate(8%,6%)}}
+    @keyframes auB{from{transform:translate(0,0)}to{transform:translate(-7%,-5%)}}
+    @keyframes auC{from{transform:translate(0,0)}to{transform:translate(-5%,8%)}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
     @keyframes barFill{from{width:0}to{width:var(--bar-w)}}
     @keyframes kpiPop{0%{opacity:0;transform:scale(0.7)}70%{transform:scale(1.08)}100%{opacity:1;transform:scale(1)}}
     @keyframes ring{0%,100%{transform:scale(1);opacity:0.12}50%{transform:scale(1.08);opacity:0.22}}
-    @keyframes slideFromLeft{0%{opacity:0;transform:translateX(-60px)}65%{transform:translateX(6px)}80%{transform:translateX(-2px)}100%{opacity:1;transform:translateX(0)}}
-    @keyframes slideFromRight{0%{opacity:0;transform:translateX(60px)}65%{transform:translateX(-6px)}80%{transform:translateX(2px)}100%{opacity:1;transform:translateX(0)}}
-    @keyframes fadeInSlow{0%{opacity:0}100%{opacity:1}}
-    .slide-up{animation:slideUp 0.28s cubic-bezier(0.34,1.3,0.64,1)}
-    .fu{animation:fadeUp 0.45s ease both}
-    .fi{animation:fadeIn 0.4s ease both}
-    .glow{animation:pulse 3s ease-in-out infinite}
-    .grid-bg{background-image:linear-gradient(${neon}06 1px,transparent 1px),linear-gradient(90deg,${neon}06 1px,transparent 1px);background-size:32px 32px}
-    .view-in{animation:fadeIn 0.22s ease both}
   `}</style>
 );
 
@@ -291,7 +264,7 @@ function StreakBadge({trades,neon,lang}) {
   for(let i=1;i<trades.length;i++){if(trades[i].result===type)streak++;else break;}
   if(streak<2||type==="BE") return null;
   const color=type==="WIN"?neon:"#ff4d4d";
-  return <div className="card" style={{borderLeft:`3px solid ${color}`,borderRadius:14,padding:"8px 14px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{fontSize:12,color,fontWeight:700,fontFamily:MONO,textShadow:`0 0 10px ${color}88`}}>{streak} {type==="WIN"?t.streakWin:t.streakLoss}</span>{type==="LOSS"&&<span style={{fontSize:10,color:"#ffffffaa"}}>{t.checkRules}</span>}</div>;
+  return <div style={{background:`${color}12`,border:`1px solid ${color}35`,borderRadius:10,padding:"8px 14px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between",boxShadow:`0 2px 12px ${color}18`}}><span style={{fontSize:12,color,fontWeight:700,fontFamily:MONO,textShadow:`0 0 10px ${color}88`}}>{streak} {type==="WIN"?t.streakWin:t.streakLoss}</span>{type==="LOSS"&&<span style={{fontSize:10,color:"#ffffffaa"}}>{t.checkRules}</span>}</div>;
 }
 
 
@@ -309,7 +282,7 @@ function AdvancedStats({trades,neon,lang}) {
   const best=Object.entries(aMap).filter(([,v])=>v.t>=2).sort((a,b)=>(b[1].w/b[1].t)-(a[1].w/a[1].t))[0];
   const revs=trades.filter(x=>x.isRevenge);
   return (
-    <div style={{background:"linear-gradient(145deg,#1d1d2e,#131320)",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.1),inset 0 -1px 0 rgba(0,0,0,0.35),0 8px 32px rgba(0,0,0,0.65)",border:"1px solid #ffffff0e",borderRadius:18,padding:16,marginBottom:12}}>
+    <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:16,marginBottom:12}}>
       <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>{t.statsTitle}</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
         <div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{t.expectancy}</div><div style={{fontSize:16,fontWeight:700,color:exp>=0?neon:"#ff4d4d",fontFamily:MONO,textShadow:`0 0 14px ${exp>=0?neon:"#ff4d4d"}99`}}>{fmtPct(exp)}</div></div>
@@ -352,7 +325,7 @@ function Dots({total,current,neon="#00ff9d"}) {
 
 function Stat({label,value,color="#00ff9d"}) {
   return (
-    <div style={{background:"linear-gradient(145deg,#1d1d2e,#131320)",border:`1px solid ${color}28`,borderRadius:14,padding:"14px 16px",flex:1,boxShadow:"0 8px 32px #00000060,inset 0 1px 0 #ffffff08"}}>
+    <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${color}28`,borderRadius:14,padding:"14px 16px",flex:1,boxShadow:"0 8px 32px #00000060,inset 0 1px 0 #ffffff08"}}>
       <div style={{fontSize:9,color:"#ffffffaa",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>{label}</div>
       <div style={{fontSize:22,fontWeight:900,color:"#ffffff",fontFamily:MONO,lineHeight:1,textShadow:`0 0 20px ${color}cc, 0 2px 6px rgba(0,0,0,0.6)`}}>{value}</div>
     </div>
@@ -376,7 +349,7 @@ function NotifCard({notif,onClose}) {
   };
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",padding:24}} onClick={onClose}>
-      <div className="slide-up" style={{background:"#131320",border:`1px solid ${iC}30`,borderRadius:20,width:"100%",maxWidth:320,overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
+      <div className="slide-up" style={{background:"#131318",border:`1px solid ${iC}30`,borderRadius:20,width:"100%",maxWidth:320,overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
         <div style={{height:3,background:iC,opacity:0.85}}/>
         <div style={{padding:"26px 22px 22px"}}>
           <div style={{display:"flex",justifyContent:"center",marginBottom:18}}><Icon/></div>
@@ -415,7 +388,7 @@ function WeeklyRecapModal({trades,lang,neon,onClose,onShareWeek}) {
   else if(week.length>=3) insights.push(t.insightNoRevenge);
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",padding:24}} onClick={onClose}>
-      <div className="slide-up" style={{background:"#131320",border:`1px solid ${neon}35`,borderRadius:20,width:"100%",maxWidth:340,overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
+      <div className="slide-up" style={{background:"#131318",border:`1px solid ${neon}35`,borderRadius:20,width:"100%",maxWidth:340,overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
         <div style={{height:3,background:neon,opacity:0.85}}/>
         <div style={{padding:"24px 22px 22px"}}>
           <div style={{textAlign:"center",marginBottom:20}}>
@@ -470,7 +443,7 @@ function TradeDetailModal({trade,config,onClose,onEdit,onShare,lang,neon}) {
   const hasCI=ci&&(ci.humeur||ci.biais);
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={onClose}>
-      <div className="slide-up" style={{background:"#131320",border:`1px solid ${neon}35`,borderRadius:16,width:"100%",maxWidth:480,maxHeight:"88vh",overflow:"auto",padding:20}} onClick={e=>e.stopPropagation()}>
+      <div className="slide-up" style={{background:"#131318",border:`1px solid ${neon}35`,borderRadius:16,width:"100%",maxWidth:480,maxHeight:"88vh",overflow:"auto",padding:20}} onClick={e=>e.stopPropagation()}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <div style={{fontSize:13,fontWeight:700,color:neon,fontFamily:MONO}}>{t.detailTitle}</div>
           <div style={{display:"flex",gap:8}}>
@@ -518,7 +491,7 @@ function TradeDetailModal({trade,config,onClose,onEdit,onShare,lang,neon}) {
             </div>
           </div>}
         </div>
-        <div style={{background:"#131320",border:`1px solid ${neon}14`,borderRadius:8,padding:12,marginBottom:14}}>
+        <div style={{background:"#131318",border:`1px solid ${neon}14`,borderRadius:8,padding:12,marginBottom:14}}>
           <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.checklistDetail}</div>
           {config.items.map((item,i)=>(
             <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:"1px solid #ffffff06"}}>
@@ -542,7 +515,7 @@ function ConformityBar({trades,threshold,maxItems,neon,lang}) {
   const nWR=nonConf.length?Math.round(nonConf.filter(x=>x.result==="WIN").length/nonConf.length*100):null;
   const cPct=trades.length?(conf.length/trades.length)*100:50;
   return (
-    <div style={{background:"linear-gradient(145deg,#1d1d2e,#131320)",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.1),inset 0 -1px 0 rgba(0,0,0,0.35),0 8px 32px rgba(0,0,0,0.65)",border:"1px solid #ffffff0e",borderRadius:18,padding:16,marginBottom:12}}>
+    <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:16,marginBottom:12}}>
       <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>{t.conformityTitle} {threshold}/{maxItems}</div>
       <div style={{display:"flex",height:8,borderRadius:6,overflow:"hidden",marginBottom:14,background:"#ffffff10"}}>
         <div style={{width:`${cPct}%`,background:neon,transition:"width 0.5s"}}/><div style={{flex:1,background:"#ff4d4d44"}}/>
@@ -608,7 +581,7 @@ function PerformanceChart({trades, neon, lang}) {
   }
 
   return (
-    <div style={{background:"linear-gradient(145deg,#1d1d2e,#131320)",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.1),inset 0 -1px 0 rgba(0,0,0,0.35),0 8px 32px rgba(0,0,0,0.65)",border:"1px solid #ffffff0e",borderRadius:18,padding:"12px 14px",marginBottom:12}}>
+    <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:"12px 14px",marginBottom:12}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
         <div style={{fontSize:9,color:`${neon}44`,letterSpacing:2,fontFamily:MONO}}>
           {fr?"P&L CUMULÉ":"CUMULATIVE P&L"}
@@ -688,7 +661,7 @@ function TradingCalendar({trades,neon,lang}) {
   for(let i=0;i<sD;i++)cells.push(null);
   for(let d=1;d<=dIM;d++)cells.push(d);
   return (
-    <div style={{background:"linear-gradient(145deg,#1d1d2e,#131320)",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.1),inset 0 -1px 0 rgba(0,0,0,0.35),0 8px 32px rgba(0,0,0,0.65)",border:"1px solid #ffffff0e",borderRadius:18,padding:14,marginBottom:12}}>
+    <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:12}}>
       <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:12,textTransform:"uppercase"}}>{t.calendarTitle} · {mN[lang][month]} {year}</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:6}}>{dN[lang].map((d,i)=><div key={i} style={{fontSize:8,color:"#ffffff44",textAlign:"center"}}>{d}</div>)}</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
@@ -728,7 +701,7 @@ function NoTradeButton({onSave,alreadyDone,lang,neon}) {
     <div style={{background:"rgba(90,90,90,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:14,marginBottom:12}}>
       <div style={{fontSize:10,color:"#ffffffaa",letterSpacing:2,marginBottom:10,fontFamily:MONO}}>{t.noTradeReason}</div>
       <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
-        {ntr.map(r=><button key={r} onClick={()=>setReason(reason===r?"":r)} className="btn" style={{background:reason===r?"rgba(255,255,255,0.1)":"#131320",border:`1px solid ${reason===r?"rgba(255,255,255,0.25)":"rgba(255,255,255,0.08)"}`,color:reason===r?"#ffffff":"#ffffffbb",borderRadius:6,padding:"5px 10px",fontSize:11,fontFamily:MONO}}>{r}</button>)}
+        {ntr.map(r=><button key={r} onClick={()=>setReason(reason===r?"":r)} className="btn" style={{background:reason===r?"rgba(255,255,255,0.1)":"#131318",border:`1px solid ${reason===r?"rgba(255,255,255,0.25)":"rgba(255,255,255,0.08)"}`,color:reason===r?"#ffffff":"#ffffffbb",borderRadius:6,padding:"5px 10px",fontSize:11,fontFamily:MONO}}>{r}</button>)}
       </div>
       <div style={{display:"flex",gap:8}}>
         <button onClick={()=>{onSave({id:Date.now(),date:today(),reason});setOpen(false);setReason("");}} className="btn" style={{flex:1,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.15)",color:"#ffffff",borderRadius:8,padding:10,fontSize:12,fontWeight:700,fontFamily:MONO}}>{t.confirmBtn}</button>
@@ -750,7 +723,7 @@ function ResetModal({trades,onReset,onClose,lang,neon}) {
   };
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",padding:24}} onClick={onClose}>
-      <div className="slide-up" style={{background:"#131320",border:"1px solid rgba(255,77,77,0.3)",borderRadius:20,width:"100%",maxWidth:340,overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
+      <div className="slide-up" style={{background:"#131318",border:"1px solid rgba(255,77,77,0.3)",borderRadius:20,width:"100%",maxWidth:340,overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
         <div style={{height:3,background:"#ff4d4d",opacity:0.8}}/>
         <div style={{padding:"26px 22px 22px"}}>
           {step==="confirm"?(
@@ -1568,13 +1541,13 @@ function Onboarding({onDone}) {
         <div style={{position:"relative",zIndex:2,maxWidth:280,width:"100%",padding:"0 10px"}}>
           <div style={{display:"flex",gap:10,marginBottom:10}}>
             {[["WIN RATE","73%"],["P&L","+4.2%"]].map(([l,v])=>(
-              <div key={l} style={{flex:1,background:"linear-gradient(145deg,#1d1d2e,#131320)",border:`1px solid ${neon}22`,borderRadius:14,padding:"14px 12px",textAlign:"center",boxShadow:`0 4px 24px ${neon}10,inset 0 1px 0 ${neon}15`}}>
+              <div key={l} style={{flex:1,background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:14,padding:"14px 12px",textAlign:"center",boxShadow:`0 4px 24px ${neon}10,inset 0 1px 0 ${neon}15`}}>
                 <div style={{fontSize:26,fontWeight:900,color:"#ffffff",fontFamily:MONO,lineHeight:1,textShadow:`0 0 20px ${neon}55`}}>{v}</div>
                 <div style={{fontSize:9,color:"#ffffffaa",marginTop:6,letterSpacing:2,textTransform:"uppercase"}}>{l}</div>
               </div>
             ))}
           </div>
-          <div style={{background:"linear-gradient(145deg,#1d1d2e,#131320)",border:`1px solid ${neon}22`,borderRadius:10,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:10,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div>
               <div style={{fontSize:9,color:"#ffffffaa",letterSpacing:2,marginBottom:6}}>CONFORMITÉ</div>
               <div style={{height:3,width:140,background:"#ffffff10",borderRadius:2,overflow:"hidden"}}>
@@ -1620,9 +1593,9 @@ function GuidedSetup({onDone,lang}) {
   const inSt=mkInput(neon);
   const renderContent=()=>{
     if(step===0) return <input value={stratName} onChange={e=>setStratName(e.target.value)} placeholder="Ex: XAU/USD Scalping BB" style={{...inSt,fontSize:14,padding:14}} autoFocus/>;
-    if(step===1) return <div><div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:10}}>{allAssets.map(a=><button key={a} onClick={()=>setSelAssets(p=>p.includes(a)?p.filter(x=>x!==a):[...p,a])} className="btn" style={{background:selAssets.includes(a)?`${neon}26`:"#131320",border:`1px solid ${selAssets.includes(a)?neon:`${neon}22`}`,color:selAssets.includes(a)?neon:"#ffffffaa",borderRadius:8,padding:"9px 14px",fontSize:12,fontWeight:700,fontFamily:MONO}}>{a}</button>)}</div><div style={{display:"flex",gap:8}}><input value={customAsset} onChange={e=>setCustomAsset(e.target.value)} placeholder={t.customAsset} onKeyDown={e=>{if(e.key==="Enter"&&customAsset.trim()){setSelAssets(p=>[...p,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} style={{...inSt,marginBottom:0,flex:1}}/><button onClick={()=>{if(customAsset.trim()){setSelAssets(p=>[...p,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} className="btn" style={{background:`${neon}1a`,border:`1px solid ${neon}55`,color:neon,borderRadius:8,padding:"0 16px",fontSize:18}}>+</button></div></div>;
+    if(step===1) return <div><div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:10}}>{allAssets.map(a=><button key={a} onClick={()=>setSelAssets(p=>p.includes(a)?p.filter(x=>x!==a):[...p,a])} className="btn" style={{background:selAssets.includes(a)?`${neon}26`:"#131318",border:`1px solid ${selAssets.includes(a)?neon:`${neon}22`}`,color:selAssets.includes(a)?neon:"#ffffffaa",borderRadius:8,padding:"9px 14px",fontSize:12,fontWeight:700,fontFamily:MONO}}>{a}</button>)}</div><div style={{display:"flex",gap:8}}><input value={customAsset} onChange={e=>setCustomAsset(e.target.value)} placeholder={t.customAsset} onKeyDown={e=>{if(e.key==="Enter"&&customAsset.trim()){setSelAssets(p=>[...p,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} style={{...inSt,marginBottom:0,flex:1}}/><button onClick={()=>{if(customAsset.trim()){setSelAssets(p=>[...p,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} className="btn" style={{background:`${neon}1a`,border:`1px solid ${neon}55`,color:neon,borderRadius:8,padding:"0 16px",fontSize:18}}>+</button></div></div>;
     if(step===2) return <div>{criteria.map((c,i)=><div key={i} style={{display:"flex",gap:8,marginBottom:8}}><input value={c} onChange={e=>{const n=[...criteria];n[i]=e.target.value;setCriteria(n);}} style={{...inSt,marginBottom:0,flex:1}}/><button onClick={()=>setCriteria(criteria.filter((_,idx)=>idx!==i))} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d",borderRadius:6,padding:"8px 10px",cursor:"pointer"}}>✕</button></div>)}<div style={{display:"flex",gap:8}}><input value={newItem} onChange={e=>setNewItem(e.target.value)} placeholder={lang==="fr"?"Ajouter…":"Add…"} onKeyDown={e=>{if(e.key==="Enter"&&newItem.trim()){setCriteria([...criteria,newItem.trim()]);setNewItem("");}}} style={{...inSt,marginBottom:0,flex:1}}/><button onClick={()=>{if(newItem.trim()){setCriteria([...criteria,newItem.trim()]);setNewItem("");}}} className="btn" style={{background:`${neon}1a`,border:`1px solid ${neon}55`,color:neon,borderRadius:8,padding:"0 16px",fontSize:18}}>+</button></div></div>;
-    return <div><div style={{display:"flex",gap:8,marginBottom:20}}>{Array.from({length:Math.min(7,criteria.length-1)},(_,i)=>i+2).map(n=><button key={n} onClick={()=>setThreshold(n)} className="btn" style={{flex:1,padding:"12px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:threshold===n?`${neon}33`:"#131320",border:`1px solid ${threshold===n?neon:`${neon}22`}`,color:threshold===n?neon:"#ffffffaa"}}>{n}</button>)}</div><div style={{background:`${neon}0d`,border:`1px solid ${neon}22`,borderRadius:10,padding:16}}><div style={{fontSize:12,color:neon,marginBottom:4}}>✓ {threshold}/{criteria.length}</div><div style={{fontSize:10,color:"#ffffff44"}}>{threshold/criteria.length>=0.875?`↑ ${t.highStd}`:threshold/criteria.length>=0.6?`· ${t.balanced}`:`↓ ${t.lowStd}`}</div></div></div>;
+    return <div><div style={{display:"flex",gap:8,marginBottom:20}}>{Array.from({length:Math.min(7,criteria.length-1)},(_,i)=>i+2).map(n=><button key={n} onClick={()=>setThreshold(n)} className="btn" style={{flex:1,padding:"12px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:threshold===n?`${neon}33`:"#131318",border:`1px solid ${threshold===n?neon:`${neon}22`}`,color:threshold===n?neon:"#ffffffaa"}}>{n}</button>)}</div><div style={{background:`${neon}0d`,border:`1px solid ${neon}22`,borderRadius:10,padding:16}}><div style={{fontSize:12,color:neon,marginBottom:4}}>✓ {threshold}/{criteria.length}</div><div style={{fontSize:10,color:"#ffffff44"}}>{threshold/criteria.length>=0.875?`↑ ${t.highStd}`:threshold/criteria.length>=0.6?`· ${t.balanced}`:`↓ ${t.lowStd}`}</div></div></div>;
   };
   return (
     <div style={{background:"#0c0c12",minHeight:"100vh",fontFamily:MONO,maxWidth:480,margin:"0 auto",display:"flex",flexDirection:"column"}}>
@@ -1674,24 +1647,24 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
   );
   return (
     <div className="fi" style={{padding:20}}>
-      <div style={{background:"linear-gradient(145deg,#1d1d2e,#131320)",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.1),inset 0 -1px 0 rgba(0,0,0,0.35),0 8px 32px rgba(0,0,0,0.65)",border:"1px solid #ffffff0e",borderRadius:18,padding:14,marginBottom:14}}>
+      <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
         <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.langLabel}</div>
-        <div style={{display:"flex",gap:8}}>{[["fr","Français"],["en","English"]].map(([l,label])=><button key={l} onClick={()=>onLangChange(l)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:lang===l?`${neonColor}26`:"#131320",border:`1px solid ${lang===l?neonColor:`${neonColor}22`}`,color:lang===l?neonColor:"#ffffffbb"}}>{label}</button>)}</div>
+        <div style={{display:"flex",gap:8}}>{[["fr","Français"],["en","English"]].map(([l,label])=><button key={l} onClick={()=>onLangChange(l)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:lang===l?`${neonColor}26`:"#131318",border:`1px solid ${lang===l?neonColor:`${neonColor}22`}`,color:lang===l?neonColor:"#ffffffbb"}}>{label}</button>)}</div>
       </div>
-      <div style={{background:"linear-gradient(145deg,#1d1d2e,#131320)",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.1),inset 0 -1px 0 rgba(0,0,0,0.35),0 8px 32px rgba(0,0,0,0.65)",border:"1px solid #ffffff0e",borderRadius:18,padding:14,marginBottom:14}}>
+      <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
         <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.colorLabel}</div>
-        <div style={{display:"flex",gap:8}}>{NEON_COLORS.map(c=><button key={c.value} onClick={()=>setNeonColor(c.value)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,background:neonColor===c.value?`${c.value}26`:"#131320",border:`2px solid ${neonColor===c.value?c.value:"transparent"}`,cursor:"pointer"}}><div style={{width:16,height:16,borderRadius:"50%",background:c.value,margin:"0 auto",boxShadow:neonColor===c.value?`0 0 8px ${c.value}`:"none"}}/></button>)}</div>
+        <div style={{display:"flex",gap:8}}>{NEON_COLORS.map(c=><button key={c.value} onClick={()=>setNeonColor(c.value)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,background:neonColor===c.value?`${c.value}26`:"#131318",border:`2px solid ${neonColor===c.value?c.value:"transparent"}`,cursor:"pointer"}}><div style={{width:16,height:16,borderRadius:"50%",background:c.value,margin:"0 auto",boxShadow:neonColor===c.value?`0 0 8px ${c.value}`:"none"}}/></button>)}</div>
       </div>
-      <div style={{background:"linear-gradient(145deg,#1d1d2e,#131320)",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.1),inset 0 -1px 0 rgba(0,0,0,0.35),0 8px 32px rgba(0,0,0,0.65)",border:"1px solid #ffffff0e",borderRadius:18,padding:14,marginBottom:14}}>
+      <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
         <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.maxTradesLabel}</div>
         <div style={{display:"flex",gap:6}}>
-          {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setMaxTrades(n)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:maxTrades===n?`${neonColor}26`:"#131320",border:`1px solid ${maxTrades===n?neonColor:`${neonColor}22`}`,color:maxTrades===n?neonColor:"#ffffffbb"}}>{n}</button>)}
-          <button onClick={()=>setMaxTrades(0)} className="btn" style={{flex:1.4,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:maxTrades===0?`${neonColor}26`:"#131320",border:`1px solid ${maxTrades===0?neonColor:`${neonColor}22`}`,color:maxTrades===0?neonColor:"#ffffffaa"}}>∞</button>
+          {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setMaxTrades(n)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:maxTrades===n?`${neonColor}26`:"#131318",border:`1px solid ${maxTrades===n?neonColor:`${neonColor}22`}`,color:maxTrades===n?neonColor:"#ffffffbb"}}>{n}</button>)}
+          <button onClick={()=>setMaxTrades(0)} className="btn" style={{flex:1.4,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:maxTrades===0?`${neonColor}26`:"#131318",border:`1px solid ${maxTrades===0?neonColor:`${neonColor}22`}`,color:maxTrades===0?neonColor:"#ffffffaa"}}>∞</button>
         </div>
       </div>
       <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>ACTIFS</div>
       <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
-        {assets.map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4,background:"#131320",border:`1px solid ${neon}26`,borderRadius:6,padding:"4px 8px"}}>
+        {assets.map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4,background:"#131318",border:`1px solid ${neon}26`,borderRadius:6,padding:"4px 8px"}}>
           <span style={{fontSize:11,color:"#ffffff",fontFamily:MONO}}>{a}</span>
           {!PRESET_ASSETS.includes(a)&&<button onClick={()=>setAssets(assets.filter(x=>x!==a))} style={{background:"transparent",border:"none",color:"#ff4d4d",fontSize:10,cursor:"pointer"}}>✕</button>}
         </div>)}
@@ -1704,7 +1677,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
       <input value={stratName} onChange={e=>setStratName(e.target.value)} style={inSt}/>
       <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.thresholdLabel}</div>
       <div style={{display:"flex",gap:6,marginBottom:16}}>
-        {[4,5,6,7,8].map(n=><button key={n} onClick={()=>setThreshold(n)} className="btn" style={{flex:1,padding:8,borderRadius:8,fontSize:13,fontWeight:700,fontFamily:MONO,background:threshold===n?`${neonColor}33`:"#131320",border:`1px solid ${threshold===n?neonColor:`${neonColor}22`}`,color:threshold===n?neonColor:"#ffffffbb"}}>{n}</button>)}
+        {[4,5,6,7,8].map(n=><button key={n} onClick={()=>setThreshold(n)} className="btn" style={{flex:1,padding:8,borderRadius:8,fontSize:13,fontWeight:700,fontFamily:MONO,background:threshold===n?`${neonColor}33`:"#131318",border:`1px solid ${threshold===n?neonColor:`${neonColor}22`}`,color:threshold===n?neonColor:"#ffffffbb"}}>{n}</button>)}
       </div>
       <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.criteriaLabel} ({items.length})</div>
       {items.map((item,i)=>{
@@ -1716,12 +1689,12 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
           </div>;
         })}
       <button onClick={()=>setItems([...items,""])} style={{width:"100%",background:"transparent",border:`1px dashed ${neon}35`,color:"#ffffff44",borderRadius:8,padding:10,fontSize:12,cursor:"pointer",fontFamily:MONO,marginBottom:16}}>{t.addCriteria}</button>
-      <div style={{background:"linear-gradient(145deg,#1d1d2e,#131320)",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.1),inset 0 -1px 0 rgba(0,0,0,0.35),0 8px 32px rgba(0,0,0,0.65)",border:"1px solid #ffffff0e",borderRadius:18,padding:14,marginBottom:16}}>
+      <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:16}}>
         <Toggle label={t.calendarToggle} val={calendarOn} set={setCalendarOn}/>
         <Toggle label={t.enableNotif} val={notifOn} set={setNotifOn}/>
       </div>
       {/* Phase en cours — nom + capital + devise + type + drawdown + objectif */}
-    <div style={{background:"linear-gradient(145deg,#1d1d2e,#131320)",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.1),inset 0 -1px 0 rgba(0,0,0,0.35),0 8px 32px rgba(0,0,0,0.65)",border:"1px solid #ffffff0e",borderRadius:18,padding:14,marginBottom:14}}>
+    <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
       <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:12}}>PHASE EN COURS</div>
       <div style={{marginBottom:10}}>
         <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>{lang==="fr"?"NOM DE LA PHASE":"PHASE NAME"}</div>
@@ -1733,7 +1706,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
         <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>TYPE DE COMPTE</div>
         <div style={{display:"flex",gap:6}}>
           {[["prop","Prop Firm"],["perso","Perso"],["demo","Démo"]].map(([v,l])=>(
-            <button key={v} onClick={()=>setAccountType(v)} className="btn" style={{flex:1,padding:"9px 0",background:accountType===v?`${neonColor}18`:"#131320",border:`1px solid ${accountType===v?neonColor:`${neonColor}22`}`,borderRadius:8,fontSize:10,fontWeight:700,color:accountType===v?neonColor:"#ffffffaa",fontFamily:MONO}}>{l}</button>
+            <button key={v} onClick={()=>setAccountType(v)} className="btn" style={{flex:1,padding:"9px 0",background:accountType===v?`${neonColor}18`:"#131318",border:`1px solid ${accountType===v?neonColor:`${neonColor}22`}`,borderRadius:8,fontSize:10,fontWeight:700,color:accountType===v?neonColor:"#ffffffaa",fontFamily:MONO}}>{l}</button>
           ))}
         </div>
       </div>
@@ -1746,7 +1719,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
           <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>DEVISE</div>
           <div style={{display:"flex",flexDirection:"column",gap:3}}>
             {["€","$","£","CHF"].map(d=>(
-              <button key={d} onClick={()=>setDevise(d)} className="btn" style={{padding:"5px 0",background:devise===d?`${neonColor}18`:"#131320",border:`1px solid ${devise===d?neonColor:`${neonColor}22`}`,borderRadius:6,fontSize:11,fontWeight:800,color:devise===d?neonColor:"#ffffffaa",fontFamily:MONO}}>{d}</button>
+              <button key={d} onClick={()=>setDevise(d)} className="btn" style={{padding:"5px 0",background:devise===d?`${neonColor}18`:"#131318",border:`1px solid ${devise===d?neonColor:`${neonColor}22`}`,borderRadius:6,fontSize:11,fontWeight:800,color:devise===d?neonColor:"#ffffffaa",fontFamily:MONO}}>{d}</button>
             ))}
           </div>
         </div>
@@ -2019,7 +1992,7 @@ function ExportModal({trades,onClose,lang,neon}) {
   const wins=trades.filter(x=>x.result==="WIN").length;
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
-      <div className="slide-up" style={{background:"#131320",border:`1px solid ${neon}35`,borderRadius:"16px 16px 0 0",width:"100%",maxWidth:480,padding:20}}>
+      <div className="slide-up" style={{background:"#131318",border:`1px solid ${neon}35`,borderRadius:"16px 16px 0 0",width:"100%",maxWidth:480,padding:20}}>
         <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}>
           <div style={{fontSize:13,fontWeight:700,color:neon,fontFamily:MONO}}>{t.exportTitle}</div>
           <button onClick={onClose} style={{background:"transparent",border:"none",color:"#ffffffaa",fontSize:18,cursor:"pointer"}}>✕</button>
@@ -2278,6 +2251,12 @@ export default function App() {
   return (
     <div style={{display:"flex",background:"#0c0c12",minHeight:"100vh",color:"#ffffff",fontFamily:MONO}}>
       <CSS neon={neon}/>
+      {/* Aurora background */}
+      <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:0,overflow:"hidden"}}>
+        <div style={{position:"absolute",width:"65%",height:"65%",top:"-20%",left:"-10%",borderRadius:"50%",background:`radial-gradient(ellipse,${neon}0d 0%,transparent 65%)`,filter:"blur(50px)",animation:"auA 14s ease-in-out infinite alternate"}}/>
+        <div style={{position:"absolute",width:"55%",height:"55%",bottom:"-20%",right:"-10%",borderRadius:"50%",background:"radial-gradient(ellipse,rgba(0,150,255,0.08) 0%,transparent 65%)",filter:"blur(60px)",animation:"auB 18s ease-in-out infinite alternate"}}/>
+        <div style={{position:"absolute",width:"40%",height:"40%",top:"35%",left:"35%",borderRadius:"50%",background:"radial-gradient(ellipse,rgba(100,0,255,0.05) 0%,transparent 65%)",filter:"blur(70px)",animation:"auC 22s ease-in-out infinite alternate"}}/>
+      </div>
       {notif&&<NotifCard notif={notif} onClose={()=>setNotif(null)}/>}
       <InAppBanner notifs={inAppNotifs} onDismiss={()=>setInAppNotifs(n=>n.slice(1))} neon={neon}/>
       {showImport&&<ImportCSVModal onImport={imported=>{const merged=[...imported,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);setTrades(merged);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{trades:merged});}} onClose={()=>setShowImport(false)} lang={lang} neon={neon} config={config}/>}
@@ -2305,7 +2284,7 @@ export default function App() {
           {total>0&&<div style={{padding:"12px 18px",borderBottom:"1px solid #ffffff08"}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
               <div><div style={{fontSize:7,color:"#ffffff44",letterSpacing:2,marginBottom:4}}>WIN RATE</div><div style={{fontSize:20,fontWeight:900,color:"#ffffff",textShadow:`0 0 20px ${neon}55`}}>{winRate}%</div></div>
-              <div style={{textAlign:"right"}}><div style={{fontSize:7,color:"#ffffff44",letterSpacing:2,marginBottom:4}}>P&L</div><div style={{fontSize:20,fontWeight:900,color:totalPnl>=0?neon:"#ff4d4d"}}>{fmtPct(totalPnl)}</div></div>
+              <div style={{textAlign:"right"}}><div style={{fontSize:7,color:"#ffffff44",letterSpacing:2,marginBottom:4}}>P&L</div><div style={{fontSize:20,fontWeight:900,color:"#ffffff"}}>{fmtPct(totalPnl)}</div></div>
             </div>
             <div style={{fontSize:9,color:"#ffffff33"}}>{wins}W · {losses}L · {total} {lang==="fr"?"trades":"trades"}</div>
           </div>}
@@ -2376,7 +2355,7 @@ export default function App() {
             <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
               <div style={{flex:1,display:"flex",gap:4,background:"#0f0f14",borderRadius:8,padding:3}}>
                 {[["phase",t.phaseEnCours],["all",t.toutHistorique]].map(([m,l])=>(
-                  <button key={m} onClick={()=>setStatsMode(m)} className="btn" style={{flex:1,padding:"7px 0",borderRadius:6,fontSize:10,fontWeight:700,fontFamily:MONO,background:statsMode===m?neon:"transparent",color:statsMode===m?"#000000":"#ffffffaa",border:"none",transition:"all 0.2s"}}>{l}</button>
+                  <button key={m} onClick={()=>setStatsMode(m)} className="btn" style={{flex:1,padding:"7px 0",borderRadius:6,fontSize:10,fontWeight:700,fontFamily:MONO,background:statsMode===m?neon:"transparent",color:statsMode===m?"#131318":"#ffffffaa",border:"none",transition:"all 0.2s"}}>{l}</button>
                 ))}
               </div>
               <button onClick={()=>setShowNewPhase(true)} className="btn" style={{padding:"7px 10px",background:`${neon}10`,border:`1px solid ${neon}30`,borderRadius:8,fontSize:9,fontWeight:700,color:neon,whiteSpace:"nowrap",flexShrink:0}}>▶ Phase</button>
@@ -2384,12 +2363,12 @@ export default function App() {
           )}
           {total>0&&(
             <div style={{display:isDesktop?"grid":"flex",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:12}}>
-              <div style={{flex:1,background:"linear-gradient(145deg,#1d1d2e,#131320)",border:`1px solid ${neon}22`,borderRadius:14,padding:"14px 16px",boxShadow:`0 4px 24px ${winRate>=50?neon+"18":"#ff4d4d18"}, inset 0 1px 0 ${neon}15`}}>
+              <div style={{flex:1,background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:14,padding:"14px 16px",boxShadow:`0 4px 24px ${winRate>=50?neon+"18":"#ff4d4d18"}, inset 0 1px 0 ${neon}15`}}>
                 <div style={{fontSize:9,color:"#ffffffbb",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>{t.winRate}</div>
                 <div style={{fontSize:32,fontWeight:900,fontFamily:MONO,lineHeight:1,textShadow:`0 0 32px ${winRate>=50?neon+"aa":"#ff4d4daa"}`,color:"#ffffff"}}>{winRate}%</div>
                 <div style={{fontSize:10,color:"#ffffff44",marginTop:6}}>{wins}W · {losses}L · {total-wins-losses}BE</div>
               </div>
-              <div style={{flex:1,background:"linear-gradient(145deg,#1d1d2e,#131320)",border:`1px solid ${neon}22`,borderRadius:14,padding:"14px 16px",boxShadow:`0 4px 24px ${totalPnl>=0?neon+"18":"#ff4d4d18"}, inset 0 1px 0 ${neon}15`}}>
+              <div style={{flex:1,background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:14,padding:"14px 16px",boxShadow:`0 4px 24px ${totalPnl>=0?neon+"18":"#ff4d4d18"}, inset 0 1px 0 ${neon}15`}}>
                 <div style={{fontSize:9,color:"#ffffffbb",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>{t.totalPnl}</div>
                 <div style={{fontSize:32,fontWeight:900,fontFamily:MONO,lineHeight:1,textShadow:`0 0 32px ${totalPnl>=0?neon+"aa":"#ff4d4daa"}`,color:"#ffffff"}}>{fmtPct(totalPnl)}</div>
                 {config.capital&&<div style={{fontSize:11,fontWeight:700,color:totalPnl>=0?neon:"#ff4d4d",marginTop:4}}>{totalPnl>=0?"+":""}{Math.round(parseFloat(config.capital)*totalPnl/100)}{config.devise||"€"}</div>}
@@ -2420,7 +2399,7 @@ export default function App() {
             </div>
           )}
           {trades.length>0&&(
-            <div className="row" onClick={()=>setDetailTrade(trades[0])} className="card" style={{borderLeft:`4px solid ${rc(trades[0].result,neon)}`,borderRadius:18,padding:14,marginBottom:12}}>
+            <div className="row" onClick={()=>setDetailTrade(trades[0])} style={{background:`${rc(trades[0].result,neon)}0a`,border:`1px solid ${rc(trades[0].result,neon)}35`,borderRadius:12,padding:14,marginBottom:12,borderLeft:`3px solid ${rc(trades[0].result,neon)}`,boxShadow:`0 4px 20px ${rc(trades[0].result,neon)}14`}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                 <div style={{flex:1}}>
                   <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>{t.lastTrade} · {trades[0].date}{trades[0].time?" · "+trades[0].time:""}</div>
@@ -2470,12 +2449,12 @@ export default function App() {
               <span style={{fontSize:9,color:"#ffffff44"}}>{t.optional}</span>
             </button>
             {checkinOpen&&(
-              <div style={{background:"#131320",border:`1px solid ${neon}26`,borderTop:"none",borderRadius:"0 0 10px 10px",padding:14}}>
+              <div style={{background:"#131318",border:`1px solid ${neon}26`,borderTop:"none",borderRadius:"0 0 10px 10px",padding:14}}>
                 <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.humeurLabel}</div>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
                   {humeurPills.map(h=>(
                     <button key={h} onClick={()=>setForm(f=>({...f,checkin:{...f.checkin,humeur:f.checkin.humeur===h?"":h}}))} className="btn"
-                      style={{background:form.checkin.humeur===h?`${neon}18`:"#131320",border:`1px solid ${form.checkin.humeur===h?neon:"#ffffff15"}`,color:form.checkin.humeur===h?"#ffffff":"#ffffffbb",borderRadius:8,padding:"7px 12px",fontSize:11,fontFamily:MONO,fontWeight:form.checkin.humeur===h?700:400}}>{h}</button>
+                      style={{background:form.checkin.humeur===h?`${neon}18`:"#131318",border:`1px solid ${form.checkin.humeur===h?neon:"#ffffff15"}`,color:form.checkin.humeur===h?"#ffffff":"#ffffffbb",borderRadius:8,padding:"7px 12px",fontSize:11,fontFamily:MONO,fontWeight:form.checkin.humeur===h?700:400}}>{h}</button>
                   ))}
                 </div>
                 <input value={humeurPills.includes(form.checkin.humeur)?"":form.checkin.humeur} onChange={e=>setForm(f=>({...f,checkin:{...f.checkin,humeur:e.target.value}}))} placeholder={t.humeurPlaceholder} style={{...inSt,marginBottom:12,fontSize:12}}/>
@@ -2486,7 +2465,7 @@ export default function App() {
                     const bc=isUp?neon:isDown?"#ff4d4d":"#ffffffbb";
                     const activeBg=isUp?`${neon}18`:isDown?"rgba(255,77,77,0.12)":"rgba(255,255,255,0.08)";
                     return <button key={b} onClick={()=>setForm(f=>({...f,checkin:{...f.checkin,biais:f.checkin.biais===b?"":b}}))} className="btn"
-                      style={{flex:1,background:form.checkin.biais===b?activeBg:"#131320",border:`1px solid ${form.checkin.biais===b?bc:"#ffffff12"}`,color:form.checkin.biais===b?bc:"#ffffffbb",borderRadius:8,padding:"9px 0",fontSize:12,fontFamily:MONO,fontWeight:700}}>{b}</button>;
+                      style={{flex:1,background:form.checkin.biais===b?activeBg:"#131318",border:`1px solid ${form.checkin.biais===b?bc:"#ffffff12"}`,color:form.checkin.biais===b?bc:"#ffffffbb",borderRadius:8,padding:"9px 0",fontSize:12,fontFamily:MONO,fontWeight:700}}>{b}</button>;
                   })}
                 </div>
               </div>
@@ -2498,8 +2477,8 @@ export default function App() {
             <div style={{fontSize:9,color:"#ffffffaa",marginTop:5}}>{t.entryTime}</div>
           </div>
           <div style={{display:"flex",gap:8,marginBottom:10}}>
-            <select value={form.asset} onChange={e=>setForm({...form,asset:e.target.value})} style={{flex:2,background:"#131320",border:`1px solid ${neon}35`,borderRadius:8,color:"#ffffff",padding:"12px",fontSize:12,fontFamily:MONO,outline:"none"}}>{allAssets.map(a=><option key={a}>{a}</option>)}</select>
-            {["BUY","SELL"].map(d=><button key={d} onClick={()=>setForm({...form,direction:d})} className="btn" style={{flex:1,padding:10,background:form.direction===d?(d==="BUY"?`${neon}33`:"rgba(255,77,77,0.2)"):"#131320",border:`1px solid ${form.direction===d?(d==="BUY"?neon:"#ff4d4d"):`${neon}35`}`,color:form.direction===d?(d==="BUY"?neon:"#ff4d4d"):"#ffffff44",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO}}>{d}</button>)}
+            <select value={form.asset} onChange={e=>setForm({...form,asset:e.target.value})} style={{flex:2,background:"#131318",border:`1px solid ${neon}35`,borderRadius:8,color:"#ffffff",padding:"12px",fontSize:12,fontFamily:MONO,outline:"none"}}>{allAssets.map(a=><option key={a}>{a}</option>)}</select>
+            {["BUY","SELL"].map(d=><button key={d} onClick={()=>setForm({...form,direction:d})} className="btn" style={{flex:1,padding:10,background:form.direction===d?(d==="BUY"?`${neon}33`:"rgba(255,77,77,0.2)"):"#131318",border:`1px solid ${form.direction===d?(d==="BUY"?neon:"#ff4d4d"):`${neon}35`}`,color:form.direction===d?(d==="BUY"?neon:"#ff4d4d"):"#ffffff44",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO}}>{d}</button>)}
           </div>
           {/* Timeframe */}
           <div style={{marginBottom:10}}>
@@ -2507,7 +2486,7 @@ export default function App() {
             <div style={{display:"flex",gap:4}}>
               {["M1","M5","M15","H1","H4","D1"].map(tf=>(
                 <button key={tf} onClick={()=>{setForm({...form,timeframe:tf});const nc={...config,lastTimeframe:tf};setConfig(nc);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:nc});}} className="btn"
-                  style={{flex:1,padding:"7px 0",background:form.timeframe===tf?`${neon}18`:"#131320",border:`1px solid ${form.timeframe===tf?neon:"#ffffff0d"}`,borderRadius:7,fontSize:9,fontWeight:700,color:form.timeframe===tf?neon:"#ffffffbb",fontFamily:MONO}}>
+                  style={{flex:1,padding:"7px 0",background:form.timeframe===tf?`${neon}18`:"#131318",border:`1px solid ${form.timeframe===tf?neon:"#ffffff0d"}`,borderRadius:7,fontSize:9,fontWeight:700,color:form.timeframe===tf?neon:"#ffffffbb",fontFamily:MONO}}>
                   {tf}
                 </button>
               ))}
@@ -2519,7 +2498,7 @@ export default function App() {
               <div style={{width:16,height:16,borderRadius:"50%",background:(form.isRevenge||isRevengeNow)?"#ff4d4d":"#ffffffaa",position:"absolute",top:3,left:(form.isRevenge||isRevengeNow)?24:4,transition:"all 0.2s"}}/>
             </button>
           </div>
-          <div style={{background:"#131320",border:`1px solid ${neon}26`,borderRadius:10,padding:14,marginBottom:10}}>
+          <div style={{background:"#131318",border:`1px solid ${neon}26`,borderRadius:10,padding:14,marginBottom:10}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
               <div><div style={{fontSize:9,color:"#ffffff44",letterSpacing:2}}>{t.checklistSetup}</div><div style={{fontSize:10,marginTop:4,color:form.checklist.length>=config.threshold?neon:"#ff4d4d"}}>{form.checklist.length>=config.threshold?t.conform:`⚠ ${config.threshold-form.checklist.length} ${t.missing}`}</div></div>
               <ScoreRing score={form.checklist.length} max={config.items.length} threshold={config.threshold} neon={neon}/>
@@ -2531,24 +2510,24 @@ export default function App() {
               </label>
             ))}
           </div>
-          <div style={{background:"#131320",border:`1px solid ${neon}1a`,borderRadius:10,padding:"12px 14px",marginBottom:10}}>
+          <div style={{background:"#131318",border:`1px solid ${neon}1a`,borderRadius:10,padding:"12px 14px",marginBottom:10}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
               <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2}}>{t.rejectQuality} <span style={{color:"#ffffffaa"}}>{t.optional}</span></div>
               {form.rejetScore>0&&<span style={{fontSize:15,fontWeight:800,color:form.rejetScore>=8?neon:form.rejetScore>=5?"#f0b429":"#ff4d4d",fontFamily:MONO}}>{form.rejetScore}/10</span>}
             </div>
             <div style={{display:"flex",gap:3}}>
               {[1,2,3,4,5,6,7,8,9,10].map(n=>(
-                <button key={n} onClick={()=>setForm({...form,rejetScore:form.rejetScore===n?0:n})} className="btn" style={{flex:1,padding:"6px 0",borderRadius:5,fontSize:11,fontWeight:700,fontFamily:MONO,background:form.rejetScore>=n?(n>=8?`${neon}33`:n>=5?"rgba(240,180,41,0.2)":"rgba(255,77,77,0.2)"):"#131320",border:`1px solid ${form.rejetScore>=n?(n>=8?neon:n>=5?"#f0b429":"#ff4d4d"):"#ffffff12"}`,color:form.rejetScore>=n?(n>=8?neon:n>=5?"#f0b429":"#ff4d4d"):"#ffffffbb"}}>{n}</button>
+                <button key={n} onClick={()=>setForm({...form,rejetScore:form.rejetScore===n?0:n})} className="btn" style={{flex:1,padding:"6px 0",borderRadius:5,fontSize:11,fontWeight:700,fontFamily:MONO,background:form.rejetScore>=n?(n>=8?`${neon}33`:n>=5?"rgba(240,180,41,0.2)":"rgba(255,77,77,0.2)"):"#131318",border:`1px solid ${form.rejetScore>=n?(n>=8?neon:n>=5?"#f0b429":"#ff4d4d"):"#ffffff12"}`,color:form.rejetScore>=n?(n>=8?neon:n>=5?"#f0b429":"#ff4d4d"):"#ffffffbb"}}>{n}</button>
               ))}
             </div>
           </div>
-          <div style={{display:"flex",gap:8,marginBottom:10}}>{["WIN","LOSS","BE"].map(r=><button key={r} onClick={()=>setForm({...form,result:r,slDirection:r!=="LOSS"?"":form.slDirection})} className="btn" style={{flex:1,background:form.result===r?`${rc(r,neon)}22`:"#131320",border:`1px solid ${form.result===r?rc(r,neon):`${neon}26`}`,color:form.result===r?rc(r,neon):"#ffffffbb",borderRadius:8,padding:10,fontSize:12,fontWeight:700,fontFamily:MONO}}>{r}</button>)}</div>
+          <div style={{display:"flex",gap:8,marginBottom:10}}>{["WIN","LOSS","BE"].map(r=><button key={r} onClick={()=>setForm({...form,result:r,slDirection:r!=="LOSS"?"":form.slDirection})} className="btn" style={{flex:1,background:form.result===r?`${rc(r,neon)}22`:"#131318",border:`1px solid ${form.result===r?rc(r,neon):`${neon}26`}`,color:form.result===r?rc(r,neon):"#ffffffbb",borderRadius:8,padding:10,fontSize:12,fontWeight:700,fontFamily:MONO}}>{r}</button>)}</div>
           {form.result==="LOSS"&&(
             <div style={{background:"rgba(255,77,77,0.06)",border:"1px solid rgba(255,77,77,0.15)",borderRadius:8,padding:"10px 12px",marginBottom:10}}>
               <div style={{fontSize:9,color:"#ff4d4d",letterSpacing:2,marginBottom:8}}>{t.slDirectionLabel} <span style={{color:"#ffffffaa"}}>{t.optional}</span></div>
               <div style={{display:"flex",gap:8}}>
                 {[["with",t.slWith,neon],["against",t.slAgainst,"#ff4d4d"]].map(([v,l,c])=>(
-                  <button key={v} onClick={()=>setForm({...form,slDirection:form.slDirection===v?"":v})} className="btn" style={{flex:1,padding:"8px 0",borderRadius:7,fontSize:11,fontFamily:MONO,fontWeight:700,background:form.slDirection===v?`${c}22`:"#131320",border:`1px solid ${form.slDirection===v?c:`${c}26`}`,color:form.slDirection===v?c:"#ffffffaa"}}>{l}</button>
+                  <button key={v} onClick={()=>setForm({...form,slDirection:form.slDirection===v?"":v})} className="btn" style={{flex:1,padding:"8px 0",borderRadius:7,fontSize:11,fontFamily:MONO,fontWeight:700,background:form.slDirection===v?`${c}22`:"#131318",border:`1px solid ${form.slDirection===v?c:`${c}26`}`,color:form.slDirection===v?c:"#ffffffaa"}}>{l}</button>
                 ))}
               </div>
             </div>
@@ -2557,14 +2536,14 @@ export default function App() {
             <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.pnl}</div>
             <div style={{display:"flex",gap:4,alignItems:"center"}}>
               {PNL_PRESETS.map(v=>(
-                <button key={v} onClick={()=>setForm({...form,pnlPreset:v,pnlManual:""})} className="btn" style={{padding:"8px 0",borderRadius:6,fontSize:11,fontWeight:700,fontFamily:MONO,flex:1,background:form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?`${neon}33`:parseFloat(v)<0?"rgba(255,77,77,0.2)":"rgba(240,180,41,0.2)"):"#131320",border:`1px solid ${form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?neon:parseFloat(v)<0?"#ff4d4d":"#f0b429"):`${neon}14`}`,color:form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?neon:parseFloat(v)<0?"#ff4d4d":"#f0b429"):"#ffffffaa"}}>{v}%</button>
+                <button key={v} onClick={()=>setForm({...form,pnlPreset:v,pnlManual:""})} className="btn" style={{padding:"8px 0",borderRadius:6,fontSize:11,fontWeight:700,fontFamily:MONO,flex:1,background:form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?`${neon}33`:parseFloat(v)<0?"rgba(255,77,77,0.2)":"rgba(240,180,41,0.2)"):"#131318",border:`1px solid ${form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?neon:parseFloat(v)<0?"#ff4d4d":"#f0b429"):`${neon}14`}`,color:form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?neon:parseFloat(v)<0?"#ff4d4d":"#f0b429"):"#ffffffaa"}}>{v}%</button>
               ))}
-              <input type="number" step="0.1" placeholder={t.manualPnl} value={form.pnlManual} onChange={e=>setForm({...form,pnlManual:e.target.value,pnlPreset:""})} style={{width:52,background:form.pnlManual?"#131320":"#131320",border:`1px solid ${form.pnlManual?`${neon}66`:`${neon}14`}`,borderRadius:6,color:form.pnlManual?(parseFloat(form.pnlManual)>=0?neon:"#ff4d4d"):"#ffffffaa",padding:"8px 4px",fontSize:10,fontFamily:MONO,outline:"none",textAlign:"center",flexShrink:0}}/>
+              <input type="number" step="0.1" placeholder={t.manualPnl} value={form.pnlManual} onChange={e=>setForm({...form,pnlManual:e.target.value,pnlPreset:""})} style={{width:52,background:form.pnlManual?"#131318":"#131318",border:`1px solid ${form.pnlManual?`${neon}66`:`${neon}14`}`,borderRadius:6,color:form.pnlManual?(parseFloat(form.pnlManual)>=0?neon:"#ff4d4d"):"#ffffffaa",padding:"8px 4px",fontSize:10,fontFamily:MONO,outline:"none",textAlign:"center",flexShrink:0}}/>
             </div>
             {pnlVal!==""&&<div style={{fontSize:11,color:parseFloat(pnlVal)>=0?neon:"#ff4d4d",fontFamily:MONO,fontWeight:700,marginTop:5,textAlign:"right"}}>{fmtPct(parseFloat(pnlVal))}</div>}
           </div>
           {pnlIncoherent&&<div style={{fontSize:10,color:"#f0b429",background:"rgba(240,180,41,0.08)",border:"1px solid rgba(240,180,41,0.2)",borderRadius:6,padding:"6px 10px",marginBottom:10}}>⚠ P&L {t.inconsistent} {form.result}</div>}
-          <textarea placeholder={t.notesPlaceholder} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} rows={3} style={{width:"100%",background:"#131320",border:`1px solid ${neon}26`,borderRadius:8,color:"#ffffff",padding:"12px",fontSize:12,fontFamily:MONO,resize:"none",marginBottom:10,outline:"none"}}/>
+          <textarea placeholder={t.notesPlaceholder} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} rows={3} style={{width:"100%",background:"#131318",border:`1px solid ${neon}26`,borderRadius:8,color:"#ffffff",padding:"12px",fontSize:12,fontFamily:MONO,resize:"none",marginBottom:10,outline:"none"}}/>
           <div style={{marginBottom:16}}>
             <input type="file" ref={fileRef} accept="image/*" onChange={e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setForm(fm=>({...fm,screenshot:ev.target.result}));r.readAsDataURL(f);}}/>
             <button onClick={()=>fileRef.current&&fileRef.current.click()} style={{width:"100%",display:"flex",alignItems:"center",gap:8,cursor:"pointer",padding:"8px 12px",borderRadius:8,border:`1px dashed ${neon}26`,color:form.screenshot?neon:"#ffffffaa",fontSize:11,fontFamily:MONO,background:"transparent"}}>{form.screenshot?t.screenshotAdded:t.addScreenshot}</button>
@@ -2592,7 +2571,7 @@ export default function App() {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffffaa" strokeWidth="2" strokeLinecap="round" style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}} aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input value={histSearch} onChange={e=>setHistSearch(e.target.value)}
               placeholder={lang==="fr"?"Rechercher par actif, date, notes…":"Search by asset, date, notes…"}
-              style={{width:"100%",background:"#131320",border:`1px solid ${histSearch?neon:`${neon}22`}`,borderRadius:8,color:"#ffffff",padding:"9px 32px 9px 32px",fontSize:11,fontFamily:MONO,outline:"none"}}/>
+              style={{width:"100%",background:"#131318",border:`1px solid ${histSearch?neon:`${neon}22`}`,borderRadius:8,color:"#ffffff",padding:"9px 32px 9px 32px",fontSize:11,fontFamily:MONO,outline:"none"}}/>
             {histSearch&&<button onClick={()=>setHistSearch("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"transparent",border:"none",color:`${neon}55`,cursor:"pointer",fontSize:14}}>✕</button>}
           </div>
           {trades.length>0&&<>
@@ -2630,7 +2609,7 @@ export default function App() {
                 els.push(<div key={x.id} style={{background:"rgba(90,90,90,0.06)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"12px 14px",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:16,color:"#ffffff66"}}>⊘</span><div><div style={{fontSize:12,color:"#ffffffaa",fontFamily:MONO,fontWeight:700}}>{t.noTradeToday}</div><div style={{fontSize:10,color:"#ffffffaa",marginTop:2}}>{x.date}{x.reason?" · "+x.reason:""}</div></div></div><button onClick={()=>{const upd=noTrades.filter(n=>n.id!==x.id);setNoTrades(upd);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{noTrades:upd});}} style={{background:"transparent",border:"none",color:"#ffffff55",fontSize:12,cursor:"pointer"}}>✕</button></div>);
               } else {
                 els.push(
-                  <div key={x.id} className="row" onClick={()=>setDetailTrade(x)} style={{background:"linear-gradient(145deg,#1d1d2e,#131320)",border:"1px solid #ffffff0a",borderRadius:14,padding:14,marginBottom:10,borderLeft:`3px solid ${rc(x.result,neon)}`}}>
+                  <div key={x.id} className="row" onClick={()=>setDetailTrade(x)} style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0a",borderRadius:14,padding:14,marginBottom:10,borderLeft:`3px solid ${rc(x.result,neon)}`}}>
                     <div style={{display:"flex",justifyContent:"space-between"}}>
                       <div><div style={{fontSize:13,fontWeight:700,color:"#ffffff"}}>{x.asset} · {x.direction}{x.timeframe&&<span style={{fontSize:9,color:"#ffffff44",marginLeft:6,background:"#ffffff08",padding:"2px 6px",borderRadius:4,fontWeight:400}}>{x.timeframe}</span>}</div><div style={{fontSize:10,color:"#ffffff66",marginTop:3}}>{x.date}{x.time?" · "+x.time:""}</div></div>
                       <div style={{display:"flex",gap:8,alignItems:"center"}}>
@@ -2721,13 +2700,13 @@ function NewPhaseModal({onConfirm,onClose,lang,neon,phases,config}){
 
         {/* Nom */}
         <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6}}>NOM DE LA PHASE</div>
-        <input value={name} onChange={e=>setName(e.target.value)} style={{width:"100%",background:"#131320",border:`1px solid ${neon}33`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO,marginBottom:14,outline:"none"}}/>
+        <input value={name} onChange={e=>setName(e.target.value)} style={{width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO,marginBottom:14,outline:"none"}}/>
 
         {/* Type */}
         <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>TYPE DE COMPTE</div>
         <div style={{display:"flex",gap:6,marginBottom:14}}>
           {[["prop","Prop Firm"],["perso","Perso"],["demo","Démo"]].map(([v,l])=>(
-            <button key={v} onClick={()=>setAccountType(v)} style={{flex:1,padding:"10px 0",background:accountType===v?`${neon}18`:"#131320",border:`1px solid ${accountType===v?neon:"#ffffff0d"}`,borderRadius:10,fontSize:10,fontWeight:700,color:accountType===v?neon:"#ffffff33",fontFamily:MONO,cursor:"pointer"}}>
+            <button key={v} onClick={()=>setAccountType(v)} style={{flex:1,padding:"10px 0",background:accountType===v?`${neon}18`:"#131318",border:`1px solid ${accountType===v?neon:"#ffffff0d"}`,borderRadius:10,fontSize:10,fontWeight:700,color:accountType===v?neon:"#ffffff33",fontFamily:MONO,cursor:"pointer"}}>
               {l}
             </button>
           ))}
@@ -2737,13 +2716,13 @@ function NewPhaseModal({onConfirm,onClose,lang,neon,phases,config}){
         <div style={{display:"flex",gap:10,marginBottom:14}}>
           <div style={{flex:2}}>
             <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6}}>CAPITAL</div>
-            <input type="number" value={capital} onChange={e=>setCapital(e.target.value)} placeholder="10000" style={{width:"100%",background:"#131320",border:`1px solid ${neon}33`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO,outline:"none"}}/>
+            <input type="number" value={capital} onChange={e=>setCapital(e.target.value)} placeholder="10000" style={{width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO,outline:"none"}}/>
           </div>
           <div style={{flex:1}}>
             <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6}}>DEVISE</div>
             <div style={{display:"flex",flexDirection:"column",gap:4}}>
               {["€","$","£","CHF"].map(d=>(
-                <button key={d} onClick={()=>setDevise(d)} style={{padding:"5px 0",background:devise===d?`${neon}18`:"#131320",border:`1px solid ${devise===d?neon:"#ffffff0d"}`,borderRadius:7,fontSize:12,fontWeight:800,color:devise===d?neon:"#ffffff30",fontFamily:MONO,cursor:"pointer"}}>
+                <button key={d} onClick={()=>setDevise(d)} style={{padding:"5px 0",background:devise===d?`${neon}18`:"#131318",border:`1px solid ${devise===d?neon:"#ffffff0d"}`,borderRadius:7,fontSize:12,fontWeight:800,color:devise===d?neon:"#ffffff30",fontFamily:MONO,cursor:"pointer"}}>
                   {d}
                 </button>
               ))}
@@ -2755,11 +2734,11 @@ function NewPhaseModal({onConfirm,onClose,lang,neon,phases,config}){
         <div style={{display:"flex",gap:10,marginBottom:22}}>
           <div style={{flex:1}}>
             <div style={{fontSize:8,color:"#ff4d4d88",letterSpacing:2,marginBottom:6}}>DRAWDOWN MAX %</div>
-            <input type="number" value={drawdown} onChange={e=>setDrawdown(e.target.value)} placeholder="5" style={{width:"100%",background:"#131320",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.07),0 4px 20px rgba(0,0,0,0.6)",border:"1px solid #ff4d4d33",borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO,outline:"none"}}/>
+            <input type="number" value={drawdown} onChange={e=>setDrawdown(e.target.value)} placeholder="5" style={{width:"100%",background:"#131318",border:"1px solid #ff4d4d33",borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO,outline:"none"}}/>
           </div>
           <div style={{flex:1}}>
             <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6}}>OBJECTIF P&L %</div>
-            <input type="number" value={obj} onChange={e=>setObj(e.target.value)} placeholder="+10" style={{width:"100%",background:"#131320",border:`1px solid ${neon}33`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO,outline:"none"}}/>
+            <input type="number" value={obj} onChange={e=>setObj(e.target.value)} placeholder="+10" style={{width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO,outline:"none"}}/>
           </div>
         </div>
 
