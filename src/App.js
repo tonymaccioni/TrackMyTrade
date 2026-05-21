@@ -2181,7 +2181,7 @@ export default function App() {
               {PNL_PRESETS.map(p=>(
                 <button key={p} onClick={()=>setForm(f=>({...f,pnlPreset:p,pnlManual:""}))} className="btn" style={{fontSize:11,padding:"7px 12px",borderRadius:8,fontFamily:MONO,fontWeight:700,background:form.pnlPreset===p?`${parseFloat(p)>=0?neon:"#ff4d4d"}26`:"transparent",border:`1px solid ${form.pnlPreset===p?(parseFloat(p)>=0?neon:"#ff4d4d"):"rgba(255,255,255,0.08)"}`,color:form.pnlPreset===p?(parseFloat(p)>=0?neon:"#ff4d4d"):"#ffffffaa"}}>{p}%</button>
               ))}
-              <button onClick={()=>setForm(f=>({...f,pnlPreset:"",pnlManual:f.pnlManual||""}))} className="btn" style={{fontSize:11,padding:"7px 12px",borderRadius:8,fontFamily:MONO,background:form.pnlPreset===""&&form.pnlManual!==""?"rgba(255,255,255,0.08)":"transparent",border:`1px solid ${form.pnlPreset===""&&form.pnlManual!=="?"rgba(255,255,255,0.2)":"rgba(255,255,255,0.06)"}`,color:"#ffffffaa"}}>{t.manualPnl}</button>
+              <button onClick={()=>setForm(f=>({...f,pnlPreset:"",pnlManual:f.pnlManual||""}))} className="btn" style={{fontSize:11,padding:"7px 12px",borderRadius:8,fontFamily:MONO,background:form.pnlPreset===""&&form.pnlManual!==""?"rgba(255,255,255,0.08)":"transparent",border:"1px solid "+(form.pnlPreset===""&&form.pnlManual!==""?"rgba(255,255,255,0.2)":"rgba(255,255,255,0.06)"),color:"#ffffffaa"}}>{t.manualPnl}</button>
             </div>
             {(form.pnlPreset===""||form.pnlPreset===undefined)&&<input type="number" value={form.pnlManual||""} onChange={e=>setForm(f=>({...f,pnlManual:e.target.value,pnlPreset:""}))} placeholder="+1.5" style={inSt}/>}
 
