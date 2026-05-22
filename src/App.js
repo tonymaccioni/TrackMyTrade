@@ -2048,36 +2048,7 @@ export default function App() {
   const neonGhost = neon+"14"; // backgrounds subtils
   const neonBg = neon+"0a";    // backgrounds très légers
 
-  // Session restore via Firebase Auth
-  useEffect(()=>{
-    if(!auth) return;
-    const unsub = onAuthStateChanged(auth, async firebaseUser => {
-      if(firebaseUser){
-        const uid = firebaseUser.uid;
-        const email = firebaseUser.email;
-        currentUserRef.current = {email, uid};
-        try { localStorage.setItem("tmt_user", JSON.stringify({email, uid})); } catch(e){}
-        const userData = await loadUserData(uid);
-        if(userData){
-          if(userData.setupDone){
-            if(Array.isArray(userData.trades))setTrades(userData.trades);
-            if(Array.isArray(userData.noTrades))setNoTrades(userData.noTrades);
-            if(Array.isArray(userData.phases))setPhases(userData.phases);
-            if(userData.config&&typeof userData.config==="object")setConfig(c=>({...c,...userData.config}));
-            if(userData.lang)setLang(userData.lang);
-            setPhase("app");
-          } else {
-            setPhase("setup");
-          }
-        } else {
-          // Compte Firebase sans données → setup
-          setPhase("setup");
-        }
-      }
-      // Si pas de firebaseUser → on reste sur splash→login (flow normal)
-    });
-    return () => unsub();
-  },[]);
+  // Pas d'auto-login — on passe toujours par la page connexion
 
   useEffect(()=>{
     const isMonday=new Date().getDay()===1;
