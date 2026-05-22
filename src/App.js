@@ -185,7 +185,7 @@ const CSS = ({neon="#00ff9d"}) => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800;900&family=IBM+Plex+Mono:wght@400;500;700&display=swap');
     *{box-sizing:border-box;margin:0;padding:0}
-    body{background:#07070f}
+    body{background:#0c0c12}
     input,select,textarea{outline:none;font-family:${MONO};font-size:16px}
     input[type=checkbox]{accent-color:${neon};width:16px;height:16px;cursor:pointer}
     input[type=date],input[type=time]{color-scheme:dark}
@@ -193,151 +193,24 @@ const CSS = ({neon="#00ff9d"}) => (
     .btn{transition:all 0.15s;cursor:pointer}
     .btn:hover{opacity:0.85;transform:translateY(-1px)}
     .row{transition:background 0.2s;cursor:pointer}
-    .row:hover{background:rgba(255,255,255,0.04)!important}
+    .row:hover{background:${neon}0a!important}
     ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:${neon}26}
-
-    /* ══════════════════════════════════════════════
-       STYLE GLOBAL 3D RELIEF + REFLET
-       S'applique à TOUS les divs qui ont un fond sombre
-       via la propriété background inline
-       ══════════════════════════════════════════════ */
-
-    /* Tous les divs avec fond sombre = card avec relief */
-    div[style*="background: #131318"],
-    div[style*='background: #131318'],
-    div[style*="background:#131318"],
-    div[style*="background:#1a1a24"],
-    div[style*="background: linear-gradient(145deg, #1a1a24"],
-    div[style*="background:linear-gradient(145deg,#1a1a24"],
-    div[style*="background: #0c0c12"],
-    div[style*="background:#0c0c12"],
-    div[style*="background: #0f0f18"],
-    div[style*="background:#0f0f18"],
-    div[style*="background: #131318"],
-    div[style*="background: rgba(90,90,90,0.06)"],
-    div[style*="background:rgba(90,90,90,0.06)"],
-    div[style*="background: rgba(255,255,255,0.06)"],
-    div[style*="background:rgba(255,255,255,0.06)"],
-    div[style*="background: rgba(0,0,0,0.25)"],
-    div[style*="background:rgba(0,0,0,0.25)"],
-    div[style*="background: #0d1117"],
-    div[style*="background:#0d1117"],
-    div[style*="background: #161b22"],
-    div[style*="background:#161b22"],
-    div[style*="background: #0f0f18"],
-    div[style*="background: rgba(12,12,24"],
-    div[style*="background:rgba(12,12,24"] {
-      background: linear-gradient(145deg, #1e1e2e 0%, #131320 100%) !important;
-      border: 1px solid rgba(255,255,255,0.08) !important;
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.12),
-        inset 0 -1px 0 rgba(0,0,0,0.4),
-        inset 1px 0 0 rgba(255,255,255,0.03),
-        0 8px 32px rgba(0,0,0,0.6),
-        0 2px 8px rgba(0,0,0,0.4) !important;
-      position: relative;
-    }
-
-    /* Reflet diagonal sur tous ces éléments */
-    div[style*="background:#131318"]::before,
-    div[style*="background: #131318"]::before,
-    div[style*="background:linear-gradient(145deg,#1a1a24"]::before,
-    div[style*="background: linear-gradient(145deg, #1a1a24"]::before,
-    div[style*="background:#0c0c12"]::before,
-    div[style*="background: #0c0c12"]::before,
-    div[style*="background:#0f0f18"]::before,
-    div[style*="background: rgba(255,255,255,0.06)"]::before,
-    div[style*="background:rgba(255,255,255,0.06)"]::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      background: linear-gradient(
-        115deg,
-        rgba(255,255,255,0.07) 0%,
-        rgba(255,255,255,0.02) 30%,
-        transparent 50%,
-        rgba(0,0,0,0.05) 80%,
-        rgba(0,0,0,0.12) 100%
-      );
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    /* Ligne de lumière top sur tous ces éléments */
-    div[style*="background:#131318"]::after,
-    div[style*="background: #131318"]::after,
-    div[style*="background:linear-gradient(145deg,#1a1a24"]::after,
-    div[style*="background: linear-gradient(145deg, #1a1a24"]::after,
-    div[style*="background: rgba(255,255,255,0.06)"]::after,
-    div[style*="background:rgba(255,255,255,0.06)"]::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 10%;
-      right: 10%;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.28) 40%, rgba(255,255,255,0.28) 60%, transparent);
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    /* S'assurer que le contenu est au-dessus des pseudo-éléments */
-    div[style*="background:#131318"] > *,
-    div[style*="background: #131318"] > *,
-    div[style*="background:linear-gradient(145deg,#1a1a24"] > *,
-    div[style*="background: linear-gradient(145deg, #1a1a24"] > *,
-    div[style*="background: rgba(255,255,255,0.06)"] > *,
-    div[style*="background:rgba(255,255,255,0.06)"] > * {
-      position: relative;
-      z-index: 1;
-    }
-
-    /* Hover lift sur les cards interactives */
-    div[style*="background:#131318"].row:hover,
-    div[style*="background:linear-gradient(145deg,#1a1a24"].row:hover {
-      transform: translateY(-2px);
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.18),
-        inset 0 -1px 0 rgba(0,0,0,0.5),
-        0 16px 48px rgba(0,0,0,0.75),
-        0 4px 12px rgba(0,0,0,0.5) !important;
-    }
-
-    /* Inputs avec fond sombre */
-    input[style*="background:rgba(0,0,0"],
-    input[style*="background: rgba(0,0,0"],
-    textarea[style*="background:#131318"],
-    select[style*="background:#131318"] {
-      background: linear-gradient(145deg, #1a1a2c, #111118) !important;
-      border: 1px solid rgba(255,255,255,0.1) !important;
-      box-shadow: inset 0 1px 4px rgba(0,0,0,0.4), inset 0 -1px 0 rgba(255,255,255,0.04) !important;
-    }
-
-    /* Boutons principaux néon */
-    button[style*="background:"][style*="neon"],
-    button[style*="background: "][style*="neon"] {
-      box-shadow: 0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15) !important;
-    }
-
-    /* Modales (slide-up) */
-    .slide-up {
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.1),
-        0 -8px 40px rgba(0,0,0,0.8),
-        0 24px 80px rgba(0,0,0,0.9) !important;
-    }
-
-    /* ══ AURORA ══ */
-    @keyframes auA{from{transform:translate(0,0)}to{transform:translate(8%,6%)}}
-    @keyframes auB{from{transform:translate(0,0)}to{transform:translate(-7%,-5%)}}
-    @keyframes auC{from{transform:translate(0,0)}to{transform:translate(-5%,8%)}}
-
-    /* ══ AUTRES ANIMATIONS ══ */
     @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
     @keyframes fadeIn{from{opacity:0}to{opacity:1}}
     @keyframes pulse{0%,100%{opacity:1;text-shadow:0 0 8px ${neon}66}50%{opacity:0.85;text-shadow:0 0 14px ${neon}aa}}
-    @keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes ring{0%,100%{opacity:0.06;transform:scale(1)}50%{opacity:0.16;transform:scale(1.04)}}
+    .fu{animation:fadeUp 0.45s ease both}
+    .fi{animation:fadeIn 0.4s ease both}
+    .glow{animation:pulse 3s ease-in-out infinite}
+    .grid-bg{background-image:linear-gradient(${neon}06 1px,transparent 1px),linear-gradient(90deg,${neon}06 1px,transparent 1px);background-size:32px 32px}
+    .slide-up{animation:slideUp 0.3s ease both}
+    .view-in{animation:fadeIn 0.22s ease both}
+    @keyframes slideFromLeft{0%{opacity:0;transform:translateX(-60px)}65%{transform:translateX(6px)}80%{transform:translateX(-2px)}100%{opacity:1;transform:translateX(0)}}
+    @keyframes slideFromRight{0%{opacity:0;transform:translateX(60px)}65%{transform:translateX(-6px)}80%{transform:translateX(2px)}100%{opacity:1;transform:translateX(0)}}
+    @keyframes p1{0%{opacity:0.2;transform:scale(0.95)}50%{opacity:0.07;transform:scale(1.03)}100%{opacity:0.2;transform:scale(0.95)}}
+    @keyframes p2{0%{opacity:0.25;transform:scale(0.93)}50%{opacity:0.05;transform:scale(1.05)}100%{opacity:0.25;transform:scale(0.93)}}
+    @keyframes fadeInSlow{0%{opacity:0}100%{opacity:1}}
     @keyframes logoBoxGlow{0%,100%{box-shadow:0 0 8px ${neon}22}50%{box-shadow:0 0 20px ${neon}55,0 0 6px ${neon}33}}
     @keyframes dotPulse{0%,40%,100%{width:6px;background:${neon}22;box-shadow:none}50%{width:22px;background:${neon};box-shadow:0 0 12px ${neon}99}}
     @keyframes icoCheck{from{stroke-dashoffset:30}to{stroke-dashoffset:0}}
@@ -354,18 +227,10 @@ const CSS = ({neon="#00ff9d"}) => (
     @keyframes icoDraw{from{stroke-dashoffset:80}to{stroke-dashoffset:0}}
     @keyframes icoHeartbeat{0%,100%{transform:scale(1)}15%{transform:scale(1.25)}30%{transform:scale(1)}45%{transform:scale(1.15)}60%{transform:scale(1)}}
     @keyframes icoDiamond{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
     @keyframes barFill{from{width:0}to{width:var(--bar-w)}}
     @keyframes kpiPop{0%{opacity:0;transform:scale(0.7)}70%{transform:scale(1.08)}100%{opacity:1;transform:scale(1)}}
     @keyframes ring{0%,100%{transform:scale(1);opacity:0.12}50%{transform:scale(1.08);opacity:0.22}}
-    @keyframes slideFromLeft{0%{opacity:0;transform:translateX(-60px)}65%{transform:translateX(6px)}80%{transform:translateX(-2px)}100%{opacity:1;transform:translateX(0)}}
-    @keyframes slideFromRight{0%{opacity:0;transform:translateX(60px)}65%{transform:translateX(-6px)}80%{transform:translateX(2px)}100%{opacity:1;transform:translateX(0)}}
-    @keyframes fadeInSlow{0%{opacity:0}100%{opacity:1}}
-    .slide-up{animation:slideUp 0.28s cubic-bezier(0.34,1.3,0.64,1)}
-    .fu{animation:fadeUp 0.45s ease both}
-    .fi{animation:fadeIn 0.4s ease both}
-    .glow{animation:pulse 3s ease-in-out infinite}
-    .grid-bg{background-image:linear-gradient(${neon}06 1px,transparent 1px),linear-gradient(90deg,${neon}06 1px,transparent 1px);background-size:32px 32px}
-    .view-in{animation:fadeIn 0.22s ease both}
   `}</style>
 );
 
@@ -2188,12 +2053,11 @@ export default function App() {
     try {
       const saved=localStorage.getItem("tmt_user");
       if(saved){
-        const {email,pwd,uid}=JSON.parse(saved);
-        const p = pwd||"";
-        authLogin(email,p).then(userData=>{
+        const {email,uid}=JSON.parse(saved);
+        const resolvedUid = uid || encEmail(email);
+        currentUserRef.current={email, uid:resolvedUid};
+        loadUserData(resolvedUid).then(userData=>{
           if(userData){
-            const resolvedUid = userData._uid || uid || encEmail(email);
-            currentUserRef.current={email, uid:resolvedUid};
             if(userData.setupDone){
               if(Array.isArray(userData.trades))setTrades(userData.trades);
               if(Array.isArray(userData.noTrades))setNoTrades(userData.noTrades);
@@ -2363,13 +2227,13 @@ export default function App() {
       },2000);
     } else {
       if(u.lang) setLang(u.lang);
-      // Nouveau compte → onboarding puis setup
-      setPhase("onboarding");
+      // Nouveau compte → setup directement
+      setPhase("setup");
     }
   };
 
   if(phase==="splash") return <SplashScreen onDone={()=>setPhase("login")} neon={neon}/>;
-  if(phase==="onboarding") return <><CSS neon={neon}/><Onboarding onDone={l=>{setLang(l);setPhase("login");}}/></>;
+  if(phase==="onboarding") return <><CSS neon={neon}/><Onboarding onDone={l=>{setLang(l);setPhase("setup");}}/></>;
   if(phase==="login") return <LoginScreen onLogin={handleLogin} lang={lang} setLang={setLang} neon={neon}/>;
   if(phase==="setup") return <><CSS neon={neon}/><GuidedSetup onDone={async cfg=>{
     const newCfg={...config,...cfg};
@@ -2380,12 +2244,6 @@ export default function App() {
   return (
     <div style={{display:"flex",background:"#0c0c12",minHeight:"100vh",color:"#ffffff",fontFamily:MONO}}>
       <CSS neon={neon}/>
-      {/* Aurora background */}
-      <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:0,overflow:"hidden"}}>
-        <div style={{position:"absolute",width:"65%",height:"65%",top:"-20%",left:"-10%",borderRadius:"50%",background:`radial-gradient(ellipse,${neon}0d 0%,transparent 65%)`,filter:"blur(50px)",animation:"auA 14s ease-in-out infinite alternate"}}/>
-        <div style={{position:"absolute",width:"55%",height:"55%",bottom:"-20%",right:"-10%",borderRadius:"50%",background:"radial-gradient(ellipse,rgba(0,150,255,0.08) 0%,transparent 65%)",filter:"blur(60px)",animation:"auB 18s ease-in-out infinite alternate"}}/>
-        <div style={{position:"absolute",width:"40%",height:"40%",top:"35%",left:"35%",borderRadius:"50%",background:"radial-gradient(ellipse,rgba(100,0,255,0.05) 0%,transparent 65%)",filter:"blur(70px)",animation:"auC 22s ease-in-out infinite alternate"}}/>
-      </div>
       {notif&&<NotifCard notif={notif} onClose={()=>setNotif(null)}/>}
       <InAppBanner notifs={inAppNotifs} onDismiss={()=>setInAppNotifs(n=>n.slice(1))} neon={neon}/>
       {showImport&&<ImportCSVModal onImport={imported=>{const merged=[...imported,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);setTrades(merged);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{trades:merged});}} onClose={()=>setShowImport(false)} lang={lang} neon={neon} config={config}/>}
@@ -2413,7 +2271,7 @@ export default function App() {
           {total>0&&<div style={{padding:"12px 18px",borderBottom:"1px solid #ffffff08"}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
               <div><div style={{fontSize:7,color:"#ffffff44",letterSpacing:2,marginBottom:4}}>WIN RATE</div><div style={{fontSize:20,fontWeight:900,color:"#ffffff",textShadow:`0 0 20px ${neon}55`}}>{winRate}%</div></div>
-              <div style={{textAlign:"right"}}><div style={{fontSize:7,color:"#ffffff44",letterSpacing:2,marginBottom:4}}>P&L</div><div style={{fontSize:20,fontWeight:900,color:"#ffffff"}}>{fmtPct(totalPnl)}</div></div>
+              <div style={{textAlign:"right"}}><div style={{fontSize:7,color:"#ffffff44",letterSpacing:2,marginBottom:4}}>P&L</div><div style={{fontSize:20,fontWeight:900,color:totalPnl>=0?neon:"#ff4d4d"}}>{fmtPct(totalPnl)}</div></div>
             </div>
             <div style={{fontSize:9,color:"#ffffff33"}}>{wins}W · {losses}L · {total} {lang==="fr"?"trades":"trades"}</div>
           </div>}
