@@ -789,9 +789,9 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
         </div>
         <div style={{fontSize:20,fontWeight:700,color:"#ffffff",fontFamily:MONO,marginBottom:10}}>{fr?"Compte créé !":"Account created!"}</div>
         <div style={{fontSize:13,color:"#ffffffaa",fontFamily:MONO,lineHeight:1.7,marginBottom:28}}>{fr?`Bienvenue sur TrackMyTrade.\nTon compte est prêt.`:`Welcome to TrackMyTrade.\nYour account is ready.`}</div>
-        <button onClick={()=>onLogin({email:email.trim().toLowerCase(),pwd,userData:null})} className="btn"
+        <button onClick={()=>onLogin({email:email.trim().toLowerCase(),userData:null,isNew:true})} className="btn"
           style={{width:"100%",background:`${neon}22`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:16,fontSize:14,fontWeight:700,fontFamily:MONO,letterSpacing:2}}>
-          {fr?"CONFIGURER MA STRATÉGIE →":"SET UP MY STRATEGY →"}
+          {fr?"VOIR LE TUTORIEL →":"SEE THE TUTORIAL →"}
         </button>
       </div>
     </div>
@@ -2205,8 +2205,9 @@ export default function App() {
       },2000);
     } else {
       if(u.lang) setLang(u.lang);
-      // Nouveau compte → setup directement
-      setPhase("setup");
+      // Nouveau compte → onboarding puis setup
+      if(u.isNew) setPhase("onboarding");
+      else setPhase("setup");
     }
   };
 
