@@ -37,13 +37,13 @@ const authLogin = async (email, pwd) => {
   } catch(e) { return null; }
 };
 const authRegister = async (email, pwd, lang) => {
-  if(!auth) return false;
+  if(!auth) return null;
   try {
     const cred = await createUserWithEmailAndPassword(auth, email, pwd);
     const uid = cred.user.uid;
     await saveUserData(uid, {setupDone:false, lang, trades:[], noTrades:[], phases:[]});
-    return true;
-  } catch(e) { return false; }
+    return uid;
+  } catch(e) { return null; }
 };
 
 const PRESET_ASSETS = ["XAU/USD","EUR/USD","GBP/USD","NAS100","BTC/USD","ETH/USD","US30","SPX500","GBP/JPY","USD/JPY"];
@@ -767,8 +767,8 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
         if(result){onLogin({email:em, _uid:result._uid, userData:result});}
         else{setError(t.loginError);setLoading(false);}
       } else {
-        const ok=await authRegister(em,pwd,lang);
-        if(ok){setSignupDone(true);setLoading(false);}
+        const newUid=await authRegister(em,pwd,lang);
+        if(newUid){setSignupDone(newUid);setLoading(false);}
         else{setError(t.signupError);setLoading(false);}
       }
     } catch(e){setError(e.message||t.loginError);setLoading(false);}
@@ -789,7 +789,7 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
         </div>
         <div style={{fontSize:20,fontWeight:700,color:"#ffffff",fontFamily:MONO,marginBottom:10}}>{fr?"Compte créé !":"Account created!"}</div>
         <div style={{fontSize:13,color:"#ffffffaa",fontFamily:MONO,lineHeight:1.7,marginBottom:28}}>{fr?`Bienvenue sur TrackMyTrade.\nTon compte est prêt.`:`Welcome to TrackMyTrade.\nYour account is ready.`}</div>
-        <button onClick={()=>onLogin({email:email.trim().toLowerCase(),userData:null,isNew:true})} className="btn"
+        <button onClick={()=>onLogin({email:email.trim().toLowerCase(),_uid:signupDone,userData:null,isNew:true})} className="btn"
           style={{width:"100%",background:`${neon}22`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:16,fontSize:14,fontWeight:700,fontFamily:MONO,letterSpacing:2}}>
           {fr?"VOIR LE TUTORIEL →":"SEE THE TUTORIAL →"}
         </button>
