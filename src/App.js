@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell } from "recharts";
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail, onAuthStateChanged } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA6SLYL7Ep451nu6edynUeBbPROtgRucv8",
@@ -2048,28 +2048,35 @@ export default function App() {
   const neonGhost = neon+"14"; // backgrounds subtils
   const neonBg = neon+"0a";    // backgrounds très légers
 
-  // Session restore from localStorage on page load
+  // Session restore via Firebase Auth
   useEffect(()=>{
-    try {
-      const saved=localStorage.getItem("tmt_user");
-      if(saved){
-        const {email,uid}=JSON.parse(saved);
-        const resolvedUid = uid || encEmail(email);
-        currentUserRef.current={email, uid:resolvedUid};
-        loadUserData(resolvedUid).then(userData=>{
-          if(userData){
-            if(userData.setupDone){
-              if(Array.isArray(userData.trades))setTrades(userData.trades);
-              if(Array.isArray(userData.noTrades))setNoTrades(userData.noTrades);
-              if(Array.isArray(userData.phases))setPhases(userData.phases);
-              if(userData.config&&typeof userData.config==="object")setConfig(c=>({...c,...userData.config}));
-              if(userData.lang)setLang(userData.lang);
-              setPhase("app");
-            } else { setPhase("setup"); }
+    if(!auth) return;
+    const unsub = onAuthStateChanged(auth, async firebaseUser => {
+      if(firebaseUser){
+        const uid = firebaseUser.uid;
+        const email = firebaseUser.email;
+        currentUserRef.current = {email, uid};
+        try { localStorage.setItem("tmt_user", JSON.stringify({email, uid})); } catch(e){}
+        const userData = await loadUserData(uid);
+        if(userData){
+          if(userData.setupDone){
+            if(Array.isArray(userData.trades))setTrades(userData.trades);
+            if(Array.isArray(userData.noTrades))setNoTrades(userData.noTrades);
+            if(Array.isArray(userData.phases))setPhases(userData.phases);
+            if(userData.config&&typeof userData.config==="object")setConfig(c=>({...c,...userData.config}));
+            if(userData.lang)setLang(userData.lang);
+            setPhase("app");
+          } else {
+            setPhase("setup");
           }
-        }).catch(()=>{});
+        } else {
+          // Compte Firebase sans données → setup
+          setPhase("setup");
+        }
       }
-    } catch(e){}
+      // Si pas de firebaseUser → on reste sur splash→login (flow normal)
+    });
+    return () => unsub();
   },[]);
 
   useEffect(()=>{
