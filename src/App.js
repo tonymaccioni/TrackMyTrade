@@ -2533,20 +2533,21 @@ export default function App() {
               <div style={{flex:1,background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:14,padding:"14px 16px",boxShadow:`0 4px 24px ${winRate>=50?neon+"18":"#ff4d4d18"}, inset 0 1px 0 ${neon}15`}}>
                 <div style={{fontSize:9,color:"#ffffffbb",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>{t.winRate}</div>
                 <div style={{fontSize:32,fontWeight:900,fontFamily:MONO,lineHeight:1,textShadow:`0 0 32px ${winRate>=50?neon+"aa":"#ff4d4daa"}`,color:"#ffffff"}}>{winRate}%</div>
-                <div style={{fontSize:10,color:"#ffffff44",marginTop:6}}>{wins}W · {losses}L · {total-wins-losses}BE</div>
+                <div style={{fontSize:10,color:"#ffffff44",marginTop:6}}>{wins}W · {losses}L · {total} {t.trades}</div>
               </div>
               <div style={{flex:1,background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:14,padding:"14px 16px",boxShadow:`0 4px 24px ${totalPnl>=0?neon+"18":"#ff4d4d18"}, inset 0 1px 0 ${neon}15`}}>
                 <div style={{fontSize:9,color:"#ffffffbb",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>{t.totalPnl}</div>
                 <div style={{fontSize:32,fontWeight:900,fontFamily:MONO,lineHeight:1,textShadow:`0 0 32px ${totalPnl>=0?neon+"aa":"#ff4d4daa"}`,color:"#ffffff"}}>{fmtPct(totalPnl)}</div>
-                {config.capital&&(()=>{
+                {config.capital?(()=>{
                   const gain=Math.round(parseFloat(config.capital)*totalPnl/100);
-                  const total_capital=Math.round(parseFloat(config.capital))+gain;
-                  return <div style={{marginTop:6}}>
-                    <div style={{fontSize:11,fontWeight:700,color:totalPnl>=0?neon:"#ff4d4d"}}>{totalPnl>=0?"+":""}{gain.toLocaleString()}{config.devise||"€"}</div>
-                    <div style={{fontSize:10,color:"#ffffff55",marginTop:2}}>{total_capital.toLocaleString()}{config.devise||"€"}</div>
+                  const cap_total=Math.round(parseFloat(config.capital))+gain;
+                  const dv=config.devise||"€";
+                  return <div style={{fontSize:10,marginTop:5,display:"flex",alignItems:"baseline",gap:5,flexWrap:"wrap"}}>
+                    <span style={{fontSize:12,fontWeight:700,color:totalPnl>=0?neon:"#ff4d4d",fontFamily:MONO}}>{totalPnl>=0?"+":""}{gain.toLocaleString()}{dv}</span>
+                    <span style={{color:"#ffffff33"}}>→</span>
+                    <span style={{color:"#ffffff55",fontFamily:MONO}}>{cap_total.toLocaleString()}{dv}</span>
                   </div>;
-                })()}
-                <div style={{fontSize:10,color:"#ffffff44",marginTop:config.capital?2:6}}>{total} {t.trades}</div>
+                })():<div style={{fontSize:10,color:"#ffffff44",marginTop:6}}>{total} {t.trades}</div>}
               </div>
             </div>
           )}
@@ -2580,7 +2581,7 @@ export default function App() {
                   <div style={{fontSize:14,fontWeight:700,color:"#ffffff"}}>{trades[0].asset} · {trades[0].direction}</div>
                   <div style={{display:"flex",gap:8,marginTop:6,alignItems:"center",flexWrap:"wrap"}}>
                     <span style={{fontSize:13,fontWeight:700,color:rc(trades[0].result,neon),textShadow:`0 0 12px ${rc(trades[0].result,neon)}99`}}>{trades[0].result}</span>
-                    {trades[0].pnlPct!==""&&parseFloat(trades[0].pnlPct)!==0&&<span style={{fontSize:12,color:parseFloat(trades[0].pnlPct)>0?neon:"#ff4d4d",fontWeight:600,textShadow:`0 0 10px ${parseFloat(trades[0].pnlPct)>0?neon+"88":"#ff4d4d88"}`}}>{fmtPct(parseFloat(trades[0].pnlPct))}</span>}
+                    {trades[0].pnlPct!==""&&parseFloat(trades[0].pnlPct)!==0&&<span style={{fontSize:12,color:parseFloat(trades[0].pnlPct)>0?neon:"#ff4d4d",fontWeight:600,textShadow:`0 0 10px ${parseFloat(trades[0].pnlPct)>0?neon+"88":"#ff4d4d88"}`}}>{fmtPct(parseFloat(trades[0].pnlPct))}{config.capital&&<span style={{fontSize:10,opacity:0.7,marginLeft:4}}>{parseFloat(trades[0].pnlPct)>=0?"+":""}{Math.round(parseFloat(config.capital)*parseFloat(trades[0].pnlPct)/100).toLocaleString()}{config.devise||"€"}</span>}</span>}
                     {trades[0].isRevenge&&<span style={{fontSize:10,padding:"2px 7px",borderRadius:4,background:"rgba(255,77,77,0.15)",color:"#ff4d4d",border:"1px solid rgba(255,77,77,0.3)"}}>REVENGE</span>}
                     <span style={{fontSize:10,padding:"2px 7px",borderRadius:4,background:trades[0].conforming?`${neon}1a`:"rgba(255,77,77,0.1)",color:trades[0].conforming?neon:"#ff4d4d",border:`1px solid ${trades[0].conforming?`${neon}35`:"rgba(255,77,77,0.2)"}`}}>{trades[0].conforming?t.conformLabel:t.nonConformLabel}</span>
                   </div>
@@ -2833,7 +2834,7 @@ export default function App() {
                       <div><div style={{fontSize:13,fontWeight:700,color:"#ffffff"}}>{x.asset} · {x.direction}{x.timeframe&&<span style={{fontSize:9,color:"#ffffff44",marginLeft:6,background:"#ffffff08",padding:"2px 6px",borderRadius:4,fontWeight:400}}>{x.timeframe}</span>}</div><div style={{fontSize:10,color:"#ffffff66",marginTop:3}}>{x.date}{x.time?" · "+x.time:""}</div></div>
                       <div style={{display:"flex",gap:8,alignItems:"center"}}>
                         <ScoreRing score={x.setupScore} max={x.checklistMax||config.items.length} size={42} threshold={config.threshold} neon={neon}/>
-                        <div style={{textAlign:"right"}}><div style={{fontSize:12,fontWeight:900,color:rc(x.result,neon),background:`${rc(x.result,neon)}18`,padding:"3px 10px",borderRadius:7,border:`1px solid ${rc(x.result,neon)}35`}}>{x.result}</div>{x.pnlPct!==""&&<div style={{fontSize:11,color:parseFloat(x.pnlPct)>=0?neon:"#ff4d4d",fontWeight:600}}>{fmtPct(parseFloat(x.pnlPct))}</div>}</div>
+                        <div style={{textAlign:"right"}}><div style={{fontSize:12,fontWeight:900,color:rc(x.result,neon),background:`${rc(x.result,neon)}18`,padding:"3px 10px",borderRadius:7,border:`1px solid ${rc(x.result,neon)}35`}}>{x.result}</div>{x.pnlPct!==""&&<div style={{fontSize:11,color:parseFloat(x.pnlPct)>=0?neon:"#ff4d4d",fontWeight:600}}>{fmtPct(parseFloat(x.pnlPct))}{config.capital&&parseFloat(x.pnlPct)!==0&&<span style={{fontSize:9,opacity:0.65,marginLeft:3}}>{parseFloat(x.pnlPct)>=0?"+":""}{Math.round(parseFloat(config.capital)*parseFloat(x.pnlPct)/100).toLocaleString()}{config.devise||"€"}</span>}</div>}</div>
                       </div>
                     </div>
                     <div style={{marginTop:8,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}>
