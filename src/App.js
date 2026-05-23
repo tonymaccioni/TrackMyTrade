@@ -2538,7 +2538,14 @@ export default function App() {
               <div style={{flex:1,background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:14,padding:"14px 16px",boxShadow:`0 4px 24px ${totalPnl>=0?neon+"18":"#ff4d4d18"}, inset 0 1px 0 ${neon}15`}}>
                 <div style={{fontSize:9,color:"#ffffffbb",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>{t.totalPnl}</div>
                 <div style={{fontSize:32,fontWeight:900,fontFamily:MONO,lineHeight:1,textShadow:`0 0 32px ${totalPnl>=0?neon+"aa":"#ff4d4daa"}`,color:"#ffffff"}}>{fmtPct(totalPnl)}</div>
-                {config.capital&&<div style={{fontSize:11,fontWeight:700,color:totalPnl>=0?neon:"#ff4d4d",marginTop:4}}>{totalPnl>=0?"+":""}{Math.round(parseFloat(config.capital)*totalPnl/100)}{config.devise||"€"}</div>}
+                {config.capital&&(()=>{
+                  const gain=Math.round(parseFloat(config.capital)*totalPnl/100);
+                  const total_capital=Math.round(parseFloat(config.capital))+gain;
+                  return <div style={{marginTop:6}}>
+                    <div style={{fontSize:11,fontWeight:700,color:totalPnl>=0?neon:"#ff4d4d"}}>{totalPnl>=0?"+":""}{gain.toLocaleString()}{config.devise||"€"}</div>
+                    <div style={{fontSize:10,color:"#ffffff55",marginTop:2}}>{total_capital.toLocaleString()}{config.devise||"€"} <span style={{color:"#ffffff33"}}>/ {parseInt(config.capital).toLocaleString()}{config.devise||"€"}</span></div>
+                  </div>;
+                })()}
                 <div style={{fontSize:10,color:"#ffffff44",marginTop:config.capital?2:6}}>{total} {t.trades}</div>
               </div>
             </div>
