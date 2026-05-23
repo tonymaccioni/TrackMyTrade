@@ -185,76 +185,16 @@ const CSS = ({neon="#00ff9d"}) => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800;900&family=IBM+Plex+Mono:wght@400;500;700&display=swap');
     *{box-sizing:border-box;margin:0;padding:0}
-    body{background:#07070f}
+    body{background:#0c0c12}
     input,select,textarea{outline:none;font-family:${MONO};font-size:16px}
     input[type=checkbox]{accent-color:${neon};width:16px;height:16px;cursor:pointer}
     input[type=date],input[type=time]{color-scheme:dark}
     input[type=file]{display:none}
-    .btn{transition:all 0.18s cubic-bezier(0.16,1,0.3,1);cursor:pointer}
-    .btn:hover{opacity:0.88;transform:translateY(-1px)}
-    .row{transition:all 0.2s ease;cursor:pointer}
-    ::-webkit-scrollbar{width:3px}
-    ::-webkit-scrollbar-thumb{background:${neon}26;border-radius:2px}
-
-    /* ══ AURORA ══ */
-    .aurora{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
-    .au1{position:absolute;width:70%;height:70%;top:-25%;left:-15%;border-radius:50%;
-      background:radial-gradient(ellipse,${neon}0d 0%,transparent 65%);
-      filter:blur(55px);animation:auA 14s ease-in-out infinite alternate}
-    .au2{position:absolute;width:60%;height:60%;bottom:-22%;right:-12%;border-radius:50%;
-      background:radial-gradient(ellipse,rgba(0,140,255,0.07) 0%,transparent 65%);
-      filter:blur(65px);animation:auB 18s ease-in-out infinite alternate}
-    .au3{position:absolute;width:45%;height:45%;top:35%;left:30%;border-radius:50%;
-      background:radial-gradient(ellipse,rgba(110,0,255,0.05) 0%,transparent 65%);
-      filter:blur(75px);animation:auC 22s ease-in-out infinite alternate}
-    @keyframes auA{from{transform:translate(0,0)}to{transform:translate(8%,6%)}}
-    @keyframes auB{from{transform:translate(0,0)}to{transform:translate(-7%,-5%)}}
-    @keyframes auC{from{transform:translate(0,0)}to{transform:translate(-5%,8%)}}
-
-    /* ══ 3D RELIEF CARDS ══ */
-    div[style*="background:#131318"],
-    div[style*="background: #131318"],
-    div[style*="background:linear-gradient(145deg,#1a1a24,#131318)"],
-    div[style*="background: linear-gradient(145deg, #1a1a24"],
-    div[style*="background:linear-gradient(145deg,#1a1a24"] {
-      background: linear-gradient(145deg,#1e1e2e 0%,#131320 100%) !important;
-      border-color: rgba(255,255,255,0.08) !important;
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.11),
-        inset 0 -1px 0 rgba(0,0,0,0.4),
-        0 8px 32px rgba(0,0,0,0.7),
-        0 2px 8px rgba(0,0,0,0.4) !important;
-      position: relative !important;
-    }
-    div[style*="background:#131318"]::before,
-    div[style*="background:linear-gradient(145deg,#1a1a24,#131318)"]::before,
-    div[style*="background:linear-gradient(145deg,#1a1a24"]::before {
-      content:'' !important;
-      position:absolute !important;inset:0 !important;border-radius:inherit !important;
-      background:linear-gradient(118deg,rgba(255,255,255,0.055) 0%,transparent 42%,rgba(0,0,0,0.07) 100%) !important;
-      pointer-events:none !important;z-index:0 !important;
-    }
-    div[style*="background:#131318"]::after,
-    div[style*="background:linear-gradient(145deg,#1a1a24,#131318)"]::after,
-    div[style*="background:linear-gradient(145deg,#1a1a24"]::after {
-      content:'' !important;
-      position:absolute !important;top:0 !important;left:10% !important;right:10% !important;height:1px !important;
-      background:linear-gradient(90deg,transparent,rgba(255,255,255,0.22) 45%,rgba(255,255,255,0.22) 55%,transparent) !important;
-      pointer-events:none !important;z-index:0 !important;
-    }
-    div[style*="background:#131318"] > *,
-    div[style*="background:linear-gradient(145deg,#1a1a24,#131318)"] > *,
-    div[style*="background:linear-gradient(145deg,#1a1a24"] > * {
-      position:relative !important;z-index:1 !important;
-    }
-    div[style*="background:#131318"].row:hover,
-    div[style*="background:linear-gradient(145deg,#1a1a24"].row:hover {
-      transform:translateY(-2px) !important;
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.15),
-        0 16px 48px rgba(0,0,0,0.8),
-        0 4px 12px rgba(0,0,0,0.5) !important;
-    }
+    .btn{transition:all 0.15s;cursor:pointer}
+    .btn:hover{opacity:0.85;transform:translateY(-1px)}
+    .row{transition:background 0.2s;cursor:pointer}
+    .row:hover{background:${neon}0a!important}
+    ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:${neon}26}
 
     /* ══ TUTORIAL ══ */
     .tut-overlay{position:fixed;inset:0;z-index:900;pointer-events:all}
@@ -287,15 +227,14 @@ const CSS = ({neon="#00ff9d"}) => (
       transition:width 0.5s cubic-bezier(0.16,1,0.3,1)}
     .tut-step-label{font-size:9px;color:rgba(255,255,255,0.22)}
     .tut-btn-skip{background:transparent;border:none;color:rgba(255,255,255,0.28);font-size:10px;
-      cursor:pointer;font-family:${MONO};padding:0;transition:color 0.15s}
-    .tut-btn-skip:hover{color:rgba(255,255,255,0.55)}
+      cursor:pointer;font-family:${MONO};padding:0}
     .tut-btn-next{
       background:linear-gradient(180deg,${neon},#00e08a);
       border:none;color:#071409;border-radius:10px;
       padding:8px 16px;font-size:11px;font-weight:700;
       cursor:pointer;font-family:${MONO};letter-spacing:0.3px;margin-left:8px;
       box-shadow:0 4px 16px ${neon}38,inset 0 1px 0 rgba(255,255,255,0.28);
-      transition:all 0.18s cubic-bezier(0.16,1,0.3,1);
+      transition:all 0.18s;
     }
     .tut-btn-next:hover{transform:translateY(-1px);box-shadow:0 8px 24px ${neon}4a}
 
@@ -326,14 +265,17 @@ const CSS = ({neon="#00ff9d"}) => (
     @keyframes icoDiamond{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
     @keyframes barFill{from{width:0}to{width:var(--bar-w)}}
     @keyframes kpiPop{0%{opacity:0;transform:scale(0.7)}70%{transform:scale(1.08)}100%{opacity:1;transform:scale(1)}}
-    .slide-up{animation:slideUp 0.28s cubic-bezier(0.34,1.3,0.64,1)}
+    .slide-up{animation:slideUp 0.3s ease both}
     .fu{animation:fadeUp 0.45s ease both}
     .fi{animation:fadeIn 0.4s ease both}
     .glow{animation:pulse 3s ease-in-out infinite}
     .grid-bg{background-image:linear-gradient(${neon}06 1px,transparent 1px),linear-gradient(90deg,${neon}06 1px,transparent 1px);background-size:32px 32px}
     .view-in{animation:fadeIn 0.22s ease both}
+    @keyframes p1{0%{opacity:0.2;transform:scale(0.95)}50%{opacity:0.07;transform:scale(1.03)}100%{opacity:0.2;transform:scale(0.95)}}
+    @keyframes p2{0%{opacity:0.25;transform:scale(0.93)}50%{opacity:0.05;transform:scale(1.05)}100%{opacity:0.25;transform:scale(0.93)}}
   `}</style>
 );
+
 
 
 function Logo({size="sm",neon="#00ff9d"}) {
@@ -2478,9 +2420,8 @@ export default function App() {
   }} lang={lang}/></>;
 
   return (
-    <div style={{display:"flex",background:"#07070f",minHeight:"100vh",color:"#ffffff",fontFamily:MONO}}>
+    <div style={{display:"flex",background:"#0c0c12",minHeight:"100vh",color:"#ffffff",fontFamily:MONO}}>
       <CSS neon={neon}/>
-      <div className="aurora"><div className="au1"/><div className="au2"/><div className="au3"/></div>
       {notif&&<NotifCard notif={notif} onClose={()=>setNotif(null)}/>}
       <InAppBanner notifs={inAppNotifs} onDismiss={()=>setInAppNotifs(n=>n.slice(1))} neon={neon}/>
       {showTutorial&&<Tutorial neon={neon} onEnd={()=>setShowTutorial(false)}/>}
