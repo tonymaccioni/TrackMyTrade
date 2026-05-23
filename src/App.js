@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell } from "recharts";
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail, onAuthStateChanged } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA6SLYL7Ep451nu6edynUeBbPROtgRucv8",
@@ -43,7 +43,7 @@ const authRegister = async (email, pwd, lang) => {
     const uid = cred.user.uid;
     await saveUserData(uid, {setupDone:false, lang, trades:[], noTrades:[], phases:[]});
     return uid;
-  } catch(e) { return null; }
+  } catch(e) { return false; }
 };
 
 const PRESET_ASSETS = ["XAU/USD","EUR/USD","GBP/USD","NAS100","BTC/USD","ETH/USD","US30","SPX500","GBP/JPY","USD/JPY"];
@@ -185,34 +185,131 @@ const CSS = ({neon="#00ff9d"}) => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;700;800;900&family=IBM+Plex+Mono:wght@400;500;700&display=swap');
     *{box-sizing:border-box;margin:0;padding:0}
-    body{background:#0c0c12}
+    body{background:#07070f}
     input,select,textarea{outline:none;font-family:${MONO};font-size:16px}
     input[type=checkbox]{accent-color:${neon};width:16px;height:16px;cursor:pointer}
     input[type=date],input[type=time]{color-scheme:dark}
     input[type=file]{display:none}
-    .btn{transition:all 0.15s;cursor:pointer}
-    .btn:hover{opacity:0.85;transform:translateY(-1px)}
-    .row{transition:background 0.2s;cursor:pointer}
-    .row:hover{background:${neon}0a!important}
-    ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:${neon}26}
+    .btn{transition:all 0.18s cubic-bezier(0.16,1,0.3,1);cursor:pointer}
+    .btn:hover{opacity:0.88;transform:translateY(-1px)}
+    .row{transition:all 0.2s ease;cursor:pointer}
+    ::-webkit-scrollbar{width:3px}
+    ::-webkit-scrollbar-thumb{background:${neon}26;border-radius:2px}
+
+    /* ══ AURORA ══ */
+    .aurora{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+    .au1{position:absolute;width:70%;height:70%;top:-25%;left:-15%;border-radius:50%;
+      background:radial-gradient(ellipse,${neon}0d 0%,transparent 65%);
+      filter:blur(55px);animation:auA 14s ease-in-out infinite alternate}
+    .au2{position:absolute;width:60%;height:60%;bottom:-22%;right:-12%;border-radius:50%;
+      background:radial-gradient(ellipse,rgba(0,140,255,0.07) 0%,transparent 65%);
+      filter:blur(65px);animation:auB 18s ease-in-out infinite alternate}
+    .au3{position:absolute;width:45%;height:45%;top:35%;left:30%;border-radius:50%;
+      background:radial-gradient(ellipse,rgba(110,0,255,0.05) 0%,transparent 65%);
+      filter:blur(75px);animation:auC 22s ease-in-out infinite alternate}
+    @keyframes auA{from{transform:translate(0,0)}to{transform:translate(8%,6%)}}
+    @keyframes auB{from{transform:translate(0,0)}to{transform:translate(-7%,-5%)}}
+    @keyframes auC{from{transform:translate(0,0)}to{transform:translate(-5%,8%)}}
+
+    /* ══ 3D RELIEF CARDS ══ */
+    div[style*="background:#131318"],
+    div[style*="background: #131318"],
+    div[style*="background:linear-gradient(145deg,#1a1a24,#131318)"],
+    div[style*="background: linear-gradient(145deg, #1a1a24"],
+    div[style*="background:linear-gradient(145deg,#1a1a24"] {
+      background: linear-gradient(145deg,#1e1e2e 0%,#131320 100%) !important;
+      border-color: rgba(255,255,255,0.08) !important;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.11),
+        inset 0 -1px 0 rgba(0,0,0,0.4),
+        0 8px 32px rgba(0,0,0,0.7),
+        0 2px 8px rgba(0,0,0,0.4) !important;
+      position: relative !important;
+    }
+    div[style*="background:#131318"]::before,
+    div[style*="background:linear-gradient(145deg,#1a1a24,#131318)"]::before,
+    div[style*="background:linear-gradient(145deg,#1a1a24"]::before {
+      content:'' !important;
+      position:absolute !important;inset:0 !important;border-radius:inherit !important;
+      background:linear-gradient(118deg,rgba(255,255,255,0.055) 0%,transparent 42%,rgba(0,0,0,0.07) 100%) !important;
+      pointer-events:none !important;z-index:0 !important;
+    }
+    div[style*="background:#131318"]::after,
+    div[style*="background:linear-gradient(145deg,#1a1a24,#131318)"]::after,
+    div[style*="background:linear-gradient(145deg,#1a1a24"]::after {
+      content:'' !important;
+      position:absolute !important;top:0 !important;left:10% !important;right:10% !important;height:1px !important;
+      background:linear-gradient(90deg,transparent,rgba(255,255,255,0.22) 45%,rgba(255,255,255,0.22) 55%,transparent) !important;
+      pointer-events:none !important;z-index:0 !important;
+    }
+    div[style*="background:#131318"] > *,
+    div[style*="background:linear-gradient(145deg,#1a1a24,#131318)"] > *,
+    div[style*="background:linear-gradient(145deg,#1a1a24"] > * {
+      position:relative !important;z-index:1 !important;
+    }
+    div[style*="background:#131318"].row:hover,
+    div[style*="background:linear-gradient(145deg,#1a1a24"].row:hover {
+      transform:translateY(-2px) !important;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.15),
+        0 16px 48px rgba(0,0,0,0.8),
+        0 4px 12px rgba(0,0,0,0.5) !important;
+    }
+
+    /* ══ TUTORIAL ══ */
+    .tut-overlay{position:fixed;inset:0;z-index:900;pointer-events:all}
+    .tut-svg{position:absolute;inset:0;width:100%;height:100%}
+    .tut-tooltip{
+      position:fixed;z-index:910;width:282px;pointer-events:all;
+      background:linear-gradient(145deg,rgba(20,20,36,0.98),rgba(12,12,24,0.99));
+      border:1px solid rgba(255,255,255,0.1);
+      border-top:1px solid rgba(255,255,255,0.2);
+      border-radius:20px;padding:20px;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,0.11),0 32px 80px rgba(0,0,0,0.95),0 0 0 1px ${neon}10,0 0 50px ${neon}07;
+      backdrop-filter:blur(20px);
+      transition:opacity 0.38s cubic-bezier(0.16,1,0.3,1),transform 0.38s cubic-bezier(0.16,1,0.3,1);
+    }
+    .tut-tooltip::before{content:'';position:absolute;inset:0;border-radius:20px;
+      background:linear-gradient(118deg,rgba(255,255,255,0.055) 0%,transparent 42%,rgba(0,0,0,0.06) 100%);
+      pointer-events:none}
+    .tut-tooltip::after{content:'';position:absolute;top:0;left:12%;right:12%;height:1px;
+      background:linear-gradient(90deg,transparent,rgba(255,255,255,0.28) 45%,rgba(255,255,255,0.28) 55%,transparent);
+      pointer-events:none}
+    .tut-tooltip>*{position:relative;z-index:1}
+    .tut-icon{width:36px;height:36px;border-radius:10px;background:${neon}14;border:1px solid ${neon}28;
+      display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:17px}
+    .tut-title{font-size:13px;font-weight:700;color:#fff;margin-bottom:6px;letter-spacing:-0.3px}
+    .tut-body{font-size:11px;color:rgba(255,255,255,0.52);line-height:1.7}
+    .tut-foot{display:flex;justify-content:space-between;align-items:center;margin-top:16px}
+    .tut-prog-wrap{flex:1;margin-right:14px}
+    .tut-prog-bar{height:2px;background:rgba(255,255,255,0.07);border-radius:2px;overflow:hidden;margin-bottom:5px}
+    .tut-prog-fill{height:100%;background:linear-gradient(90deg,${neon},#00d4ff);border-radius:2px;
+      transition:width 0.5s cubic-bezier(0.16,1,0.3,1)}
+    .tut-step-label{font-size:9px;color:rgba(255,255,255,0.22)}
+    .tut-btn-skip{background:transparent;border:none;color:rgba(255,255,255,0.28);font-size:10px;
+      cursor:pointer;font-family:${MONO};padding:0;transition:color 0.15s}
+    .tut-btn-skip:hover{color:rgba(255,255,255,0.55)}
+    .tut-btn-next{
+      background:linear-gradient(180deg,${neon},#00e08a);
+      border:none;color:#071409;border-radius:10px;
+      padding:8px 16px;font-size:11px;font-weight:700;
+      cursor:pointer;font-family:${MONO};letter-spacing:0.3px;margin-left:8px;
+      box-shadow:0 4px 16px ${neon}38,inset 0 1px 0 rgba(255,255,255,0.28);
+      transition:all 0.18s cubic-bezier(0.16,1,0.3,1);
+    }
+    .tut-btn-next:hover{transform:translateY(-1px);box-shadow:0 8px 24px ${neon}4a}
+
+    /* ══ ANIMATIONS ══ */
     @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
     @keyframes fadeIn{from{opacity:0}to{opacity:1}}
     @keyframes pulse{0%,100%{opacity:1;text-shadow:0 0 8px ${neon}66}50%{opacity:0.85;text-shadow:0 0 14px ${neon}aa}}
-    @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes ring{0%,100%{opacity:0.06;transform:scale(1)}50%{opacity:0.16;transform:scale(1.04)}}
-    .fu{animation:fadeUp 0.45s ease both}
-    .fi{animation:fadeIn 0.4s ease both}
-    .glow{animation:pulse 3s ease-in-out infinite}
-    .grid-bg{background-image:linear-gradient(${neon}06 1px,transparent 1px),linear-gradient(90deg,${neon}06 1px,transparent 1px);background-size:32px 32px}
-    .slide-up{animation:slideUp 0.3s ease both}
-    .view-in{animation:fadeIn 0.22s ease both}
+    @keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes ring{0%,100%{transform:scale(1);opacity:0.12}50%{transform:scale(1.08);opacity:0.22}}
     @keyframes slideFromLeft{0%{opacity:0;transform:translateX(-60px)}65%{transform:translateX(6px)}80%{transform:translateX(-2px)}100%{opacity:1;transform:translateX(0)}}
     @keyframes slideFromRight{0%{opacity:0;transform:translateX(60px)}65%{transform:translateX(-6px)}80%{transform:translateX(2px)}100%{opacity:1;transform:translateX(0)}}
-    @keyframes p1{0%{opacity:0.2;transform:scale(0.95)}50%{opacity:0.07;transform:scale(1.03)}100%{opacity:0.2;transform:scale(0.95)}}
-    @keyframes p2{0%{opacity:0.25;transform:scale(0.93)}50%{opacity:0.05;transform:scale(1.05)}100%{opacity:0.25;transform:scale(0.93)}}
     @keyframes fadeInSlow{0%{opacity:0}100%{opacity:1}}
     @keyframes logoBoxGlow{0%,100%{box-shadow:0 0 8px ${neon}22}50%{box-shadow:0 0 20px ${neon}55,0 0 6px ${neon}33}}
-    @keyframes dotPulse{0%,40%,100%{width:6px;background:${neon}22;box-shadow:none}50%{width:22px;background:${neon};box-shadow:0 0 12px ${neon}99}}
+    @keyframes dotPulse{0%,40%,100%{width:6px;background:${neon}22}50%{width:22px;background:${neon};box-shadow:0 0 12px ${neon}99}}
     @keyframes icoCheck{from{stroke-dashoffset:30}to{stroke-dashoffset:0}}
     @keyframes icoX{from{stroke-dashoffset:22}to{stroke-dashoffset:0}}
     @keyframes icoRadar{0%{r:3;opacity:0.7}100%{r:14;opacity:0}}
@@ -227,12 +324,17 @@ const CSS = ({neon="#00ff9d"}) => (
     @keyframes icoDraw{from{stroke-dashoffset:80}to{stroke-dashoffset:0}}
     @keyframes icoHeartbeat{0%,100%{transform:scale(1)}15%{transform:scale(1.25)}30%{transform:scale(1)}45%{transform:scale(1.15)}60%{transform:scale(1)}}
     @keyframes icoDiamond{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-    @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
     @keyframes barFill{from{width:0}to{width:var(--bar-w)}}
     @keyframes kpiPop{0%{opacity:0;transform:scale(0.7)}70%{transform:scale(1.08)}100%{opacity:1;transform:scale(1)}}
-    @keyframes ring{0%,100%{transform:scale(1);opacity:0.12}50%{transform:scale(1.08);opacity:0.22}}
+    .slide-up{animation:slideUp 0.28s cubic-bezier(0.34,1.3,0.64,1)}
+    .fu{animation:fadeUp 0.45s ease both}
+    .fi{animation:fadeIn 0.4s ease both}
+    .glow{animation:pulse 3s ease-in-out infinite}
+    .grid-bg{background-image:linear-gradient(${neon}06 1px,transparent 1px),linear-gradient(90deg,${neon}06 1px,transparent 1px);background-size:32px 32px}
+    .view-in{animation:fadeIn 0.22s ease both}
   `}</style>
 );
+
 
 function Logo({size="sm",neon="#00ff9d"}) {
   const [box,fs]={sm:[28,18],md:[34,22],lg:[48,30]}[size]||[28,18];
@@ -2005,6 +2107,137 @@ function ExportModal({trades,onClose,lang,neon}) {
   );
 }
 
+
+function Tutorial({neon="#00ff9d", onEnd}) {
+  const STEPS = [
+    {elId:"tut-kpi",        icon:"📈", title:"Win Rate & P&L",        body:"Tes deux KPI principaux. Win Rate = % de trades gagnants. P&L = performance totale de la phase en cours.",          pos:"below"},
+    {elId:"tut-discipline", icon:"🎯", title:"Score Discipline",       body:"Calculé sur ta conformité aux règles (60%) et l'absence de revenge trades (40%). Vise 8/10 minimum.",              pos:"below"},
+    {elId:"tut-lasttrade",  icon:"⚡", title:"Dernier Trade",          body:"Clique ici pour voir le détail complet : checklist, score de rejet, notes comportementales, screenshot.",           pos:"below"},
+    {elId:"tut-addtrade",   icon:"✚",  title:"Enregistrer un Trade",   body:"Après chaque trade, enregistre-le ici. Checklist, résultat, P&L, score de rejet et notes comportementales.",       pos:"above"},
+    {elId:"tut-nav",        icon:"🧭", title:"Navigation",             body:"Stats = Dashboard · + Trade = Nouveau trade · Historique = Tous tes trades · ⚙ = Paramètres.",                    pos:"above", last:true},
+  ];
+  const [step, setStep] = useState(0);
+  const [spotRect, setSpotRect] = useState(null);
+  const [ttPos, setTtPos] = useState({top:100, left:20});
+  const [ttVisible, setTtVisible] = useState(false);
+  const animRef = useRef(null);
+  const prevRect = useRef(null);
+
+  const getRect = id => {
+    const el = document.getElementById(id);
+    if(!el) return null;
+    const r = el.getBoundingClientRect();
+    return {x:r.left, y:r.top, w:r.width, h:r.height};
+  };
+
+  const calcTtPos = (r, pos) => {
+    if(!r) return {top:100, left:20};
+    const pad=14, ttH=195, ttW=282;
+    const winW=window.innerWidth, winH=window.innerHeight;
+    let top, left = Math.max(10, Math.min(r.x, winW - ttW - 10));
+    if(pos==="below") {
+      top = r.y + r.h + pad;
+      if(top + ttH > winH - 10) top = r.y - ttH - pad;
+    } else {
+      top = r.y - ttH - pad;
+      if(top < 10) top = r.y + r.h + pad;
+    }
+    return {top, left};
+  };
+
+  const lerp = (a,b,t) => a + (b-a)*t;
+  const easeOut = t => 1 - Math.pow(1-t, 3);
+
+  const animateTo = toRect => {
+    const from = prevRect.current || toRect;
+    const start = performance.now();
+    const dur = 420;
+    const frame = now => {
+      const t = easeOut(Math.min((now-start)/dur, 1));
+      setSpotRect({
+        x: lerp(from.x, toRect.x, t),
+        y: lerp(from.y, toRect.y, t),
+        w: lerp(from.w, toRect.w, t),
+        h: lerp(from.h, toRect.h, t),
+      });
+      if(t < 1) animRef.current = requestAnimationFrame(frame);
+      else prevRect.current = toRect;
+    };
+    if(animRef.current) cancelAnimationFrame(animRef.current);
+    animRef.current = requestAnimationFrame(frame);
+  };
+
+  const showStep = (i, animate=false) => {
+    const s = STEPS[i];
+    const r = getRect(s.elId);
+    if(r) {
+      if(animate) animateTo(r);
+      else { setSpotRect(r); prevRect.current = r; }
+      setTtPos(calcTtPos(r, s.pos));
+    }
+    setTtVisible(false);
+    setTimeout(() => setTtVisible(true), 60);
+  };
+
+  useEffect(() => { setTimeout(() => showStep(0, false), 120); }, []);
+  useEffect(() => () => { if(animRef.current) cancelAnimationFrame(animRef.current); }, []);
+
+  const next = () => {
+    if(step >= STEPS.length - 1) { onEnd&&onEnd(); return; }
+    const ns = step + 1;
+    setStep(ns);
+    showStep(ns, true);
+  };
+
+  const s = STEPS[step];
+  const pad = 10;
+  const sx = spotRect ? spotRect.x - pad : 0;
+  const sy = spotRect ? spotRect.y - pad : 0;
+  const sw = spotRect ? spotRect.w + pad*2 : 0;
+  const sh = spotRect ? spotRect.h + pad*2 : 0;
+  const pct = Math.round((step+1)/STEPS.length*100);
+
+  return (
+    <>
+      <div className="tut-overlay" onClick={e => { if(e.target===e.currentTarget) { onEnd&&onEnd(); }}}>
+        <svg className="tut-svg">
+          <defs>
+            <mask id="tut-mask">
+              <rect width="100%" height="100%" fill="white"/>
+              <rect x={sx} y={sy} width={sw} height={sh} rx="16" fill="black"/>
+            </mask>
+          </defs>
+          <rect width="100%" height="100%" fill="rgba(3,3,10,0.87)" mask="url(#tut-mask)"/>
+          {spotRect&&<>
+            <rect x={sx-1} y={sy-1} width={sw+2} height={sh+2} rx="17" fill="none" stroke={neon} strokeWidth="1.5" opacity="0.55"/>
+            <rect x={sx-9} y={sy-9} width={sw+18} height={sh+18} rx="22" fill="none" stroke={neon} strokeWidth="10" opacity="0.04"/>
+          </>}
+        </svg>
+      </div>
+      <div className="tut-tooltip" style={{
+        top: ttPos.top,
+        left: ttPos.left,
+        opacity: ttVisible ? 1 : 0,
+        transform: ttVisible ? "translateY(0)" : (s.pos==="below" ? "translateY(10px)" : "translateY(-10px)"),
+      }}>
+        <div className="tut-icon">{s.icon}</div>
+        <div className="tut-title">{s.title}</div>
+        <div className="tut-body">{s.body}</div>
+        <div className="tut-foot">
+          <div className="tut-prog-wrap">
+            <div className="tut-prog-bar">
+              <div className="tut-prog-fill" style={{width:`${pct}%`}}/>
+            </div>
+            <div className="tut-step-label">{step+1} / {STEPS.length}</div>
+          </div>
+          <button className="tut-btn-skip" onClick={()=>{ onEnd&&onEnd(); }}>Passer</button>
+          <button className="tut-btn-next" onClick={next}>{s.last?"Terminer ✓":"Suivant →"}</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function App() {
   const [winW,setWinW]=useState(typeof window!=="undefined"?window.innerWidth:375);
   useEffect(()=>{const h=()=>setWinW(window.innerWidth);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
@@ -2027,6 +2260,7 @@ export default function App() {
   const [showShare,setShowShare]=useState(false);
   const [shareTarget,setShareTarget]=useState(null);
   const [showStats,setShowStats]=useState(false);
+  const [showTutorial,setShowTutorial]=useState(false);
   const [showImport,setShowImport]=useState(false);
   const [inAppNotifs,setInAppNotifs]=useState([]);
   const [histSearch,setHistSearch]=useState("");
@@ -2048,7 +2282,30 @@ export default function App() {
   const neonGhost = neon+"14"; // backgrounds subtils
   const neonBg = neon+"0a";    // backgrounds très légers
 
-  // Pas d'auto-login — on passe toujours par la page connexion
+  // Session restore from localStorage on page load
+  useEffect(()=>{
+    try {
+      const saved=localStorage.getItem("tmt_user");
+      if(saved){
+        const {email,pwd,uid}=JSON.parse(saved);
+        const p = pwd||"";
+        authLogin(email,p).then(userData=>{
+          if(userData){
+            const resolvedUid = userData._uid || uid || encEmail(email);
+            currentUserRef.current={email, uid:resolvedUid};
+            if(userData.setupDone){
+              if(Array.isArray(userData.trades))setTrades(userData.trades);
+              if(Array.isArray(userData.noTrades))setNoTrades(userData.noTrades);
+              if(Array.isArray(userData.phases))setPhases(userData.phases);
+              if(userData.config&&typeof userData.config==="object")setConfig(c=>({...c,...userData.config}));
+              if(userData.lang)setLang(userData.lang);
+              setPhase("app");
+            } else { setPhase("setup"); }
+          }
+        }).catch(()=>{});
+      }
+    } catch(e){}
+  },[]);
 
   useEffect(()=>{
     const isMonday=new Date().getDay()===1;
@@ -2205,7 +2462,7 @@ export default function App() {
       },2000);
     } else {
       if(u.lang) setLang(u.lang);
-      // Nouveau compte → onboarding puis setup
+      // Nouveau compte → onboarding si isNew, sinon setup direct
       if(u.isNew) setPhase("onboarding");
       else setPhase("setup");
     }
@@ -2221,10 +2478,12 @@ export default function App() {
   }} lang={lang}/></>;
 
   return (
-    <div style={{display:"flex",background:"#0c0c12",minHeight:"100vh",color:"#ffffff",fontFamily:MONO}}>
+    <div style={{display:"flex",background:"#07070f",minHeight:"100vh",color:"#ffffff",fontFamily:MONO}}>
       <CSS neon={neon}/>
+      <div className="aurora"><div className="au1"/><div className="au2"/><div className="au3"/></div>
       {notif&&<NotifCard notif={notif} onClose={()=>setNotif(null)}/>}
       <InAppBanner notifs={inAppNotifs} onDismiss={()=>setInAppNotifs(n=>n.slice(1))} neon={neon}/>
+      {showTutorial&&<Tutorial neon={neon} onEnd={()=>setShowTutorial(false)}/>}
       {showImport&&<ImportCSVModal onImport={imported=>{const merged=[...imported,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);setTrades(merged);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{trades:merged});}} onClose={()=>setShowImport(false)} lang={lang} neon={neon} config={config}/>}
       {showWeeklyRecap&&<WeeklyRecapModal trades={trades} lang={lang} neon={neon} onClose={()=>setShowWeeklyRecap(false)} onShareWeek={()=>{setShareTarget(null);setShowShare(true);}}/>}
 
@@ -2298,9 +2557,9 @@ export default function App() {
           </div>
         </div>;
       })()}
-      {!isDesktop&&<div style={{display:"flex",gap:6,padding:"10px 20px",borderBottom:`1px solid ${neon}14`}}>
+      {!isDesktop&&<div id="tut-nav" style={{display:"flex",gap:6,padding:"10px 20px",borderBottom:`1px solid ${neon}14`}}>
         {[["dashboard",t.stats],["log",editingId?t.editLabel:`+ ${t.addTrade.replace("+ ","")}`],["history",t.history],["settings",t.settings]].map(([v,l])=>(
-          <button key={v} className="btn" onClick={()=>{if(editingId&&v!=="log")cancelEdit();else{setView(v);scrollToTop();}}}
+          <button id={v==="log"?"tut-addtrade":undefined} key={v} className="btn" onClick={()=>{if(editingId&&v!=="log")cancelEdit();else{setView(v);scrollToTop();}}}
             style={{background:view===v?(editingId&&v==="log"?"rgba(240,180,41,0.15)":neon):"transparent",border:`1px solid ${view===v?(editingId&&v==="log"?"#f0b429":neon):`${neon}26`}`,color:view===v?(editingId&&v==="log"?"#f0b429":"#000"):"#ffffffaa",borderRadius:6,padding:v==="settings"?"7px 12px":"7px 0",fontSize:11,fontWeight:700,letterSpacing:1,fontFamily:MONO,flex:v==="settings"?0:1}}>{l}</button>
         ))}
       </div>}
@@ -2317,6 +2576,7 @@ export default function App() {
       {view==="dashboard"&&(
         <div className="fi" style={{padding:20}}>
           <StreakBadge trades={pf} neon={neon} lang={lang}/>
+          <button onClick={()=>setShowTutorial(true)} className="btn" style={{position:"fixed",bottom:isDesktop?24:88,right:20,zIndex:50,width:40,height:40,borderRadius:"50%",background:`linear-gradient(145deg,#1e1e2e,#131320)`,border:`1px solid ${neon}35`,color:neon,fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 4px 20px rgba(0,0,0,0.6),0 0 12px ${neon}18`,cursor:"pointer"}}>?</button>
           {trades.length>0&&(
             <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
               <div style={{flex:1,display:"flex",gap:4,background:"#0f0f14",borderRadius:8,padding:3}}>
@@ -2328,7 +2588,7 @@ export default function App() {
             </div>
           )}
           {total>0&&(
-            <div style={{display:isDesktop?"grid":"flex",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:12}}>
+            <div id="tut-kpi" style={{display:isDesktop?"grid":"flex",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:12}}>
               <div style={{flex:1,background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:14,padding:"14px 16px",boxShadow:`0 4px 24px ${winRate>=50?neon+"18":"#ff4d4d18"}, inset 0 1px 0 ${neon}15`}}>
                 <div style={{fontSize:9,color:"#ffffffbb",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>{t.winRate}</div>
                 <div style={{fontSize:32,fontWeight:900,fontFamily:MONO,lineHeight:1,textShadow:`0 0 32px ${winRate>=50?neon+"aa":"#ff4d4daa"}`,color:"#ffffff"}}>{winRate}%</div>
@@ -2343,7 +2603,7 @@ export default function App() {
             </div>
           )}
           {total>=2&&discScore!==null&&(
-            <div style={{background:`linear-gradient(145deg,${scoreColor}12,${scoreColor}05)`,border:`1px solid ${scoreColor}30`,borderRadius:14,padding:"14px 16px",marginBottom:12,boxShadow:`0 8px 32px ${scoreColor}12,inset 0 1px 0 ${scoreColor}18`}}>
+            <div id="tut-discipline" style={{background:`linear-gradient(145deg,${scoreColor}12,${scoreColor}05)`,border:`1px solid ${scoreColor}30`,borderRadius:14,padding:"14px 16px",marginBottom:12,boxShadow:`0 8px 32px ${scoreColor}12,inset 0 1px 0 ${scoreColor}18`}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div>
                   <div style={{fontSize:9,color:"#ffffffaa",letterSpacing:2,fontFamily:MONO,marginBottom:4}}>{t.disciplineLabel}</div>
@@ -2365,7 +2625,7 @@ export default function App() {
             </div>
           )}
           {trades.length>0&&(
-            <div className="row" onClick={()=>setDetailTrade(trades[0])} style={{background:`${rc(trades[0].result,neon)}0a`,border:`1px solid ${rc(trades[0].result,neon)}35`,borderRadius:12,padding:14,marginBottom:12,borderLeft:`3px solid ${rc(trades[0].result,neon)}`,boxShadow:`0 4px 20px ${rc(trades[0].result,neon)}14`}}>
+            <div id="tut-lasttrade" className="row" onClick={()=>setDetailTrade(trades[0])} style={{background:`${rc(trades[0].result,neon)}0a`,border:`1px solid ${rc(trades[0].result,neon)}35`,borderRadius:12,padding:14,marginBottom:12,borderLeft:`3px solid ${rc(trades[0].result,neon)}`,boxShadow:`0 4px 20px ${rc(trades[0].result,neon)}14`}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                 <div style={{flex:1}}>
                   <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>{t.lastTrade} · {trades[0].date}{trades[0].time?" · "+trades[0].time:""}</div>
