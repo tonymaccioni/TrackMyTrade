@@ -58,7 +58,7 @@ const today = () => new Date().toISOString().split("T")[0];
 const rc = (r, neon="#00ff9d") => r==="WIN"?neon:r==="LOSS"?"#ff4d4d":"#f0b429";
 const fmtPct = v => { if(v===""||v===null||v===undefined) return "—"; const n=Number(v),abs=Math.abs(n); const s=abs%1===0?abs.toFixed(0):abs*10%1===0?abs.toFixed(1):abs.toFixed(2); return `${n>=0?"+":""}${n<0?"-":""}${s}%`; };
 const calcDisc = list => { if(!list||!list.length) return null; return Math.round((list.filter(x=>x.conforming).length/list.length*0.6+list.filter(x=>!x.isRevenge).length/list.length*0.4)*10); };
-const emptyForm = (asset="XAU/USD", tf="M5") => ({date:today(),asset,direction:"BUY",checklist:[],result:"WIN",pnlPreset:"",pnlManual:"",notes:"",rejetScore:0,time:"",timeframe:tf,screenshot:"",isRevenge:false,slDirection:"",checkin:{humeur:"",biais:""}});
+const emptyForm = (asset="XAU/USD", tf="M5") => ({date:today(),asset,direction:"BUY",checklist:[],result:"WIN",pnlPreset:"",pnlManual:"",pnlMode:"pct",pnlEurManual:"",notes:"",rejetScore:0,time:"",timeframe:tf,screenshot:"",isRevenge:false,slDirection:"",checkin:{humeur:"",biais:""}});
 const mkInput = neon => ({width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:8,color:"#ffffff",padding:"12px 14px",fontSize:13,fontFamily:MONO,marginBottom:10,outline:"none"});
 // Auth handled by Firebase Auth
 
@@ -2320,7 +2320,7 @@ export default function App() {
     setView(editingId!==null?"history":"dashboard");scrollToTop();
   };
 
-  const startEdit=x=>{setForm({date:x.date,asset:x.asset,direction:x.direction,checklist:[...x.checklist],result:x.result,pnlPreset:PNL_PRESETS.includes(x.pnlPct)?x.pnlPct:"",pnlManual:PNL_PRESETS.includes(x.pnlPct)?"":x.pnlPct,notes:x.notes||"",rejetScore:x.rejetScore||0,time:x.time||"",screenshot:x.screenshot||"",isRevenge:x.isRevenge||false,slDirection:x.slDirection||"",checkin:x.checkin||{humeur:"",biais:""}});setEditingId(x.id);setView("log");};
+  const startEdit=x=>{setForm({date:x.date,asset:x.asset,direction:x.direction,checklist:[...x.checklist],result:x.result,pnlPreset:PNL_PRESETS.includes(x.pnlPct)?x.pnlPct:"",pnlManual:PNL_PRESETS.includes(x.pnlPct)?"":x.pnlPct,pnlMode:"pct",pnlEurManual:"",notes:x.notes||"",rejetScore:x.rejetScore||0,time:x.time||"",screenshot:x.screenshot||"",isRevenge:x.isRevenge||false,slDirection:x.slDirection||"",checkin:x.checkin||{humeur:"",biais:""}});setEditingId(x.id);setView("log");};
   const cancelEdit=()=>{setForm(emptyForm(config.defaultAsset||"XAU/USD",config.lastTimeframe||"M5"));setEditingId(null);setView("history");scrollToTop();};
   const deleteTrade=id=>{
     const updated=trades.filter(x=>x.id!==id);
@@ -2543,7 +2543,7 @@ export default function App() {
                   const total_capital=Math.round(parseFloat(config.capital))+gain;
                   return <div style={{marginTop:6}}>
                     <div style={{fontSize:11,fontWeight:700,color:totalPnl>=0?neon:"#ff4d4d"}}>{totalPnl>=0?"+":""}{gain.toLocaleString()}{config.devise||"€"}</div>
-                    <div style={{fontSize:10,color:"#ffffff55",marginTop:2}}>{total_capital.toLocaleString()}{config.devise||"€"} <span style={{color:"#ffffff33"}}>/ {parseInt(config.capital).toLocaleString()}{config.devise||"€"}</span></div>
+                    <div style={{fontSize:10,color:"#ffffff55",marginTop:2}}>{total_capital.toLocaleString()}{config.devise||"€"}</div>
                   </div>;
                 })()}
                 <div style={{fontSize:10,color:"#ffffff44",marginTop:config.capital?2:6}}>{total} {t.trades}</div>
@@ -2707,14 +2707,59 @@ export default function App() {
             </div>
           )}
           <div style={{marginBottom:pnlIncoherent?4:10}}>
-            <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.pnl}</div>
-            <div style={{display:"flex",gap:4,alignItems:"center"}}>
-              {PNL_PRESETS.map(v=>(
-                <button key={v} onClick={()=>setForm({...form,pnlPreset:v,pnlManual:""})} className="btn" style={{padding:"8px 0",borderRadius:6,fontSize:11,fontWeight:700,fontFamily:MONO,flex:1,background:form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?`${neon}33`:parseFloat(v)<0?"rgba(255,77,77,0.2)":"rgba(240,180,41,0.2)"):"#131318",border:`1px solid ${form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?neon:parseFloat(v)<0?"#ff4d4d":"#f0b429"):`${neon}14`}`,color:form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?neon:parseFloat(v)<0?"#ff4d4d":"#f0b429"):"#ffffffaa"}}>{v}%</button>
-              ))}
-              <input type="number" step="0.1" placeholder={t.manualPnl} value={form.pnlManual} onChange={e=>setForm({...form,pnlManual:e.target.value,pnlPreset:""})} style={{width:52,background:form.pnlManual?"#131318":"#131318",border:`1px solid ${form.pnlManual?`${neon}66`:`${neon}14`}`,borderRadius:6,color:form.pnlManual?(parseFloat(form.pnlManual)>=0?neon:"#ff4d4d"):"#ffffffaa",padding:"8px 4px",fontSize:10,fontFamily:MONO,outline:"none",textAlign:"center",flexShrink:0}}/>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2}}>{t.pnl}</div>
+              {config.capital&&<div style={{display:"flex",gap:3,background:"#131318",borderRadius:6,padding:2}}>
+                {["pct","eur"].map(m=>(
+                  <button key={m} onClick={()=>setForm(f=>({...f,pnlMode:m,pnlPreset:"",pnlManual:""}))} className="btn" style={{padding:"3px 8px",borderRadius:4,fontSize:9,fontWeight:700,fontFamily:MONO,background:(form.pnlMode||"pct")===m?neon:"transparent",color:(form.pnlMode||"pct")===m?"#000":"#ffffff66",border:"none"}}>{m==="pct"?"%":"€"}</button>
+                ))}
+              </div>}
             </div>
-            {pnlVal!==""&&<div style={{fontSize:11,color:parseFloat(pnlVal)>=0?neon:"#ff4d4d",fontFamily:MONO,fontWeight:700,marginTop:5,textAlign:"right"}}>{fmtPct(parseFloat(pnlVal))}</div>}
+            {(form.pnlMode||"pct")==="pct"?(
+              <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                {PNL_PRESETS.map(v=>(
+                  <button key={v} onClick={()=>setForm({...form,pnlPreset:v,pnlManual:""})} className="btn" style={{padding:"8px 0",borderRadius:6,fontSize:11,fontWeight:700,fontFamily:MONO,flex:1,background:form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?`${neon}33`:parseFloat(v)<0?"rgba(255,77,77,0.2)":"rgba(240,180,41,0.2)"):"#131318",border:`1px solid ${form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?neon:parseFloat(v)<0?"#ff4d4d":"#f0b429"):`${neon}14`}`,color:form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?neon:parseFloat(v)<0?"#ff4d4d":"#f0b429"):"#ffffffaa"}}>{v}%</button>
+                ))}
+                <input type="number" step="0.1" placeholder={t.manualPnl} value={form.pnlManual} onChange={e=>setForm({...form,pnlManual:e.target.value,pnlPreset:""})} style={{width:52,background:"#131318",border:`1px solid ${form.pnlManual?`${neon}66`:`${neon}14`}`,borderRadius:6,color:form.pnlManual?(parseFloat(form.pnlManual)>=0?neon:"#ff4d4d"):"#ffffffaa",padding:"8px 4px",fontSize:10,fontFamily:MONO,outline:"none",textAlign:"center",flexShrink:0}}/>
+              </div>
+            ):(
+              <div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
+                  {(()=>{
+                    const cap=parseFloat(config.capital)||0;
+                    const euroPresets=[-500,-250,0,500,1000,2000,5000].map(v=>({v,pct:cap?parseFloat((v/cap*100).toFixed(2)):0}));
+                    return euroPresets.map(({v,pct})=>{
+                      const isActive=form.pnlManual===""&&form.pnlPreset===String(pct);
+                      const c=v>0?neon:v<0?"#ff4d4d":"#f0b429";
+                      return <button key={v} onClick={()=>setForm({...form,pnlPreset:String(pct),pnlManual:""})} className="btn"
+                        style={{padding:"7px 8px",borderRadius:6,fontSize:10,fontWeight:700,fontFamily:MONO,
+                          background:isActive?`${c}22`:"#131318",
+                          border:`1px solid ${isActive?c:`${neon}14`}`,
+                          color:isActive?c:"#ffffffaa"}}>
+                        {v===0?"0":v>0?`+${v>=1000?v/1000+"K":v}`:v<=-1000?v/1000+"K":v}€
+                      </button>;
+                    });
+                  })()}
+                </div>
+                <div style={{position:"relative"}}>
+                  <input type="number" step="1" placeholder="Montant €" value={form.pnlEurManual||""}
+                    onChange={e=>{
+                      const euros=parseFloat(e.target.value)||0;
+                      const cap=parseFloat(config.capital)||1;
+                      const pct=parseFloat((euros/cap*100).toFixed(2));
+                      setForm(f=>({...f,pnlEurManual:e.target.value,pnlManual:String(pct),pnlPreset:""}));
+                    }}
+                    style={{width:"100%",background:"#131318",border:`1px solid ${neon}35`,borderRadius:8,color:"#ffffff",padding:"10px 50px 10px 14px",fontSize:13,fontFamily:MONO,outline:"none"}}/>
+                  <span style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:11,color:"#ffffff44",fontFamily:MONO}}>{config.devise||"€"}</span>
+                </div>
+              </div>
+            )}
+            {pnlVal!==""&&(
+              <div style={{display:"flex",justifyContent:"flex-end",gap:10,marginTop:5}}>
+                <span style={{fontSize:11,color:parseFloat(pnlVal)>=0?neon:"#ff4d4d",fontFamily:MONO,fontWeight:700}}>{fmtPct(parseFloat(pnlVal))}</span>
+                {config.capital&&<span style={{fontSize:11,color:parseFloat(pnlVal)>=0?neon+"88":"#ff4d4d88",fontFamily:MONO}}>{parseFloat(pnlVal)>=0?"+":""}{Math.round(parseFloat(config.capital)*parseFloat(pnlVal)/100).toLocaleString()}{config.devise||"€"}</span>}
+              </div>
+            )}
           </div>
           {pnlIncoherent&&<div style={{fontSize:10,color:"#f0b429",background:"rgba(240,180,41,0.08)",border:"1px solid rgba(240,180,41,0.2)",borderRadius:6,padding:"6px 10px",marginBottom:10}}>⚠ P&L {t.inconsistent} {form.result}</div>}
           <textarea placeholder={t.notesPlaceholder} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} rows={3} style={{width:"100%",background:"#131318",border:`1px solid ${neon}26`,borderRadius:8,color:"#ffffff",padding:"12px",fontSize:12,fontFamily:MONO,resize:"none",marginBottom:10,outline:"none"}}/>
