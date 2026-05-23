@@ -56,7 +56,7 @@ const BIAIS_PILLS = {fr:["↑ Haussier","→ Range","↓ Baissier"],en:["↑ Bul
 const NTR = {fr:["Pas de setup valide","Hors fenêtre","Marché difficile","Journée chargée","Jour de repos"],en:["No valid setup","Out of window","Difficult market","Busy day","Rest day"]};
 const today = () => new Date().toISOString().split("T")[0];
 const rc = (r, neon="#00ff9d") => r==="WIN"?neon:r==="LOSS"?"#ff4d4d":"#f0b429";
-const fmtPct = v => { if(v===""||v===null||v===undefined) return "—"; const n=Number(v),abs=Math.abs(n); const s=abs%1===0?abs.toFixed(0):abs*10%1===0?abs.toFixed(1):abs.toFixed(2); return `${n>=0?"+":""}${n<0?"-":""}${s}%`; };
+const fmtPct = v => { if(v===""||v===null||v===undefined) return "—"; const n=Number(v),abs=Math.abs(n); const s=abs%1===0?abs.toFixed(0):abs*10%1===0?abs.toFixed(1):abs*100%1===0?abs.toFixed(2):abs.toFixed(3); return `${n>=0?"+":""}${n<0?"-":""}${s}%`; };
 const calcDisc = list => { if(!list||!list.length) return null; return Math.round((list.filter(x=>x.conforming).length/list.length*0.6+list.filter(x=>!x.isRevenge).length/list.length*0.4)*10); };
 const emptyForm = (asset="XAU/USD", tf="M5", mode="pct") => ({date:today(),asset,direction:"BUY",checklist:[],result:"WIN",pnlPreset:"",pnlManual:"",pnlMode:mode,pnlEurManual:"",notes:"",rejetScore:0,time:"",timeframe:tf,screenshot:"",isRevenge:false,slDirection:"",checkin:{humeur:"",biais:""}});
 const mkInput = neon => ({width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:8,color:"#ffffff",padding:"12px 14px",fontSize:13,fontFamily:MONO,marginBottom:10,outline:"none"});
@@ -2729,7 +2729,7 @@ export default function App() {
                 <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
                   {(()=>{
                     const cap=parseFloat(config.capital)||0;
-                    const euroPresets=[-500,-250,0,500,1000,2000,5000].map(v=>({v,pct:cap?parseFloat((v/cap*100).toFixed(2)):0}));
+                    const euroPresets=[-500,-250,0,500,1000,2000,5000].map(v=>({v,pct:cap?parseFloat((v/cap*100).toFixed(3)):0}));
                     return euroPresets.map(({v,pct})=>{
                       const isActive=form.pnlManual===""&&form.pnlPreset===String(pct);
                       const c=v>0?neon:v<0?"#ff4d4d":"#f0b429";
@@ -2748,7 +2748,7 @@ export default function App() {
                     onChange={e=>{
                       const euros=parseFloat(e.target.value)||0;
                       const cap=parseFloat(config.capital)||1;
-                      const pct=parseFloat((euros/cap*100).toFixed(2));
+                      const pct=parseFloat((euros/cap*100).toFixed(3));
                       setForm(f=>({...f,pnlEurManual:e.target.value,pnlManual:String(pct),pnlPreset:""}));
                     }}
                     style={{width:"100%",background:"#131318",border:`1px solid ${neon}35`,borderRadius:8,color:"#ffffff",padding:"10px 50px 10px 14px",fontSize:13,fontFamily:MONO,outline:"none"}}/>
