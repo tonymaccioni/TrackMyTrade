@@ -107,7 +107,7 @@ const T = {
     loginEmailPlaceholder:"ton@email.com",loginPasswordPlaceholder:"········",
     disciplineLabel:"DISCIPLINE",disciplineExcellent:"Excellent",disciplineGood:"Bon",disciplineWork:"À améliorer",disciplinePoor:"Insuffisant",
     conformiteLabel:"Conformité",sansRevengeLabel:"Sans revenge",
-    phaseEnCours:"Compte en cours",toutHistorique:"Tout",
+    phaseEnCours:"Phase en cours",toutHistorique:"Tout",
     newPhaseBtn:"▶ Nouvelle phase",newPhaseConfirmQ:"Démarrer une nouvelle phase ?",
     newPhaseDesc:"Les stats repartent à zéro à partir d'aujourd'hui. L'historique est conservé.",
     newPhaseConfirmBtn:"✓ Confirmer",phaseSince:"depuis",
@@ -165,7 +165,7 @@ const T = {
     loginEmailPlaceholder:"your@email.com",loginPasswordPlaceholder:"········",
     disciplineLabel:"DISCIPLINE",disciplineExcellent:"Excellent",disciplineGood:"Good",disciplineWork:"Needs work",disciplinePoor:"Poor",
     conformiteLabel:"Compliance",sansRevengeLabel:"Revenge-free",
-    phaseEnCours:"Current account",toutHistorique:"All",
+    phaseEnCours:"Current phase",toutHistorique:"All",
     newPhaseBtn:"▶ New phase",newPhaseConfirmQ:"Start a new phase?",
     newPhaseDesc:"Dashboard stats reset from today. Full history is kept.",
     newPhaseConfirmBtn:"✓ Confirm",phaseSince:"since",
@@ -1677,7 +1677,7 @@ function SettingsView({config,onSave,onLogout,onReset,lang,onLangChange,neon,acc
   };
 
   const tabs=[
-    {id:"accounts",label:lang==="fr"?"Comptes":"Accounts"},
+    {id:"accounts",label:lang==="fr"?"Phases":"Phases"},
     {id:"strategy",label:lang==="fr"?"Stratégie":"Strategy"},
     {id:"prefs",label:lang==="fr"?"Préférences":"Prefs"},
   ];
@@ -1737,7 +1737,7 @@ function SettingsView({config,onSave,onLogout,onReset,lang,onLangChange,neon,acc
                     background:isActive?`${neon}18`:isClosed?"rgba(255,77,77,0.1)":"#ffffff0a",
                     color:isActive?neon:isClosed?"#ff4d4d":"#ffffff55",
                     border:`1px solid ${isActive?neon+"44":isClosed?"rgba(255,77,77,0.25)":"#ffffff14"}`}}>
-                    {isActive?(lang==="fr"?"● ACTIF":"● ACTIVE"):isClosed?(lang==="fr"?"CLÔTURÉ":"CLOSED"):(lang==="fr"?"INACTIF":"INACTIVE")}
+                    {isActive?(lang==="fr"?"● ACTIVE":"● ACTIVE"):isClosed?(lang==="fr"?"CLÔTURÉ":"CLOSED"):(lang==="fr"?"INACTIF":"INACTIVE")}
                   </span>
                 </div>
                 {!isClosed&&<div style={{display:"flex",gap:6}}>
@@ -1769,11 +1769,11 @@ function SettingsView({config,onSave,onLogout,onReset,lang,onLangChange,neon,acc
           {/* Ajouter compte */}
           <button onClick={onNewAccount} className="btn"
             style={{width:"100%",background:"transparent",border:`1px dashed ${neon}35`,borderRadius:10,padding:"12px 0",color:neon,fontSize:12,fontFamily:MONO,marginTop:4}}>
-            + {lang==="fr"?"Nouveau compte":"New account"}
+            + {lang==="fr"?"Nouvelle phase":"New phase"}
           </button>
 
           {!isPro&&<div style={{textAlign:"center",padding:"12px 0 4px",fontSize:10,color:"#ffffff33",fontFamily:MONO}}>
-            {lang==="fr"?"Version Free · 1 compte actif à la fois":"Free · 1 active account at a time"}
+            {lang==="fr"?"Version Free · 1 phase active à la fois":"Free · 1 active phase at a time"}
           </div>}
 
           <div style={{height:1,background:"rgba(255,77,77,0.1)",margin:"16px 0 10px"}}/>
@@ -2332,7 +2332,7 @@ export default function App() {
     const newAccounts=[...accounts,newAcc];
     setAccounts(newAccounts);
     if(currentUserRef.current?.uid) saveUserData(currentUserRef.current.uid,{accounts:newAccounts});
-    setNotif({txt:lang==="fr"?`${newAcc.name} créé !`:`${newAcc.name} created!`,color:neon,icon:"ok",lang});
+    setNotif({txt:lang==="fr"?`${newAcc.name} créée !`:`${newAcc.name} created!`,color:neon,icon:"ok",lang});
   };
 
   const handleActivateAccount=(accId)=>{
@@ -2493,7 +2493,7 @@ export default function App() {
         const phasesData=parseSafe(userData.phases);
         let migratedAccounts=[];
         if(phasesData.length>0){
-          // Créer un compte par phase
+          // Créer une phase depuis les données
           migratedAccounts=phasesData.map((ph,i)=>({
             id:ph.id,
             name:i===phasesData.length-1?(cfg.phaseName||`Compte ${i+1}`):`Compte ${i+1}`,
@@ -2660,7 +2660,7 @@ export default function App() {
           {trades.length>0&&(
             <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
               <div style={{flex:1,display:"flex",gap:4,background:"#0f0f14",borderRadius:8,padding:3}}>
-                {[["phase",lang==="fr"?"Ce compte":"This account"],["all",t.toutHistorique]].map(([m,l])=>(
+                {[["phase",lang==="fr"?"Cette phase":"This phase"],["all",t.toutHistorique]].map(([m,l])=>(
                   <button key={m} onClick={()=>setStatsMode(m)} className="btn" style={{flex:1,padding:"7px 0",borderRadius:6,fontSize:10,fontWeight:700,fontFamily:MONO,background:statsMode===m?neon:"transparent",color:statsMode===m?"#131318":"#ffffffaa",border:"none",transition:"all 0.2s"}}>{l}</button>
                 ))}
               </div>
@@ -2949,7 +2949,7 @@ export default function App() {
               ))}
             </div>
             {accounts.length>0&&<div style={{display:"flex",gap:4,marginBottom:8,overflowX:"auto",paddingBottom:2}}>
-              {[{id:"ALL",name:lang==="fr"?"Tous comptes":"All"},...accounts].map(acc=>(
+              {[{id:"ALL",name:lang==="fr"?"Toutes phases":"All"},...accounts].map(acc=>(
                 <button key={acc.id||"ALL"} className="btn" onClick={()=>setHistAccount(acc.id==="ALL"?"ALL":acc.id)}
                   style={{background:histAccount===(acc.id==="ALL"?"ALL":acc.id)?`${neon}1a`:"transparent",border:`1px solid ${histAccount===(acc.id==="ALL"?"ALL":acc.id)?neon:`${neon}1a`}`,color:histAccount===(acc.id==="ALL"?"ALL":acc.id)?neon:"#ffffffaa",borderRadius:5,padding:"4px 10px",fontSize:9,fontWeight:700,fontFamily:MONO,whiteSpace:"nowrap"}}>{acc.name}</button>
               ))}
@@ -3070,17 +3070,17 @@ function NewAccountModal({onConfirm,onClose,lang,neon}){
       <div style={{background:"#0f0f18",borderRadius:"24px 24px 0 0",padding:"20px 20px 36px",width:"100%",maxWidth:480,border:"1px solid #ffffff0f",borderBottom:"none",maxHeight:"90vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <div>
-            <div style={{fontSize:15,fontWeight:800,color:"#ffffff",fontFamily:MONO2}}>{fr?"Nouveau compte":"New account"}</div>
-            <div style={{fontSize:9,color:"#ffffff33",marginTop:3,fontFamily:MONO2}}>{fr?"Les trades s'enregistreront sur ce compte":"Trades will be recorded on this account"}</div>
+            <div style={{fontSize:15,fontWeight:800,color:"#ffffff",fontFamily:MONO2}}>{fr?"Nouvelle phase":"New phase"}</div>
+            <div style={{fontSize:9,color:"#ffffff33",marginTop:3,fontFamily:MONO2}}>{fr?"Les trades s'enregistreront sur cette phase":"Trades will be recorded on this phase"}</div>
           </div>
           <button onClick={onClose} style={{background:"transparent",border:"none",color:"#ffffff44",fontSize:20,cursor:"pointer"}}>✕</button>
         </div>
 
-        <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6,fontFamily:MONO2}}>{fr?"NOM DU COMPTE":"ACCOUNT NAME"}</div>
+        <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6,fontFamily:MONO2}}>{fr?"NOM DE LA PHASE":"PHASE NAME"}</div>
         <input value={name} onChange={e=>setName(e.target.value)} placeholder={fr?"ex: FTMO 100K, Compte perso...":"e.g. FTMO 100K, Personal..."}
           style={{width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO2,marginBottom:14,outline:"none"}} autoFocus/>
 
-        <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:8,fontFamily:MONO2}}>{fr?"TYPE DE COMPTE":"ACCOUNT TYPE"}</div>
+        <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:8,fontFamily:MONO2}}>{fr?"TYPE DE PHASE":"PHASE TYPE"}</div>
         <div style={{display:"flex",gap:6,marginBottom:14}}>
           {[["prop","Prop Firm"],["perso",fr?"Perso":"Personal"],["demo","Demo"]].map(([v,l])=>(
             <button key={v} onClick={()=>setAccountType(v)} style={{flex:1,padding:"10px 0",background:accountType===v?`${neon}18`:"#131318",border:`1px solid ${accountType===v?neon:"#ffffff0d"}`,borderRadius:10,fontSize:10,fontWeight:700,color:accountType===v?neon:"#ffffff33",fontFamily:MONO2,cursor:"pointer"}}>{l}</button>
@@ -3118,7 +3118,7 @@ function NewAccountModal({onConfirm,onClose,lang,neon}){
 
         <button onClick={()=>{if(!name.trim()){return;}onConfirm({name:name.trim(),accountType,capital,devise,obj,drawdown});}}
           style={{width:"100%",background:name.trim()?`linear-gradient(135deg,${neon}22,${neon}0c)`:"#ffffff08",border:`1.5px solid ${name.trim()?neon:"#ffffff1a"}`,borderRadius:14,padding:"15px 0",fontSize:13,fontWeight:900,color:name.trim()?neon:"#ffffff33",fontFamily:MONO2,cursor:"pointer",letterSpacing:1}}>
-          {fr?"✓ Creer ce compte":"✓ Create account"}
+          {fr?"✓ Créer cette phase":"✓ Create phase"}
         </button>
       </div>
     </div>
