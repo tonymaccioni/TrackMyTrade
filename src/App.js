@@ -55,7 +55,7 @@ const authRegister = async (email, pwd, lang) => {
 // ──────────────────────────────────────────────────────────────────────────────
 
 // Free tier: max 2 accounts, pro: unlimited
-const MAX_FREE_ACCOUNTS = 2;
+const MAX_FREE_ACCOUNTS = 1; // pro = unlimited
 
 const PRESET_ASSETS = ["XAU/USD","EUR/USD","GBP/USD","NAS100","BTC/USD","ETH/USD","US30","SPX500","GBP/JPY","USD/JPY"];
 const DEFAULT_CRITERIA = ["HA M5 claire (pas de doji)","MM20 bien orientée","BB approche sur M1","Bougie de rejet propre","Fenêtre horaire respectée","Pas de distraction","Contexte macro neutre"];
@@ -2689,10 +2689,7 @@ export default function App() {
     if(editingId!==null){updated=trades.map(x=>x.id===editingId?{...x,...form,pnlPct:pnl,setupScore:score,conforming,isRevenge,checklistMax:config.items.length}:x);}
     else{const trade={...form,pnlPct:pnl,id:Date.now(),setupScore:score,conforming,isRevenge,checklistMax:config.items.length};ut=trade;updated=[trade,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);}
     setTrades(updated);
-    // Save to current account in accounts array
-    const updatedAccounts = accounts.map(a => a.id===currentAccountId ? {...a, trades:updated} : a);
-    setAccounts(updatedAccounts);
-    if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{accounts:updatedAccounts, currentAccountId});
+    if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{trades:updated});
     const newCfgAfterSave={...config,lastPnlMode:form.pnlMode||"eur",lastTimeframe:form.timeframe||"M5"};setConfig(newCfgAfterSave);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:newCfgAfterSave});
     setForm(emptyForm(config.defaultAsset||"XAU/USD",config.defaultTimeframe||config.lastTimeframe||"M5",config.lastPnlMode||"eur"));setEditingId(null);setCheckinOpen(false);
     // Conseil biais/direction incohérents
@@ -2763,6 +2760,7 @@ export default function App() {
     try { localStorage.setItem("tmt_user",JSON.stringify({email:u.email, uid})); } catch(e){}
     const userData=u.userData;
     if(userData&&userData.setupDone){
+      // Parser les strings JSON si nécessaire (ancien format Firestore)
       const parseSafe = (v) => {
         if(Array.isArray(v)) return v;
         if(typeof v === "string") { try { return JSON.parse(v); } catch(e) { return []; } }
@@ -2773,24 +2771,14 @@ export default function App() {
         if(typeof v === "string") { try { return JSON.parse(v); } catch(e) { return {}; } }
         return {};
       };
-      // ── Migrate legacy or load accounts ──
-      const allAccounts = migrateToAccounts({
-        accounts: parseSafe(userData.accounts),
-        trades: parseSafe(userData.trades),
-        noTrades: parseSafe(userData.noTrades),
-        phases: parseSafe(userData.phases),
-        config: parseObj(userData.config),
-      });
-      setAccounts(allAccounts);
-      const activeId = userData.currentAccountId || allAccounts[0]?.id;
-      setCurrentAccountId(activeId);
-      const activeAcc = allAccounts.find(a=>a.id===activeId) || allAccounts[0];
-      if(activeAcc) {
-        if(activeAcc.trades?.length) setTrades(activeAcc.trades);
-        if(activeAcc.noTrades?.length) setNoTrades(activeAcc.noTrades);
-        if(activeAcc.phases?.length) setPhases(activeAcc.phases);
-        if(activeAcc.config && Object.keys(activeAcc.config).length) setConfig(c=>({...c,...activeAcc.config}));
-      }
+      const trades_ = parseSafe(userData.trades);
+      const noTrades_ = parseSafe(userData.noTrades);
+      const phases_ = parseSafe(userData.phases);
+      const config_ = parseObj(userData.config);
+      if(trades_.length) setTrades(trades_);
+      if(noTrades_.length) setNoTrades(noTrades_);
+      if(phases_.length) setPhases(phases_);
+      if(Object.keys(config_).length) setConfig(c=>({...c,...config_}));
       if(userData.lang) setLang(userData.lang);
       if(userData.objectif&&typeof userData.objectif==="object") setObjectif(o=>({...o,...userData.objectif}));
       setPhase("app");
@@ -2841,16 +2829,6 @@ export default function App() {
             <div style={{marginBottom:6}}><SplashLogo neon={neon}/></div>
             <div style={{fontSize:10,color:"#ffffff33",letterSpacing:1}}>{config.strategyName}</div>
           </div>
-          {/* Account switcher */}
-          {accounts.length>0&&<AccountSwitcher
-            accounts={accounts}
-            currentId={currentAccountId}
-            onSwitch={switchAccount}
-            onNew={()=>setShowNewPhase(true)}
-            neon={neon}
-            lang={lang}
-            isDesktop={true}
-          />}
           {(objectif.pnl||config.capital)&&(()=>{
             const cur=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
             const pct=objectif.pnl?Math.min(100,Math.max(0,cur/(parseFloat(objectif.pnl)||1)*100)):0;
@@ -2891,11 +2869,7 @@ export default function App() {
 
       {!isDesktop&&<div style={{padding:"16px 20px 10px",borderBottom:`1px solid ${neon}1a`,background:"linear-gradient(180deg,#111118 0%,#0c0c12 100%)",backdropFilter:"blur(8px)"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <div style={{display:"flex",flexDirection:"column",gap:6}}>
-            <SplashLogo neon={neon}/>
-            {accounts.length>1&&<AccountSwitcher accounts={accounts} currentId={currentAccountId} onSwitch={switchAccount} onNew={()=>setShowNewPhase(true)} neon={neon} lang={lang} isDesktop={false}/>}
-            {accounts.length<=1&&<div style={{fontSize:10,color:"#ffffff44",marginTop:2}}>{config.phaseName||config.strategyName}</div>}
-          </div>
+          <div><SplashLogo neon={neon}/><div style={{fontSize:10,color:"#ffffff44",marginTop:4}}>{config.strategyName}</div></div>
           <button onClick={()=>setShowExport(true)} className="btn" style={{background:`${neon}0f`,border:`1px solid ${neon}26`,borderRadius:8,padding:"7px 11px",color:`${neon}99`,fontSize:13}}>↓</button>
         </div>
       </div>}
