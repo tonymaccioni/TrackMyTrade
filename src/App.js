@@ -3077,7 +3077,7 @@ function NewAccountModal({onConfirm,onClose,lang,neon}){
         </div>
 
         <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6,fontFamily:MONO2}}>{fr?"NOM DE LA PHASE":"PHASE NAME"}</div>
-        <input value={name} onChange={e=>setName(e.target.value)} placeholder={fr?"ex: FTMO 100K, Compte perso...":"e.g. FTMO 100K, Personal..."}
+        <input value={name} onChange={e=>setName(e.target.value)} placeholder={fr?"ex: FTMO Challenge, Phase 1...":"e.g. FTMO Challenge, Phase 1..."}
           style={{width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO2,marginBottom:14,outline:"none"}} autoFocus/>
 
         <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:8,fontFamily:MONO2}}>{fr?"TYPE DE PHASE":"PHASE TYPE"}</div>
