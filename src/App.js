@@ -1875,7 +1875,7 @@ function SettingsView({config, onSave, onLogout, onReset, onNewPhase, lang, onLa
 
   // ── Stratégie tab state ──
   const [stratName,   setStratName]   = useState(config.strategyName || "");
-  const [items,       setItems]       = useState([...config.items]);
+  const [items,       setItems]       = useState([...(config.items || DEFAULT_CRITERIA)]);
   const [threshold,   setThreshold]   = useState(config.threshold);
   const [maxTrades,   setMaxTrades]   = useState(config.maxTrades || 1);
   const [defaultTf,   setDefaultTf]   = useState(config.defaultTimeframe || "M5");
@@ -1885,6 +1885,27 @@ function SettingsView({config, onSave, onLogout, onReset, onNewPhase, lang, onLa
   const [newItem,     setNewItem]     = useState("");
 
   const [savedOk, setSavedOk] = useState(false);
+
+  // ── Re-sync local state when config loads from Firestore ──
+  // (SettingsView can mount before async data arrives)
+  useEffect(() => {
+    setNeonColor(config.neonColor || "#00ff9d");
+    setCalendarOn(config.calendarOn !== false);
+    setNotifOn(config.notifOn !== false);
+    setPhaseName(config.phaseName || "");
+    setCapital(config.capital || "");
+    setDevise(config.devise || "€");
+    setAccountType(config.accountType || "perso");
+    setObjPnl(config.objPnl || "");
+    setObjDrawdown(config.objDrawdown || "");
+    setStratName(config.strategyName || "");
+    setItems([...(config.items || DEFAULT_CRITERIA)]);
+    setThreshold(config.threshold || 6);
+    setMaxTrades(config.maxTrades || 1);
+    setDefaultTf(config.defaultTimeframe || "M5");
+    setAssets(config.customAssets || PRESET_ASSETS);
+    setEliminatoires(config.eliminatoires || []);
+  }, [config]);
 
   const save = () => {
     onSave({items, threshold, strategyName:stratName, maxTrades, neonColor,
@@ -3284,7 +3305,7 @@ export default function App() {
       )}
 
       
-      {view==="settings"&&<SettingsView config={config} onSave={cfg=>{
+      {view==="settings"&&<SettingsView key={config.strategyName+"|"+config.capital+"|"+config.phaseName} config={config} onSave={cfg=>{
         const newCfg={...config,...cfg};
         setConfig(newCfg);
         if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:newCfg});
