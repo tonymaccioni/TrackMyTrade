@@ -2436,7 +2436,7 @@ export default function App() {
   const histFiltered=trades.filter(x=>{
     const matchResult=histFilter==="ALL"||x.result===histFilter;
     const matchAsset=histAsset==="ALL"||x.asset===histAsset;
-    const matchAccount=histAccount==="ALL"||(x.accountId?x.accountId===histAccount:histAccount==="none");
+    const matchAccount=histAccount==="ALL"||(x.accountId?x.accountId===histAccount:true);
     const q=(histSearch||"").toLowerCase().trim();
     const matchSearch=!q||
       (x.asset||"").toLowerCase().includes(q)||
@@ -2479,7 +2479,29 @@ export default function App() {
       if(trades.length) setTrades(trades);
       if(noTrades.length) setNoTrades(noTrades);
       const accs=parseSafe(userData.accounts);
-      if(accs.length){setAccounts(accs);const active=accs.find(a=>a.status==="active");if(active)setActiveAccountId(active.id);}
+      if(accs.length){
+        setAccounts(accs);
+        const active=accs.find(a=>a.status==="active");
+        if(active)setActiveAccountId(active.id);
+      } else {
+        // Migration depuis l'ancien système : créer un compte depuis config
+        const cfg=parseObj(userData.config);
+        const migratedAcc={
+          id:Date.now(),
+          name:cfg.phaseName||cfg.strategyName||"Mon compte",
+          type:cfg.accountType||"perso",
+          capital:cfg.capital||"",
+          devise:cfg.devise||"€",
+          status:"active",
+          createdAt:cfg.phaseStartDate||new Date().toISOString().split("T")[0],
+          objPnl:cfg.objPnl||"",
+          objDrawdown:cfg.objDrawdown||""
+        };
+        setAccounts([migratedAcc]);
+        setActiveAccountId(migratedAcc.id);
+        // Sauvegarder la migration en Firestore
+        saveUserData(uid,{accounts:[migratedAcc]});
+      }
       if(Object.keys(config).length) setConfig(c=>({...c,...config}));
       if(userData.lang) setLang(userData.lang);
       if(userData.objectif&&typeof userData.objectif==="object") setObjectif(o=>({...o,...userData.objectif}));
