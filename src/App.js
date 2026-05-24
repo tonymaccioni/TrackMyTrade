@@ -2999,7 +2999,6 @@ export default function App() {
     </div>
   );
 }
-
 function NewAccountModal({onConfirm,onClose,lang,neon}){
   const MONO2="'Geist Mono','IBM Plex Mono',monospace";
   const [name,setName]=useState("");
@@ -3021,12 +3020,12 @@ function NewAccountModal({onConfirm,onClose,lang,neon}){
         </div>
 
         <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6,fontFamily:MONO2}}>{fr?"NOM DU COMPTE":"ACCOUNT NAME"}</div>
-        <input value={name} onChange={e=>setName(e.target.value)} placeholder={fr?"ex: FTMO 100K, Compte perso…":"e.g. FTMO 100K, Personal…"}
+        <input value={name} onChange={e=>setName(e.target.value)} placeholder={fr?"ex: FTMO 100K, Compte perso...":"e.g. FTMO 100K, Personal..."}
           style={{width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO2,marginBottom:14,outline:"none"}} autoFocus/>
 
         <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:8,fontFamily:MONO2}}>{fr?"TYPE DE COMPTE":"ACCOUNT TYPE"}</div>
         <div style={{display:"flex",gap:6,marginBottom:14}}>
-          {[["prop","Prop Firm"],["perso",fr?"Perso":"Personal"],["demo","Démo"]].map(([v,l])=>(
+          {[["prop","Prop Firm"],["perso",fr?"Perso":"Personal"],["demo","Demo"]].map(([v,l])=>(
             <button key={v} onClick={()=>setAccountType(v)} style={{flex:1,padding:"10px 0",background:accountType===v?`${neon}18`:"#131318",border:`1px solid ${accountType===v?neon:"#ffffff0d"}`,borderRadius:10,fontSize:10,fontWeight:700,color:accountType===v?neon:"#ffffff33",fontFamily:MONO2,cursor:"pointer"}}>{l}</button>
           ))}
         </div>
@@ -3062,79 +3061,7 @@ function NewAccountModal({onConfirm,onClose,lang,neon}){
 
         <button onClick={()=>{if(!name.trim()){return;}onConfirm({name:name.trim(),accountType,capital,devise,obj,drawdown});}}
           style={{width:"100%",background:name.trim()?`linear-gradient(135deg,${neon}22,${neon}0c)`:"#ffffff08",border:`1.5px solid ${name.trim()?neon:"#ffffff1a"}`,borderRadius:14,padding:"15px 0",fontSize:13,fontWeight:900,color:name.trim()?neon:"#ffffff33",fontFamily:MONO2,cursor:"pointer",letterSpacing:1}}>
-          {fr?"✓ Créer ce compte":"✓ Create account"}
-        </button>
-      </div>
-    </div>
-  );
-}){
-  const MONO="'Geist Mono','IBM Plex Mono',monospace";
-  const num=(phases?.length||0)+2;
-  const [name,setName]=useState(`Phase ${num}`);
-  const [accountType,setAccountType]=useState(config?.accountType||"perso");
-  const [capital,setCapital]=useState(config?.capital||"");
-  const [devise,setDevise]=useState(config?.devise||"€");
-  const [obj,setObj]=useState("");
-  const [drawdown,setDrawdown]=useState("");
-  return(
-    <div style={{position:"fixed",inset:0,background:"rgba(6,6,10,0.88)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
-      <div style={{background:"#0f0f18",borderRadius:"24px 24px 0 0",padding:"20px 20px 36px",width:"100%",maxWidth:480,border:"1px solid #ffffff0f",borderBottom:"none",maxHeight:"90vh",overflowY:"auto"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-          <div>
-            <div style={{fontSize:14,fontWeight:800,color:"#ffffff"}}>▶ Nouvelle phase</div>
-            <div style={{fontSize:9,color:"#ffffff33",marginTop:3}}>Les stats repartent à zéro · Historique conservé</div>
-          </div>
-          <button onClick={onClose} style={{background:"transparent",border:"none",color:"#ffffff44",fontSize:18,cursor:"pointer",padding:"4px 8px"}}>✕</button>
-        </div>
-
-        {/* Nom */}
-        <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6}}>NOM DE LA PHASE</div>
-        <input value={name} onChange={e=>setName(e.target.value)} style={{width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO,marginBottom:14,outline:"none"}}/>
-
-        {/* Type */}
-        <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>TYPE DE COMPTE</div>
-        <div style={{display:"flex",gap:6,marginBottom:14}}>
-          {[["prop","Prop Firm"],["perso","Perso"],["demo","Démo"]].map(([v,l])=>(
-            <button key={v} onClick={()=>setAccountType(v)} style={{flex:1,padding:"10px 0",background:accountType===v?`${neon}18`:"#131318",border:`1px solid ${accountType===v?neon:"#ffffff0d"}`,borderRadius:10,fontSize:10,fontWeight:700,color:accountType===v?neon:"#ffffff33",fontFamily:MONO,cursor:"pointer"}}>
-              {l}
-            </button>
-          ))}
-        </div>
-
-        {/* Capital + Devise */}
-        <div style={{display:"flex",gap:10,marginBottom:14}}>
-          <div style={{flex:2}}>
-            <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6}}>CAPITAL</div>
-            <input type="number" value={capital} onChange={e=>setCapital(e.target.value)} placeholder="10000" style={{width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO,outline:"none"}}/>
-          </div>
-          <div style={{flex:1}}>
-            <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6}}>DEVISE</div>
-            <div style={{display:"flex",flexDirection:"column",gap:4}}>
-              {["€","$","£","CHF"].map(d=>(
-                <button key={d} onClick={()=>setDevise(d)} style={{padding:"5px 0",background:devise===d?`${neon}18`:"#131318",border:`1px solid ${devise===d?neon:"#ffffff0d"}`,borderRadius:7,fontSize:12,fontWeight:800,color:devise===d?neon:"#ffffff30",fontFamily:MONO,cursor:"pointer"}}>
-                  {d}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Drawdown + Objectif */}
-        <div style={{display:"flex",gap:10,marginBottom:22}}>
-          <div style={{flex:1}}>
-            <div style={{fontSize:8,color:"#ff4d4d88",letterSpacing:2,marginBottom:6}}>DRAWDOWN MAX %</div>
-            <input type="number" value={drawdown} onChange={e=>setDrawdown(e.target.value)} placeholder="5" style={{width:"100%",background:"#131318",border:"1px solid #ff4d4d33",borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO,outline:"none"}}/>
-          </div>
-          <div style={{flex:1}}>
-            <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6}}>OBJECTIF P&L %</div>
-            <input type="number" value={obj} onChange={e=>setObj(e.target.value)} placeholder="+10" style={{width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO,outline:"none"}}/>
-          </div>
-        </div>
-
-        {/* Confirm */}
-        <button onClick={()=>onConfirm({name,accountType,capital,devise,obj,drawdown})}
-          style={{width:"100%",background:`linear-gradient(135deg,${neon}22,${neon}0c)`,border:`1.5px solid ${neon}`,borderRadius:14,padding:"15px 0",fontSize:13,fontWeight:900,color:"#ffffff",fontFamily:MONO,cursor:"pointer",boxShadow:`0 4px 28px ${neon}22,inset 0 1px 0 ${neon}30`,letterSpacing:1}}>
-          ✓ Lancer {name}
+          {fr?"✓ Creer ce compte":"✓ Create account"}
         </button>
       </div>
     </div>
