@@ -4,6 +4,10 @@ import { initializeApp } from "firebase/app";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from "firebase/auth";
 
+// ──────────────────────────────────────────────────────────────────────────────
+// 1. FIREBASE — Config & Auth
+// ──────────────────────────────────────────────────────────────────────────────
+
 const firebaseConfig = {
   apiKey: "AIzaSyA6SLYL7Ep451nu6edynUeBbPROtgRucv8",
   authDomain: "trackmytrade-389b0.firebaseapp.com",
@@ -46,6 +50,10 @@ const authRegister = async (email, pwd, lang) => {
   } catch(e) { return false; }
 };
 
+// ──────────────────────────────────────────────────────────────────────────────
+// 2. CONSTANTS
+// ──────────────────────────────────────────────────────────────────────────────
+
 const PRESET_ASSETS = ["XAU/USD","EUR/USD","GBP/USD","NAS100","BTC/USD","ETH/USD","US30","SPX500","GBP/JPY","USD/JPY"];
 const DEFAULT_CRITERIA = ["HA M5 claire (pas de doji)","MM20 bien orientée","BB approche sur M1","Bougie de rejet propre","Fenêtre horaire respectée","Pas de distraction","Contexte macro neutre"];
 const MONO = "'Geist Mono','IBM Plex Mono',monospace";
@@ -54,13 +62,21 @@ const NEON_COLORS = [{name:"Vert",value:"#00ff9d"},{name:"Bleu",value:"#00d4ff"}
 const HUMEUR_PILLS = {fr:["◎ Focus","◌ Neutre","△ Tendu","◷ Fatigué"],en:["◎ Focus","◌ Neutral","△ Tense","◷ Tired"]};
 const BIAIS_PILLS = {fr:["↑ Haussier","→ Range","↓ Baissier"],en:["↑ Bullish","→ Range","↓ Bearish"]};
 const NTR = {fr:["Pas de setup valide","Hors fenêtre","Marché difficile","Journée chargée","Jour de repos"],en:["No valid setup","Out of window","Difficult market","Busy day","Rest day"]};
+// ──────────────────────────────────────────────────────────────────────────────
+// 3. HELPERS & UTILS
+// ──────────────────────────────────────────────────────────────────────────────
+
 const today = () => new Date().toISOString().split("T")[0];
 const rc = (r, neon="#00ff9d") => r==="WIN"?neon:r==="LOSS"?"#ff4d4d":"#f0b429";
 const fmtPct = v => { if(v===""||v===null||v===undefined) return "—"; const n=Number(v),abs=Math.abs(n); const s=abs%1===0?abs.toFixed(0):abs*10%1===0?abs.toFixed(1):abs*100%1===0?abs.toFixed(2):abs.toFixed(3); return `${n>=0?"+":""}${n<0?"-":""}${s}%`; };
 const calcDisc = list => { if(!list||!list.length) return null; return Math.round((list.filter(x=>x.conforming).length/list.length*0.6+list.filter(x=>!x.isRevenge).length/list.length*0.4)*10); };
-const emptyForm = (asset="XAU/USD", tf="M5", mode="pct") => ({date:today(),asset,direction:"BUY",checklist:[],result:"WIN",pnlPreset:"",pnlManual:"",pnlMode:mode,pnlEurManual:"",notes:"",rejetScore:0,time:"",timeframe:tf,screenshot:"",isRevenge:false,slDirection:"",checkin:{humeur:"",biais:""}});
+const emptyForm = (asset="XAU/USD", tf="M5", mode="eur") => ({date:today(),asset,direction:"BUY",checklist:[],result:"WIN",pnlPreset:"",pnlManual:"",pnlMode:mode,pnlEurManual:"",notes:"",rejetScore:0,time:"",timeframe:tf,screenshot:"",isRevenge:false,slDirection:"",checkin:{humeur:"",biais:""}});
 const mkInput = neon => ({width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:8,color:"#ffffff",padding:"12px 14px",fontSize:13,fontFamily:MONO,marginBottom:10,outline:"none"});
 // Auth handled by Firebase Auth
+
+// ──────────────────────────────────────────────────────────────────────────────
+// 4. TRANSLATIONS  (T.fr / T.en)
+// ──────────────────────────────────────────────────────────────────────────────
 
 const T = {
   fr:{
@@ -107,9 +123,9 @@ const T = {
     loginEmailPlaceholder:"ton@email.com",loginPasswordPlaceholder:"········",
     disciplineLabel:"DISCIPLINE",disciplineExcellent:"Excellent",disciplineGood:"Bon",disciplineWork:"À améliorer",disciplinePoor:"Insuffisant",
     conformiteLabel:"Conformité",sansRevengeLabel:"Sans revenge",
-    phaseEnCours:"Phase en cours",toutHistorique:"Tout",
-    newPhaseBtn:"▶ Nouvelle phase",newPhaseConfirmQ:"Démarrer une nouvelle phase ?",
-    newPhaseDesc:"Les stats repartent à zéro à partir d'aujourd'hui. L'historique est conservé.",
+    phaseEnCours:"Compte en cours",toutHistorique:"Tout l'historique",
+    newPhaseBtn:"▶ Nouveau compte",newPhaseConfirmQ:"Démarrer un nouveau compte ?",
+    newPhaseDesc:"Les stats repartent à zéro. L'historique complet est conservé.",
     newPhaseConfirmBtn:"✓ Confirmer",phaseSince:"depuis",
     checkinToggle:"Check-in",humeurLabel:"HUMEUR",humeurPlaceholder:"Champ libre…",biaisLabel:"BIAIS",
     weeklyTitle:"Récap de la semaine",weeklySubtitle:"7 derniers jours",weeklyClose:"C'est parti →",
@@ -165,9 +181,9 @@ const T = {
     loginEmailPlaceholder:"your@email.com",loginPasswordPlaceholder:"········",
     disciplineLabel:"DISCIPLINE",disciplineExcellent:"Excellent",disciplineGood:"Good",disciplineWork:"Needs work",disciplinePoor:"Poor",
     conformiteLabel:"Compliance",sansRevengeLabel:"Revenge-free",
-    phaseEnCours:"Current phase",toutHistorique:"All",
-    newPhaseBtn:"▶ New phase",newPhaseConfirmQ:"Start a new phase?",
-    newPhaseDesc:"Dashboard stats reset from today. Full history is kept.",
+    phaseEnCours:"Current account",toutHistorique:"All history",
+    newPhaseBtn:"▶ New account",newPhaseConfirmQ:"Start a new account?",
+    newPhaseDesc:"Stats reset from today. Full history is kept.",
     newPhaseConfirmBtn:"✓ Confirm",phaseSince:"since",
     checkinToggle:"Check-in",humeurLabel:"MOOD",humeurPlaceholder:"Free field…",biaisLabel:"BIAS",
     weeklyTitle:"Weekly recap",weeklySubtitle:"Last 7 days",weeklyClose:"Let's go →",
@@ -180,6 +196,10 @@ const T = {
     resetConfirmBtn:"Confirm reset",resetBtn:"⊘ Reset all data",
   }
 };
+
+// ──────────────────────────────────────────────────────────────────────────────
+// 5. GLOBAL STYLES
+// ──────────────────────────────────────────────────────────────────────────────
 
 const CSS = ({neon="#00ff9d"}) => (
   <style>{`
@@ -278,6 +298,11 @@ const CSS = ({neon="#00ff9d"}) => (
 
 
 
+// ──────────────────────────────────────────────────────────────────────────────
+// 6. BASE COMPONENTS
+//    Logo · SplashLogo · GridBackground · Stat · Dots · ScoreRing · StreakBadge
+// ──────────────────────────────────────────────────────────────────────────────
+
 function Logo({size="sm",neon="#00ff9d"}) {
   const [box,fs]={sm:[28,18],md:[34,22],lg:[48,30]}[size]||[28,18];
   return (
@@ -305,6 +330,12 @@ function StreakBadge({trades,neon,lang}) {
   return <div style={{background:`${color}12`,border:`1px solid ${color}35`,borderRadius:10,padding:"8px 14px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between",boxShadow:`0 2px 12px ${color}18`}}><span style={{fontSize:12,color,fontWeight:700,fontFamily:MONO,textShadow:`0 0 10px ${color}88`}}>{streak} {type==="WIN"?t.streakWin:t.streakLoss}</span>{type==="LOSS"&&<span style={{fontSize:10,color:"#ffffffaa"}}>{t.checkRules}</span>}</div>;
 }
 
+
+// ──────────────────────────────────────────────────────────────────────────────
+// 8. STATS COMPONENTS
+//    AdvancedStats · ConformityBar · PerformanceChart · TradingCalendar
+//    StatsInsightsModal
+// ──────────────────────────────────────────────────────────────────────────────
 
 function AdvancedStats({trades,neon,lang}) {
   const t=T[lang];
@@ -369,6 +400,12 @@ function Stat({label,value,color="#00ff9d"}) {
     </div>
   );
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// 9. MODALS & OVERLAYS
+//    NotifCard · WeeklyRecapModal · TradeDetailModal · ShareModal
+//    ExportModal · ResetModal · ImportCSVModal · Tutorial
+// ──────────────────────────────────────────────────────────────────────────────
 
 function NotifCard({notif,onClose}) {
   const {txt,color,trade,lang:nl,icon}=notif;
@@ -728,6 +765,11 @@ function getAdvice(tr,all,lang,neon) {
   return null;
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// 10. DASHBOARD HELPERS
+//     NoTradeButton · InAppBanner
+// ──────────────────────────────────────────────────────────────────────────────
+
 function NoTradeButton({onSave,alreadyDone,lang,neon}) {
   const t=T[lang];
   const ntr=NTR[lang]||NTR.fr;
@@ -875,6 +917,11 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
   );
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// 11. SCREENS
+//     SplashScreen · LoginScreen · Onboarding · GuidedSetup
+// ──────────────────────────────────────────────────────────────────────────────
+
 function SplashScreen({onDone,neon}) {
   const canvasRef=useRef();
   const rafRef=useRef();
@@ -1006,6 +1053,12 @@ function SplashScreen({onDone,neon}) {
 
 
 // ── ICÔNES ANIMÉES ──
+// ──────────────────────────────────────────────────────────────────────────────
+// 7. ANIMATED ICONS
+//    IcoWin · IcoLoss · IcoBE · IcoWarn · IcoBlock · IcoFlame · IcoClock
+//    IcoDiamond · IcoHumeur · IcoActif · IcoStar · IcoTip
+// ──────────────────────────────────────────────────────────────────────────────
+
 function IcoWin({neon,size=32}) {
   return (
     <svg width={size} height={size} viewBox="0 0 38 38" fill="none" aria-hidden="true">
@@ -1655,12 +1708,16 @@ function GuidedSetup({onDone,lang}) {
   );
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// 12. SETTINGS VIEW
+// ──────────────────────────────────────────────────────────────────────────────
+
 function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChange,neon,phases,onObjectifChange,onImport}) {
   const t=T[lang];const inSt=mkInput(neon);
   const [items,setItems]=useState([...config.items]);const [threshold,setThreshold]=useState(config.threshold);
   const [stratName,setStratName]=useState(config.strategyName||"");const [maxTrades,setMaxTrades]=useState(config.maxTrades||1);
   const [neonColor,setNeonColor]=useState(neon);const [calendarOn,setCalendarOn]=useState(config.calendarOn!==false);
-  const [notifOn,setNotifOn]=useState(config.notifOn!==false);const [customAsset,setCustomAsset]=useState("");
+  const [notifOn,setNotifOn]=useState(config.notifOn!==false);const [customAsset,setCustomAsset]=useState("");const [defaultTf,setDefaultTf]=useState(config.defaultTimeframe||"M5");
   const [assets,setAssets]=useState(config.customAssets||PRESET_ASSETS);
   const [savedOk,setSavedOk]=useState(false);const [phaseConfirm,setPhaseConfirm]=useState(false);
   const [newPhaseName,setNewPhaseName]=useState("");
@@ -1673,7 +1730,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
   const [accountType,setAccountType]=useState(config.accountType||"perso");
   const [objDrawdown,setObjDrawdown]=useState(config.objDrawdown||"");
   const save=()=>{const savedObj={pnl:objPnl,wr:"",trades:"",drawdown:objDrawdown,editMode:false};
-    onSave({items,threshold,strategyName:stratName,maxTrades,neonColor,calendarOn,notifOn,customAssets:assets,eliminatoires,objPnl,phaseName,capital,devise,accountType,objDrawdown});
+    onSave({items,threshold,strategyName:stratName,maxTrades,neonColor,calendarOn,notifOn,customAssets:assets,eliminatoires,objPnl,phaseName,capital,devise,accountType,objDrawdown,defaultTimeframe:defaultTf});
     onObjectifChange(savedObj);setSavedOk(true);setTimeout(()=>setSavedOk(false),2000);};
   const Toggle=({label,val,set})=>(
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${neonColor}0d`}}>
@@ -1700,7 +1757,18 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
           <button onClick={()=>setMaxTrades(0)} className="btn" style={{flex:1.4,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:maxTrades===0?`${neonColor}26`:"#131318",border:`1px solid ${maxTrades===0?neonColor:`${neonColor}22`}`,color:maxTrades===0?neonColor:"#ffffffaa"}}>∞</button>
         </div>
       </div>
-      <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>ACTIFS</div>
+      <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
+        <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{lang==="fr"?"TIMEFRAME PAR DÉFAUT":"DEFAULT TIMEFRAME"}</div>
+        <div style={{display:"flex",gap:4}}>
+          {["M1","M5","M15","H1","H4","D1"].map(tf=>(
+            <button key={tf} onClick={()=>setDefaultTf(tf)} className="btn"
+              style={{flex:1,padding:"9px 0",borderRadius:8,fontSize:9,fontWeight:700,fontFamily:MONO,background:defaultTf===tf?`${neonColor}18`:"#131318",border:`1px solid ${defaultTf===tf?neonColor:"#ffffff0d"}`,color:defaultTf===tf?neonColor:"#ffffffbb"}}>
+              {tf}
+            </button>
+          ))}
+        </div>
+      </div>
+            <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>ACTIFS</div>
       <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
         {assets.map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4,background:"#131318",border:`1px solid ${neon}26`,borderRadius:6,padding:"4px 8px"}}>
           <span style={{fontSize:11,color:"#ffffff",fontFamily:MONO}}>{a}</span>
@@ -1733,9 +1801,9 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
       </div>
       {/* Phase en cours — nom + capital + devise + type + drawdown + objectif */}
     <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
-      <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:12}}>PHASE EN COURS</div>
+      <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:12}}>COMPTE EN COURS</div>
       <div style={{marginBottom:10}}>
-        <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>{lang==="fr"?"NOM DE LA PHASE":"PHASE NAME"}</div>
+        <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>{lang==="fr"?"NOM DU COMPTE":"ACCOUNT NAME"}</div>
         <input value={phaseName} onChange={e=>setPhaseName(e.target.value)}
           placeholder={lang==="fr"?"ex: FTMO 1ère étape…":"e.g. FTMO Step 1…"}
           style={{...inSt,fontSize:12,marginBottom:0}}/>
@@ -2182,6 +2250,11 @@ function Tutorial({neon="#00ff9d", onEnd}) {
   );
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// 14. MAIN APP
+//     State · Auth · Session restore · Views router
+// ──────────────────────────────────────────────────────────────────────────────
+
 export default function App() {
   const [winW,setWinW]=useState(typeof window!=="undefined"?window.innerWidth:375);
   useEffect(()=>{const h=()=>setWinW(window.innerWidth);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
@@ -2265,13 +2338,13 @@ export default function App() {
   const getPhaseKey=useCallback(tradeId=>{if(phases.length===0)return 0;for(let i=phases.length-1;i>=0;i--){if(tradeId>phases[i].id)return i+1;}return 0;},[phases]);
   const handleNewPhase=(phaseData={})=>{
     const num=phases.length+2;
-    const name=phaseData.name||`Phase ${num}`;
+    const name=phaseData.name||`Compte ${num}`;
     const newPhases=[...phases,{id:Date.now(),date:today()}];
     setPhases(newPhases);setStatsMode("phase");
     setObjectif({pnl:phaseData.obj||"",wr:"",trades:"",drawdown:phaseData.drawdown||"",editMode:false});
     const newCfg={...config,phaseName:name,capital:phaseData.capital||config.capital,devise:phaseData.devise||config.devise,accountType:phaseData.accountType||config.accountType};
     setConfig(newCfg);
-    setNotif({txt:lang==="fr"?`${name} démarrée.\nStats remises à zéro.`:`${name} started.\nStats reset.`,color:neon,icon:"ok",lang});
+    setNotif({txt:lang==="fr"?`${name} démarré.\nStats remises à zéro.`:`${name} started.\nStats reset.`,color:neon,icon:"ok",lang});
     if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{phases:newPhases,config:newCfg});
   };
 
@@ -2299,8 +2372,8 @@ export default function App() {
     else{const trade={...form,pnlPct:pnl,id:Date.now(),setupScore:score,conforming,isRevenge,checklistMax:config.items.length};ut=trade;updated=[trade,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);}
     setTrades(updated);
     if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{trades:updated});
-    const newCfgAfterSave={...config,lastPnlMode:form.pnlMode||"pct"};setConfig(newCfgAfterSave);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:newCfgAfterSave});
-    setForm(emptyForm(config.defaultAsset||"XAU/USD",config.lastTimeframe||"M5",config.lastPnlMode||"pct"));setEditingId(null);setCheckinOpen(false);
+    const newCfgAfterSave={...config,lastPnlMode:form.pnlMode||"eur",lastTimeframe:form.timeframe||"M5"};setConfig(newCfgAfterSave);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:newCfgAfterSave});
+    setForm(emptyForm(config.defaultAsset||"XAU/USD",config.defaultTimeframe||config.lastTimeframe||"M5",config.lastPnlMode||"eur"));setEditingId(null);setCheckinOpen(false);
     // Conseil biais/direction incohérents
     const biaisCheck=form.checkin?.biais||"";
     const isBullish=biaisCheck.includes("Haussier")||biaisCheck.includes("Bullish");
@@ -2324,7 +2397,7 @@ export default function App() {
   };
 
   const startEdit=x=>{setForm({date:x.date,asset:x.asset,direction:x.direction,checklist:[...x.checklist],result:x.result,pnlPreset:PNL_PRESETS.includes(x.pnlPct)?x.pnlPct:"",pnlManual:PNL_PRESETS.includes(x.pnlPct)?"":x.pnlPct,pnlMode:"pct",pnlEurManual:"",notes:x.notes||"",rejetScore:x.rejetScore||0,time:x.time||"",screenshot:x.screenshot||"",isRevenge:x.isRevenge||false,slDirection:x.slDirection||"",checkin:x.checkin||{humeur:"",biais:""}});setEditingId(x.id);setView("log");};
-  const cancelEdit=()=>{setForm(emptyForm(config.defaultAsset||"XAU/USD",config.lastTimeframe||"M5",config.lastPnlMode||"pct"));setEditingId(null);setView("history");scrollToTop();};
+  const cancelEdit=()=>{setForm(emptyForm(config.defaultAsset||"XAU/USD",config.defaultTimeframe||config.lastTimeframe||"M5",config.lastPnlMode||"eur"));setEditingId(null);setView("history");scrollToTop();};
   const deleteTrade=id=>{
     const updated=trades.filter(x=>x.id!==id);
     setTrades(updated);setConfirmDeleteId(null);
@@ -2445,7 +2518,7 @@ export default function App() {
               <div style={{fontSize:9,color:neon,fontWeight:700,marginBottom:4}}>{config.phaseName||"PHASE"}{config.capital?` · ${parseInt(config.capital).toLocaleString()}${config.devise||"€"}`:""}</div>
               {objectif.pnl&&<div style={{height:3,background:"#ffffff10",borderRadius:3,marginBottom:4}}><div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${neon}66,${neon})`,borderRadius:3,boxShadow:`0 0 6px ${neon}55`}}/></div>}
               <div style={{display:"flex",justifyContent:"space-between"}}>
-                <span style={{fontSize:8,color:"#ffffff44"}}>{lang==="fr"?"Phase en cours":"Current phase"}</span>
+                <span style={{fontSize:8,color:"#ffffff44"}}>{lang==="fr"?"Compte en cours":"Current account"}</span>
                 <span style={{fontSize:10,fontWeight:700,color:cur>=0?neon:"#ff4d4d"}}>{cur>=0?"+":""}{cur.toFixed(1)}%{objectif.pnl?<span style={{fontSize:8,color:"#ffffff44",fontWeight:400}}> / +{objectif.pnl}%</span>:null}</span>
               </div>
             </div>;
@@ -2513,7 +2586,7 @@ export default function App() {
           <div style={{fontSize:26,fontWeight:900,color:"#ffffff",letterSpacing:-0.5}}>{view==="dashboard"?(lang==="fr"?"Statistiques":"Statistics"):view==="log"?(editingId?lang==="fr"?"✏ Édition":"✏ Edit":lang==="fr"?"Nouveau trade":"New trade"):view==="history"?(lang==="fr"?"Historique":"History"):lang==="fr"?"Paramètres":"Settings"}</div>
           <div style={{fontSize:10,color:"#ffffff33",marginTop:4}}>{config.strategyName}{total>0?` · ${total} trades`:""}</div>
         </div>
-        {view==="dashboard"&&<button onClick={()=>setShowNewPhase(true)} style={{padding:"9px 18px",background:`${neon}10`,border:`1px solid ${neon}25`,borderRadius:10,fontSize:11,color:neon,fontFamily:MONO,cursor:"pointer",fontWeight:700}}>▶ {lang==="fr"?"Nouvelle phase":"New phase"}</button>}
+        {view==="dashboard"&&<button onClick={()=>setShowNewPhase(true)} style={{padding:"9px 18px",background:`${neon}10`,border:`1px solid ${neon}25`,borderRadius:10,fontSize:11,color:neon,fontFamily:MONO,cursor:"pointer",fontWeight:700}}>▶ {lang==="fr"?"Nouveau compte":"New account"}</button>}
       </div>}
 
       
@@ -2528,7 +2601,7 @@ export default function App() {
                   <button key={m} onClick={()=>setStatsMode(m)} className="btn" style={{flex:1,padding:"7px 0",borderRadius:6,fontSize:10,fontWeight:700,fontFamily:MONO,background:statsMode===m?neon:"transparent",color:statsMode===m?"#131318":"#ffffffaa",border:"none",transition:"all 0.2s"}}>{l}</button>
                 ))}
               </div>
-              <button onClick={()=>setShowNewPhase(true)} className="btn" style={{padding:"7px 10px",background:`${neon}10`,border:`1px solid ${neon}30`,borderRadius:8,fontSize:9,fontWeight:700,color:neon,whiteSpace:"nowrap",flexShrink:0}}>▶ Phase</button>
+              <button onClick={()=>setShowNewPhase(true)} className="btn" style={{padding:"7px 10px",background:`${neon}10`,border:`1px solid ${neon}30`,borderRadius:8,fontSize:9,fontWeight:700,color:neon,whiteSpace:"nowrap",flexShrink:0}}>▶ Compte</button>
             </div>
           )}
           {total>0&&(
@@ -2813,7 +2886,7 @@ export default function App() {
               ))}
             </div>
             {phases.length>0&&<div style={{display:"flex",gap:4,marginBottom:8,overflowX:"auto",paddingBottom:2}}>
-              {[["ALL",lang==="fr"?"Toutes phases":"All phases"],...phases.map((_,i)=>[String(i+1),`Phase ${i+1}`]),["0",lang==="fr"?"Phase 1":"Phase 1"]].filter(([v])=>v==="ALL"||(v==="0"&&phases.length===0)||(v!=="0")).slice(0,phases.length+2).map(([v,l])=>(
+              {[["ALL",lang==="fr"?"Tous comptes":"All accounts"],...phases.map((_,i)=>[String(i+1),lang==="fr"?`Compte ${i+1}`:`Account ${i+1}`]),["0",lang==="fr"?"Compte 1":"Account 1"]].filter(([v])=>v==="ALL"||(v==="0"&&phases.length===0)||(v!=="0")).slice(0,phases.length+2).map(([v,l])=>(
                 <button key={v} className="btn" onClick={()=>setHistPhase(v)} style={{background:histPhase===v?`${neon}1a`:"transparent",border:`1px solid ${histPhase===v?neon:`${neon}1a`}`,color:histPhase===v?neon:"#ffffffaa",borderRadius:5,padding:"4px 10px",fontSize:9,fontWeight:700,fontFamily:MONO,whiteSpace:"nowrap"}}>{l}</button>
               ))}
             </div>}
@@ -2833,7 +2906,7 @@ export default function App() {
                   const phTr=trades.filter(z=>z.date>=phStart&&z.date<phEnd);
                   const phWR=phTr.length?Math.round(phTr.filter(z=>z.result==="WIN").length/phTr.length*100):0;
                   const phPnl=phTr.reduce((s,z)=>s+(parseFloat(z.pnlPct)||0),0);
-                  els.push(<div key={`sep-${lastPk}`} style={{display:"flex",alignItems:"center",gap:8,margin:"4px 0 14px"}}><div style={{flex:1,height:1,background:`${neon}18`}}/><div style={{background:`${neon}08`,border:`1px solid ${neon}20`,borderRadius:8,padding:"5px 12px",textAlign:"center",flexShrink:0}}><span style={{fontSize:9,color:neon,fontFamily:MONO,fontWeight:700,letterSpacing:1}}>PHASE {lastPk+1}</span><span style={{fontSize:9,color:"#ffffff44",fontFamily:MONO}}> · {t.phaseSince} {phStart}</span><span style={{fontSize:9,color:"#ffffffaa",fontFamily:MONO}}> · {phTr.length}t · {phWR}% · {fmtPct(phPnl)}</span></div><div style={{flex:1,height:1,background:`${neon}18`}}/></div>);
+                  els.push(<div key={`sep-${lastPk}`} style={{display:"flex",alignItems:"center",gap:8,margin:"4px 0 14px"}}><div style={{flex:1,height:1,background:`${neon}18`}}/><div style={{background:`${neon}08`,border:`1px solid ${neon}20`,borderRadius:8,padding:"5px 12px",textAlign:"center",flexShrink:0}}><span style={{fontSize:9,color:neon,fontFamily:MONO,fontWeight:700,letterSpacing:1}}>{lang==="fr"?"COMPTE":"ACCOUNT"} {lastPk+1}</span><span style={{fontSize:9,color:"#ffffff44",fontFamily:MONO}}> · {t.phaseSince} {phStart}</span><span style={{fontSize:9,color:"#ffffffaa",fontFamily:MONO}}> · {phTr.length}t · {phWR}% · {fmtPct(phPnl)}</span></div><div style={{flex:1,height:1,background:`${neon}18`}}/></div>);
                 }
                 lastPk=pk;
               }
@@ -2923,10 +2996,14 @@ export default function App() {
   );
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// 13. NEW ACCOUNT MODAL  (ex: NewPhaseModal)
+// ──────────────────────────────────────────────────────────────────────────────
+
 function NewPhaseModal({onConfirm,onClose,lang,neon,phases,config}){
   const MONO="'Geist Mono','IBM Plex Mono',monospace";
   const num=(phases?.length||0)+2;
-  const [name,setName]=useState(`Phase ${num}`);
+  const [name,setName]=useState(`Compte ${num}`);
   const [accountType,setAccountType]=useState(config?.accountType||"perso");
   const [capital,setCapital]=useState(config?.capital||"");
   const [devise,setDevise]=useState(config?.devise||"€");
@@ -2937,7 +3014,7 @@ function NewPhaseModal({onConfirm,onClose,lang,neon,phases,config}){
       <div style={{background:"#0f0f18",borderRadius:"24px 24px 0 0",padding:"20px 20px 36px",width:"100%",maxWidth:480,border:"1px solid #ffffff0f",borderBottom:"none",maxHeight:"90vh",overflowY:"auto"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <div>
-            <div style={{fontSize:14,fontWeight:800,color:"#ffffff"}}>▶ Nouvelle phase</div>
+            <div style={{fontSize:14,fontWeight:800,color:"#ffffff"}}>▶ Nouveau compte</div>
             <div style={{fontSize:9,color:"#ffffff33",marginTop:3}}>Les stats repartent à zéro · Historique conservé</div>
           </div>
           <button onClick={onClose} style={{background:"transparent",border:"none",color:"#ffffff44",fontSize:18,cursor:"pointer",padding:"4px 8px"}}>✕</button>
@@ -2990,7 +3067,7 @@ function NewPhaseModal({onConfirm,onClose,lang,neon,phases,config}){
         {/* Confirm */}
         <button onClick={()=>onConfirm({name,accountType,capital,devise,obj,drawdown})}
           style={{width:"100%",background:`linear-gradient(135deg,${neon}22,${neon}0c)`,border:`1.5px solid ${neon}`,borderRadius:14,padding:"15px 0",fontSize:13,fontWeight:900,color:"#ffffff",fontFamily:MONO,cursor:"pointer",boxShadow:`0 4px 28px ${neon}22,inset 0 1px 0 ${neon}30`,letterSpacing:1}}>
-          ✓ Lancer {name}
+          ✓ Démarrer {name}
         </button>
       </div>
     </div>
