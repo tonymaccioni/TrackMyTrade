@@ -376,7 +376,7 @@ function AdvancedStats({trades,neon,lang}) {
         {wins.length>0&&losses.length>0&&(()=>{const r=avgWin/avgLoss;return<div style={{background:`${neon}08`,borderRadius:8,padding:10,gridColumn:"1/-1"}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{t.ratio}</div><div style={{fontSize:16,fontWeight:700,color:r>=1?neon:"#f0b429",fontFamily:MONO}}>{r.toFixed(2)}</div></div>;})()}
         {revs.length>0&&<div style={{background:"rgba(255,77,77,0.06)",border:"1px solid rgba(255,77,77,0.15)",borderRadius:8,padding:10,gridColumn:"1/-1"}}><div style={{fontSize:9,color:"#ff4d4d",marginBottom:4}}>REVENGE TRADES</div><div style={{fontSize:14,fontWeight:700,color:"#ff4d4d",fontFamily:MONO}}>{revs.length} · {Math.round(revs.filter(x=>x.result==="LOSS").length/revs.length*100)}% LOSS</div></div>}
       </div>
-    </div>
+    </Card3D>
   );
 }
 
@@ -616,7 +616,7 @@ function ConformityBar({trades,threshold,maxItems,neon,lang}) {
           {nWR!==null&&<div style={{marginTop:8,padding:"4px 8px",background:"rgba(255,77,77,0.15)",borderRadius:6}}><span style={{fontSize:14,fontWeight:700,color:"#ff4d4d",textShadow:"0 0 12px #ff4d4d99"}}>{nWR}%</span><span style={{fontSize:10,color:"#ffffffaa",marginLeft:6}}>{t.winRateLabel}</span></div>}
         </div>}
       </div>
-    </div>
+    </Card3D>
   );
 }
 
@@ -757,7 +757,7 @@ function TradingCalendar({trades,neon,lang}) {
           return <div key={i} style={{background:bg,border:isToday?`1px solid ${neon}`:"1px solid transparent",borderRadius:4,padding:"4px 2px",textAlign:"center"}}><div style={{fontSize:10,color:tc,fontFamily:MONO}}>{d}</div></div>;
         })}
       </div>
-    </div>
+    </Card3D>
   );
 }
 
@@ -1820,7 +1820,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
             {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setMaxTrades(n)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:maxTrades===n?`${neonColor}26`:"#131318",border:`1px solid ${maxTrades===n?neonColor:`${neonColor}22`}`,color:maxTrades===n?neonColor:"#ffffffbb"}}>{n}</button>)}
             <button onClick={()=>setMaxTrades(0)} className="btn" style={{flex:1.4,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:maxTrades===0?`${neonColor}26`:"#131318",border:`1px solid ${maxTrades===0?neonColor:`${neonColor}22`}`,color:maxTrades===0?neonColor:"#ffffffaa"}}>∞</button>
           </div>
-        </div>
+        </Card3D>
         <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>ACTIFS</div>
         <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
           {assets.map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4,background:"#131318",border:`1px solid ${neon}26`,borderRadius:6,padding:"4px 8px"}}>
@@ -1846,7 +1846,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
               </button>
             ))}
           </div>
-        </div>
+        </Card3D>
         <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.thresholdLabel}</div>
         <div style={{display:"flex",gap:6,marginBottom:16}}>
           {[4,5,6,7,8].map(n=><button key={n} onClick={()=>setThreshold(n)} className="btn" style={{flex:1,padding:8,borderRadius:8,fontSize:13,fontWeight:700,fontFamily:MONO,background:threshold===n?`${neonColor}33`:"#131318",border:`1px solid ${threshold===n?neonColor:`${neonColor}22`}`,color:threshold===n?neonColor:"#ffffffbb"}}>{n}</button>)}
@@ -1864,7 +1864,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
         <Card3D neon={neonColor} style={{padding:14,marginBottom:14}}>
           <Toggle label={t.calendarToggle} val={calendarOn} set={setCalendarOn}/>
           <Toggle label={t.enableNotif} val={notifOn} set={setNotifOn}/>
-        </div>
+        </Card3D>
         <SaveBtn/>
       </div>}
 
@@ -1873,7 +1873,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
         <Card3D neon={neonColor} style={{padding:14,marginBottom:14}}>
           <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.langLabel}</div>
           <div style={{display:"flex",gap:8}}>{[["fr","Français"],["en","English"]].map(([l,label])=><button key={l} onClick={()=>onLangChange(l)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:lang===l?`${neonColor}26`:"#131318",border:`1px solid ${lang===l?neonColor:`${neonColor}22`}`,color:lang===l?neonColor:"#ffffffbb"}}>{label}</button>)}</div>
-        </div>
+        </Card3D>
         <Card3D neon={neonColor} style={{padding:14,marginBottom:14}}>
           <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.colorLabel}</div>
           <div style={{display:"flex",gap:8}}>{NEON_COLORS.map(c=><button key={c.value} onClick={()=>setNeonColor(c.value)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,background:neonColor===c.value?`${c.value}26`:"#131318",border:`2px solid ${neonColor===c.value?c.value:"transparent"}`,cursor:"pointer"}}><div style={{width:16,height:16,borderRadius:"50%",background:c.value,margin:"0 auto",boxShadow:neonColor===c.value?`0 0 8px ${c.value}`:"none"}}/></button>)}</div>
@@ -1885,7 +1885,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
         <button onClick={onLogout} className="btn" style={{width:"100%",background:"transparent",border:"1px solid rgba(255,77,77,0.1)",color:"#ff4d4d88",borderRadius:10,padding:12,fontSize:11,fontFamily:MONO}}>{t.logout}</button>
       </div>}
 
-    </div>
+    </Card3D>
   );
 }
 
