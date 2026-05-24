@@ -58,7 +58,7 @@ const today = () => new Date().toISOString().split("T")[0];
 const rc = (r, neon="#00ff9d") => r==="WIN"?neon:r==="LOSS"?"#ff4d4d":"#f0b429";
 const fmtPct = v => { if(v===""||v===null||v===undefined) return "—"; const n=Number(v),abs=Math.abs(n); const s=abs%1===0?abs.toFixed(0):abs*10%1===0?abs.toFixed(1):abs*100%1===0?abs.toFixed(2):abs.toFixed(3); return `${n>=0?"+":""}${n<0?"-":""}${s}%`; };
 const calcDisc = list => { if(!list||!list.length) return null; return Math.round((list.filter(x=>x.conforming).length/list.length*0.6+list.filter(x=>!x.isRevenge).length/list.length*0.4)*10); };
-const emptyForm = (asset="XAU/USD", tf="M5", mode="pct") => ({date:today(),asset,direction:"BUY",checklist:[],result:"WIN",pnlPreset:"",pnlManual:"",pnlMode:mode,pnlEurManual:"",notes:"",rejetScore:0,time:"",timeframe:tf,screenshot:"",isRevenge:false,slDirection:"",checkin:{humeur:"",biais:""}});
+const emptyForm = (asset="XAU/USD", tf="M5", mode="eur") => ({date:today(),asset,direction:"BUY",checklist:[],result:"WIN",pnlPreset:"",pnlManual:"",pnlMode:mode,pnlEurManual:"",notes:"",rejetScore:0,time:"",timeframe:tf,screenshot:"",isRevenge:false,slDirection:"",checkin:{humeur:"",biais:""}});
 const mkInput = neon => ({width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:8,color:"#ffffff",padding:"12px 14px",fontSize:13,fontFamily:MONO,marginBottom:10,outline:"none"});
 // Auth handled by Firebase Auth
 
@@ -1666,14 +1666,14 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
   const [newPhaseName,setNewPhaseName]=useState("");
   const [phaseName,setPhaseName]=useState(config.phaseName||"");
   const [objPnl,setObjPnl]=useState(config.objPnl||"");
-  const [objWr,setObjWr]=useState(config.objWr||"");
+  const [objWr,setObjWr]=useState(config.objWr||"");const [defaultTf,setDefaultTf]=useState(config.defaultTimeframe||config.defaultTimeframe||config.lastTimeframe||"M5");
   const [objTrades,setObjTrades]=useState(config.objTrades||"");const [eliminatoires,setEliminatoires]=useState(config.eliminatoires||[]);
   const [capital,setCapital]=useState(config.capital||"");
   const [devise,setDevise]=useState(config.devise||"€");
   const [accountType,setAccountType]=useState(config.accountType||"perso");
   const [objDrawdown,setObjDrawdown]=useState(config.objDrawdown||"");
   const save=()=>{const savedObj={pnl:objPnl,wr:"",trades:"",drawdown:objDrawdown,editMode:false};
-    onSave({items,threshold,strategyName:stratName,maxTrades,neonColor,calendarOn,notifOn,customAssets:assets,eliminatoires,objPnl,phaseName,capital,devise,accountType,objDrawdown});
+    onSave({items,threshold,strategyName:stratName,maxTrades,neonColor,calendarOn,notifOn,customAssets:assets,eliminatoires,objPnl,phaseName,capital,devise,accountType,objDrawdown,defaultTimeframe:defaultTf});
     onObjectifChange(savedObj);setSavedOk(true);setTimeout(()=>setSavedOk(false),2000);};
   const Toggle=({label,val,set})=>(
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${neonColor}0d`}}>
@@ -1783,6 +1783,21 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
         <div style={{display:"flex",gap:8,marginBottom:14}}>
           <input value={customAsset} onChange={e=>setCustomAsset(e.target.value)} placeholder={t.customAsset} onKeyDown={e=>{if(e.key==="Enter"&&customAsset.trim()){setAssets([...assets,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} style={{...inSt,marginBottom:0,flex:1}}/>
           <button onClick={()=>{if(customAsset.trim()){setAssets([...assets,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} className="btn" style={{background:`${neonColor}1a`,border:`1px solid ${neonColor}55`,color:neonColor,borderRadius:8,padding:"0 14px",fontSize:18}}>+</button>
+        </div>
+        {/* ── Timeframe par défaut ── */}
+        <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
+          <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>TIMEFRAME</div>
+          <div style={{display:"flex",gap:4}}>
+            {["M1","M5","M15","H1","H4","D1"].map(tf=>(
+              <button key={tf} onClick={()=>setDefaultTf(tf)} className="btn"
+                style={{flex:1,padding:"9px 0",borderRadius:8,fontSize:9,fontWeight:700,fontFamily:MONO,
+                  background:defaultTf===tf?`${neonColor}18`:"#131318",
+                  border:`1px solid ${defaultTf===tf?neonColor:"#ffffff0d"}`,
+                  color:defaultTf===tf?neonColor:"#ffffffbb"}}>
+                {tf}
+              </button>
+            ))}
+          </div>
         </div>
         <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.thresholdLabel}</div>
         <div style={{display:"flex",gap:6,marginBottom:16}}>
@@ -2327,8 +2342,8 @@ export default function App() {
     else{const trade={...form,pnlPct:pnl,id:Date.now(),setupScore:score,conforming,isRevenge,checklistMax:config.items.length};ut=trade;updated=[trade,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);}
     setTrades(updated);
     if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{trades:updated});
-    const newCfgAfterSave={...config,lastPnlMode:form.pnlMode||"pct"};setConfig(newCfgAfterSave);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:newCfgAfterSave});
-    setForm(emptyForm(config.defaultAsset||"XAU/USD",config.lastTimeframe||"M5",config.lastPnlMode||"pct"));setEditingId(null);setCheckinOpen(false);
+    const newCfgAfterSave={...config,lastPnlMode:form.pnlMode||"eur"};setConfig(newCfgAfterSave);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:newCfgAfterSave});
+    setForm(emptyForm(config.defaultAsset||"XAU/USD",config.defaultTimeframe||config.lastTimeframe||"M5",config.lastPnlMode||"eur"));setEditingId(null);setCheckinOpen(false);
     // Conseil biais/direction incohérents
     const biaisCheck=form.checkin?.biais||"";
     const isBullish=biaisCheck.includes("Haussier")||biaisCheck.includes("Bullish");
@@ -2352,7 +2367,7 @@ export default function App() {
   };
 
   const startEdit=x=>{setForm({date:x.date,asset:x.asset,direction:x.direction,checklist:[...x.checklist],result:x.result,pnlPreset:PNL_PRESETS.includes(x.pnlPct)?x.pnlPct:"",pnlManual:PNL_PRESETS.includes(x.pnlPct)?"":x.pnlPct,pnlMode:"pct",pnlEurManual:"",notes:x.notes||"",rejetScore:x.rejetScore||0,time:x.time||"",screenshot:x.screenshot||"",isRevenge:x.isRevenge||false,slDirection:x.slDirection||"",checkin:x.checkin||{humeur:"",biais:""}});setEditingId(x.id);setView("log");};
-  const cancelEdit=()=>{setForm(emptyForm(config.defaultAsset||"XAU/USD",config.lastTimeframe||"M5",config.lastPnlMode||"pct"));setEditingId(null);setView("history");scrollToTop();};
+  const cancelEdit=()=>{setForm(emptyForm(config.defaultAsset||"XAU/USD",config.defaultTimeframe||config.lastTimeframe||"M5",config.lastPnlMode||"eur"));setEditingId(null);setView("history");scrollToTop();};
   const deleteTrade=id=>{
     const updated=trades.filter(x=>x.id!==id);
     setTrades(updated);setConfirmDeleteId(null);
@@ -2751,19 +2766,12 @@ export default function App() {
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
               <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2}}>{t.pnl}</div>
               {config.capital&&<div style={{display:"flex",gap:3,background:"#131318",borderRadius:6,padding:2}}>
-                {["pct","eur"].map(m=>(
+                {["eur","pct"].map(m=>(
                   <button key={m} onClick={()=>setForm(f=>({...f,pnlMode:m,pnlPreset:"",pnlManual:""}))} className="btn" style={{padding:"3px 8px",borderRadius:4,fontSize:9,fontWeight:700,fontFamily:MONO,background:(form.pnlMode||"pct")===m?neon:"transparent",color:(form.pnlMode||"pct")===m?"#000":"#ffffff66",border:"none"}}>{m==="pct"?"%":"€"}</button>
                 ))}
               </div>}
             </div>
-            {(form.pnlMode||"pct")==="pct"?(
-              <div style={{display:"flex",gap:4,alignItems:"center"}}>
-                {PNL_PRESETS.map(v=>(
-                  <button key={v} onClick={()=>setForm({...form,pnlPreset:v,pnlManual:""})} className="btn" style={{padding:"8px 0",borderRadius:6,fontSize:11,fontWeight:700,fontFamily:MONO,flex:1,background:form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?`${neon}33`:parseFloat(v)<0?"rgba(255,77,77,0.2)":"rgba(240,180,41,0.2)"):"#131318",border:`1px solid ${form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?neon:parseFloat(v)<0?"#ff4d4d":"#f0b429"):`${neon}14`}`,color:form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?neon:parseFloat(v)<0?"#ff4d4d":"#f0b429"):"#ffffffaa"}}>{v}%</button>
-                ))}
-                <input type="number" step="0.1" placeholder={t.manualPnl} value={form.pnlManual} onChange={e=>setForm({...form,pnlManual:e.target.value,pnlPreset:""})} style={{width:52,background:"#131318",border:`1px solid ${form.pnlManual?`${neon}66`:`${neon}14`}`,borderRadius:6,color:form.pnlManual?(parseFloat(form.pnlManual)>=0?neon:"#ff4d4d"):"#ffffffaa",padding:"8px 4px",fontSize:10,fontFamily:MONO,outline:"none",textAlign:"center",flexShrink:0}}/>
-              </div>
-            ):(
+            {(form.pnlMode||"eur")==="eur"?(
               <div>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
                   {(()=>{
@@ -2793,6 +2801,13 @@ export default function App() {
                     style={{width:"100%",background:"#131318",border:`1px solid ${neon}35`,borderRadius:8,color:"#ffffff",padding:"10px 50px 10px 14px",fontSize:13,fontFamily:MONO,outline:"none"}}/>
                   <span style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:11,color:"#ffffff44",fontFamily:MONO}}>{config.devise||"€"}</span>
                 </div>
+              </div>
+            ):(
+              <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                {PNL_PRESETS.map(v=>(
+                  <button key={v} onClick={()=>setForm({...form,pnlPreset:v,pnlManual:""})} className="btn" style={{padding:"8px 0",borderRadius:6,fontSize:11,fontWeight:700,fontFamily:MONO,flex:1,background:form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?`${neon}33`:parseFloat(v)<0?"rgba(255,77,77,0.2)":"rgba(240,180,41,0.2)"):"#131318",border:`1px solid ${form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?neon:parseFloat(v)<0?"#ff4d4d":"#f0b429"):`${neon}14`}`,color:form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?neon:parseFloat(v)<0?"#ff4d4d":"#f0b429"):"#ffffffaa"}}>{v}%</button>
+                ))}
+                <input type="number" step="0.1" placeholder={t.manualPnl} value={form.pnlManual} onChange={e=>setForm({...form,pnlManual:e.target.value,pnlPreset:""})} style={{width:52,background:"#131318",border:`1px solid ${form.pnlManual?`${neon}66`:`${neon}14`}`,borderRadius:6,color:form.pnlManual?(parseFloat(form.pnlManual)>=0?neon:"#ff4d4d"):"#ffffffaa",padding:"8px 4px",fontSize:10,fontFamily:MONO,outline:"none",textAlign:"center",flexShrink:0}}/>
               </div>
             )}
             {pnlVal!==""&&(
