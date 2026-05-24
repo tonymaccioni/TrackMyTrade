@@ -1792,6 +1792,8 @@ function SettingsView({config,onSave,onLogout,onReset,lang,onLangChange,neon,acc
       {/* ── TAB STRATÉGIE ── */}
       {tab==="strategy"&&(
         <div>
+          <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.strategyName}</div>
+          <input value={stratName} onChange={e=>setStratName(e.target.value)} style={{...inSt,marginBottom:16}}/>
           <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.criteriaLabel} ({items.length})</div>
           {items.map((item,i)=>{
             const isE=(eliminatoires||[]).includes(i);
@@ -1825,9 +1827,6 @@ function SettingsView({config,onSave,onLogout,onReset,lang,onLangChange,neon,acc
             {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setMaxTrades(n)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:maxTrades===n?`${neon}26`:"#131318",border:`1px solid ${maxTrades===n?neon:`${neon}22`}`,color:maxTrades===n?neon:"#ffffffbb"}}>{n}</button>)}
             <button onClick={()=>setMaxTrades(0)} className="btn" style={{flex:1.4,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:maxTrades===0?`${neon}26`:"#131318",border:`1px solid ${maxTrades===0?neon:`${neon}22`}`,color:maxTrades===0?neon:"#ffffffaa"}}>∞</button>
           </div>
-
-          <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.strategyName}</div>
-          <input value={stratName} onChange={e=>setStratName(e.target.value)} style={{...inSt,marginBottom:16}}/>
 
           <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:16}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${neon}0d`}}>
@@ -2369,9 +2368,8 @@ export default function App() {
   };
 
   const activeAcc=accounts.find(a=>a.id===activeAccountId)||null;
-  const pf=activeAccountId
-    ? (statsMode==="phase"?trades.filter(x=>x.accountId===activeAccountId):trades.filter(x=>x.accountId===activeAccountId||!x.accountId))
-    : trades;
+  // Trades du compte actif = trades avec cet accountId OU trades sans accountId (anciens)
+  const pf=trades.filter(x=>!x.accountId||x.accountId===activeAccountId||!activeAccountId);
   const total=pf.length,wins=pf.filter(x=>x.result==="WIN").length,losses=pf.filter(x=>x.result==="LOSS").length;
   const winRate=total?Math.round(wins/total*100):0;
   const totalPnl=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
