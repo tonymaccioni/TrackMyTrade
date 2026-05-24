@@ -193,32 +193,43 @@ function Card3D({children, neon="#00ff9d", style={}, glow=false, onClick, classN
       className={className}
       onClick={onClick}
       style={{
-        background: "linear-gradient(145deg, #1a1a28, #111118)",
-        border: `1px solid rgba(255,255,255,0.07)`,
-        borderTop: `1px solid rgba(255,255,255,0.11)`,
+        background: "linear-gradient(160deg, #22223a 0%, #14141f 60%, #0e0e18 100%)",
+        border: `1px solid rgba(255,255,255,0.10)`,
+        borderTop: `1px solid rgba(255,255,255,0.18)`,
+        borderBottom: `1px solid rgba(0,0,0,0.4)`,
         borderRadius: 14,
         padding: 14,
         position: "relative",
         overflow: "hidden",
         boxShadow: [
-          "0 1px 0 rgba(255,255,255,0.06) inset",
-          "0 -1px 0 rgba(0,0,0,0.3) inset",
-          "0 8px 32px rgba(0,0,0,0.5)",
-          "0 2px 8px rgba(0,0,0,0.4)",
-          glow ? `0 0 24px ${neon}18, 0 0 8px ${neon}0a` : "",
+          "0 2px 0 rgba(255,255,255,0.07) inset",
+          "0 -2px 0 rgba(0,0,0,0.5) inset",
+          "0 1px 0 rgba(255,255,255,0.04) inset",
+          "0 12px 40px rgba(0,0,0,0.65)",
+          "0 4px 12px rgba(0,0,0,0.5)",
+          "0 1px 3px rgba(0,0,0,0.8)",
+          glow ? `0 0 28px ${neon}22, 0 0 10px ${neon}12` : "",
         ].filter(Boolean).join(", "),
         ...style
       }}>
-      {/* Highlight bord haut — effet 3D */}
+      {/* Barre top brillante — effet verre */}
       <div style={{
-        position:"absolute", top:0, left:0, right:0, height:1,
-        background:`linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.10) 30%, rgba(255,255,255,0.10) 70%, transparent 100%)`,
+        position:"absolute", top:0, left:0, right:0, height:2,
+        background:`linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.22) 25%, rgba(255,255,255,0.22) 75%, transparent 100%)`,
+        borderRadius:"14px 14px 0 0",
         pointerEvents:"none"
       }}/>
-      {/* Reflet coin haut-gauche */}
+      {/* Reflet diagonal haut-gauche */}
       <div style={{
-        position:"absolute", top:0, left:0, width:"45%", height:"45%",
-        background:`radial-gradient(ellipse at 0% 0%, rgba(255,255,255,0.04) 0%, transparent 70%)`,
+        position:"absolute", top:0, left:0, width:"55%", height:"55%",
+        background:`radial-gradient(ellipse at 10% 10%, rgba(255,255,255,0.07) 0%, transparent 65%)`,
+        pointerEvents:"none"
+      }}/>
+      {/* Barre bas sombre */}
+      <div style={{
+        position:"absolute", bottom:0, left:0, right:0, height:2,
+        background:"rgba(0,0,0,0.35)",
+        borderRadius:"0 0 14px 14px",
         pointerEvents:"none"
       }}/>
       {children}
@@ -896,10 +907,12 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
       <div style={{marginBottom:24}}><SplashLogo neon={neon}/></div>
       <div className="slide-up" style={{width:"100%",maxWidth:360}}>
         <div style={{textAlign:"center",fontSize:9,color:"#ffffff44",letterSpacing:4,marginBottom:20,fontFamily:MONO}}>{mode==="login"?t.loginTitle.toUpperCase():t.signupBtn.toUpperCase()}</div>
+        <Card3D neon={neon} style={{marginBottom:16,padding:16}}>
         <input type="email" value={email} onChange={e=>{setEmail(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={t.loginEmailPlaceholder} style={{...inSt,marginBottom:10,fontSize:14}} autoFocus/>
         <input type="password" value={pwd} onChange={e=>{setPwd(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={pwdPlaceholder} style={{...inSt,marginBottom:mode==="signup"?10:error?10:16,fontSize:14}}/>
         {mode==="signup"&&<input type="password" value={confirmPwd} onChange={e=>{setConfirmPwd(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={t.confirmPwdPlaceholder} style={{...inSt,marginBottom:error?10:16,fontSize:14}}/>}
-        {error&&<div style={{fontSize:11,color:"#ff4d4d",marginBottom:14,padding:"8px 12px",background:"rgba(255,77,77,0.08)",borderRadius:8,border:"1px solid rgba(255,77,77,0.2)"}}>{error}</div>}
+        {error&&<div style={{fontSize:11,color:"#ff4d4d",marginBottom:6,padding:"8px 12px",background:"rgba(255,77,77,0.1)",borderRadius:8,border:"1px solid rgba(255,77,77,0.25)"}}>{error}</div>}
+        </Card3D>
         <button onClick={submit} disabled={loading} className="btn"
           style={{width:"100%",background:`${neon}22`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:16,fontSize:14,fontWeight:700,fontFamily:MONO,marginBottom:20,letterSpacing:2}}>
           {loading?"...":(mode==="login"?(fr?"SE CONNECTER":"SIGN IN"):(fr?"CRÉER UN COMPTE":"CREATE ACCOUNT"))}
@@ -2776,7 +2789,7 @@ export default function App() {
               <div style={{width:16,height:16,borderRadius:"50%",background:(form.isRevenge||isRevengeNow)?"#ff4d4d":"#ffffffaa",position:"absolute",top:3,left:(form.isRevenge||isRevengeNow)?24:4,transition:"all 0.2s"}}/>
             </button>
           </div>
-          <div style={{background:"#131318",border:`1px solid ${neon}26`,borderRadius:10,padding:14,marginBottom:10}}>
+          <Card3D neon={neon} style={{padding:14,marginBottom:10}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
               <div><div style={{fontSize:9,color:"#ffffff44",letterSpacing:2}}>{t.checklistSetup}</div><div style={{fontSize:10,marginTop:4,color:form.checklist.length>=config.threshold?neon:"#ff4d4d"}}>{form.checklist.length>=config.threshold?t.conform:`⚠ ${config.threshold-form.checklist.length} ${t.missing}`}</div></div>
               <ScoreRing score={form.checklist.length} max={config.items.length} threshold={config.threshold} neon={neon}/>
@@ -2787,8 +2800,8 @@ export default function App() {
                 <span style={{fontSize:12,color:form.checklist.includes(i)?"#ffffff":"#ffffffaa"}}>{item}</span>
               </label>
             ))}
-          </div>
-          <div style={{background:"#131318",border:`1px solid ${neon}1a`,borderRadius:10,padding:"12px 14px",marginBottom:10}}>
+          </Card3D>
+          <Card3D neon={neon} style={{marginBottom:10,padding:"12px 14px"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
               <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2}}>{t.rejectQuality} <span style={{color:"#ffffffaa"}}>{t.optional}</span></div>
               {form.rejetScore>0&&<span style={{fontSize:15,fontWeight:800,color:form.rejetScore>=8?neon:form.rejetScore>=5?"#f0b429":"#ff4d4d",fontFamily:MONO}}>{form.rejetScore}/10</span>}
@@ -2798,7 +2811,7 @@ export default function App() {
                 <button key={n} onClick={()=>setForm({...form,rejetScore:form.rejetScore===n?0:n})} className="btn" style={{flex:1,padding:"6px 0",borderRadius:5,fontSize:11,fontWeight:700,fontFamily:MONO,background:form.rejetScore>=n?(n>=8?`${neon}33`:n>=5?"rgba(240,180,41,0.2)":"rgba(255,77,77,0.2)"):"#131318",border:`1px solid ${form.rejetScore>=n?(n>=8?neon:n>=5?"#f0b429":"#ff4d4d"):"#ffffff12"}`,color:form.rejetScore>=n?(n>=8?neon:n>=5?"#f0b429":"#ff4d4d"):"#ffffffbb"}}>{n}</button>
               ))}
             </div>
-          </div>
+          </Card3D>
           <div style={{display:"flex",gap:8,marginBottom:10}}>{["WIN","LOSS","BE"].map(r=><button key={r} onClick={()=>setForm({...form,result:r,slDirection:r!=="LOSS"?"":form.slDirection})} className="btn" style={{flex:1,background:form.result===r?`${rc(r,neon)}22`:"#131318",border:`1px solid ${form.result===r?rc(r,neon):`${neon}26`}`,color:form.result===r?rc(r,neon):"#ffffffbb",borderRadius:8,padding:10,fontSize:12,fontWeight:700,fontFamily:MONO}}>{r}</button>)}</div>
           {form.result==="LOSS"&&(
             <div style={{background:"rgba(255,77,77,0.06)",border:"1px solid rgba(255,77,77,0.15)",borderRadius:8,padding:"10px 12px",marginBottom:10}}>
@@ -2810,7 +2823,7 @@ export default function App() {
               </div>
             </div>
           )}
-          <div style={{marginBottom:pnlIncoherent?4:10}}>
+          <Card3D neon={neon} style={{marginBottom:pnlIncoherent?4:10,padding:"12px 14px"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
               <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2}}>{t.pnl}</div>
               {config.capital&&<div style={{display:"flex",gap:3,background:"#131318",borderRadius:6,padding:2}}>
@@ -2864,7 +2877,7 @@ export default function App() {
                 {config.capital&&<span style={{fontSize:11,color:parseFloat(pnlVal)>=0?neon+"88":"#ff4d4d88",fontFamily:MONO}}>{parseFloat(pnlVal)>=0?"+":""}{Math.round(parseFloat(config.capital)*parseFloat(pnlVal)/100).toLocaleString()}{config.devise||"€"}</span>}
               </div>
             )}
-          </div>
+          </Card3D>
           {pnlIncoherent&&<div style={{fontSize:10,color:"#f0b429",background:"rgba(240,180,41,0.08)",border:"1px solid rgba(240,180,41,0.2)",borderRadius:6,padding:"6px 10px",marginBottom:10}}>⚠ P&L {t.inconsistent} {form.result}</div>}
           <textarea placeholder={t.notesPlaceholder} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} rows={3} style={{width:"100%",background:"#131318",border:`1px solid ${neon}26`,borderRadius:8,color:"#ffffff",padding:"12px",fontSize:12,fontFamily:MONO,resize:"none",marginBottom:10,outline:"none"}}/>
           <div style={{marginBottom:16}}>
