@@ -104,7 +104,7 @@ const T = {
     loginTitle:"Connexion",loginEmail:"Adresse email",loginPassword:"Mot de passe",
     loginBtn:"Se connecter",signupBtn:"Créer un compte",loginSwitch:"Pas encore de compte ?",signupSwitch:"Déjà un compte ?",
     loginError:"Email ou mot de passe incorrect",signupError:"Email déjà utilisé",
-    loginEmailPlaceholder:"ton@email.com",loginPasswordPlaceholder:"········",
+    loginEmailPlaceholder:"ton@email.com",loginPasswordPlaceholder:"········",confirmPwdPlaceholder:"Confirmer le mot de passe",confirmPwdError:"Les mots de passe ne correspondent pas",
     disciplineLabel:"DISCIPLINE",disciplineExcellent:"Excellent",disciplineGood:"Bon",disciplineWork:"À améliorer",disciplinePoor:"Insuffisant",
     conformiteLabel:"Conformité",sansRevengeLabel:"Sans revenge",
     phaseEnCours:"Phase en cours",toutHistorique:"Tout",
@@ -162,7 +162,7 @@ const T = {
     loginTitle:"Sign in",loginEmail:"Email address",loginPassword:"Password",
     loginBtn:"Sign in",signupBtn:"Create account",loginSwitch:"No account yet?",signupSwitch:"Already have an account?",
     loginError:"Invalid email or password",signupError:"Email already in use",
-    loginEmailPlaceholder:"your@email.com",loginPasswordPlaceholder:"········",
+    loginEmailPlaceholder:"your@email.com",loginPasswordPlaceholder:"········",confirmPwdPlaceholder:"Confirm password",confirmPwdError:"Passwords do not match",
     disciplineLabel:"DISCIPLINE",disciplineExcellent:"Excellent",disciplineGood:"Good",disciplineWork:"Needs work",disciplinePoor:"Poor",
     conformiteLabel:"Compliance",sansRevengeLabel:"Revenge-free",
     phaseEnCours:"Current phase",toutHistorique:"All",
@@ -180,6 +180,52 @@ const T = {
     resetConfirmBtn:"Confirm reset",resetBtn:"⊘ Reset all data",
   }
 };
+
+// ──────────────────────────────────────────────────────────────────────────────
+// CARD 3D — Composant carte premium réutilisable
+// Usage: <Card3D neon={neon}> ... </Card3D>
+// Props: neon, style, glow (bool), onClick, className
+// ──────────────────────────────────────────────────────────────────────────────
+
+function Card3D({children, neon="#00ff9d", style={}, glow=false, onClick, className=""}) {
+  return (
+    <div
+      className={className}
+      onClick={onClick}
+      style={{
+        background: "linear-gradient(145deg, #1a1a28, #111118)",
+        border: `1px solid rgba(255,255,255,0.07)`,
+        borderTop: `1px solid rgba(255,255,255,0.11)`,
+        borderRadius: 14,
+        padding: 14,
+        position: "relative",
+        overflow: "hidden",
+        boxShadow: [
+          "0 1px 0 rgba(255,255,255,0.06) inset",
+          "0 -1px 0 rgba(0,0,0,0.3) inset",
+          "0 8px 32px rgba(0,0,0,0.5)",
+          "0 2px 8px rgba(0,0,0,0.4)",
+          glow ? `0 0 24px ${neon}18, 0 0 8px ${neon}0a` : "",
+        ].filter(Boolean).join(", "),
+        ...style
+      }}>
+      {/* Highlight bord haut — effet 3D */}
+      <div style={{
+        position:"absolute", top:0, left:0, right:0, height:1,
+        background:`linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.10) 30%, rgba(255,255,255,0.10) 70%, transparent 100%)`,
+        pointerEvents:"none"
+      }}/>
+      {/* Reflet coin haut-gauche */}
+      <div style={{
+        position:"absolute", top:0, left:0, width:"45%", height:"45%",
+        background:`radial-gradient(ellipse at 0% 0%, rgba(255,255,255,0.04) 0%, transparent 70%)`,
+        pointerEvents:"none"
+      }}/>
+      {children}
+    </div>
+  );
+}
+
 
 const CSS = ({neon="#00ff9d"}) => (
   <style>{`
@@ -320,7 +366,7 @@ function AdvancedStats({trades,neon,lang}) {
   const best=Object.entries(aMap).filter(([,v])=>v.t>=2).sort((a,b)=>(b[1].w/b[1].t)-(a[1].w/a[1].t))[0];
   const revs=trades.filter(x=>x.isRevenge);
   return (
-    <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:16,marginBottom:12}}>
+    <Card3D neon={neon} style={{padding:16,marginBottom:12}}>
       <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>{t.statsTitle}</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
         <div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{t.expectancy}</div><div style={{fontSize:16,fontWeight:700,color:exp>=0?neon:"#ff4d4d",fontFamily:MONO,textShadow:`0 0 14px ${exp>=0?neon:"#ff4d4d"}99`}}>{fmtPct(exp)}</div></div>
@@ -553,7 +599,7 @@ function ConformityBar({trades,threshold,maxItems,neon,lang}) {
   const nWR=nonConf.length?Math.round(nonConf.filter(x=>x.result==="WIN").length/nonConf.length*100):null;
   const cPct=trades.length?(conf.length/trades.length)*100:50;
   return (
-    <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:16,marginBottom:12}}>
+    <Card3D neon={neon} style={{padding:16,marginBottom:12}}>
       <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>{t.conformityTitle} {threshold}/{maxItems}</div>
       <div style={{display:"flex",height:8,borderRadius:6,overflow:"hidden",marginBottom:14,background:"#ffffff10"}}>
         <div style={{width:`${cPct}%`,background:neon,transition:"width 0.5s"}}/><div style={{flex:1,background:"#ff4d4d44"}}/>
@@ -699,7 +745,7 @@ function TradingCalendar({trades,neon,lang}) {
   for(let i=0;i<sD;i++)cells.push(null);
   for(let d=1;d<=dIM;d++)cells.push(d);
   return (
-    <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:12}}>
+    <Card3D neon={neon} style={{padding:14,marginBottom:12}}>
       <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:12,textTransform:"uppercase"}}>{t.calendarTitle} · {mN[lang][month]} {year}</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:6}}>{dN[lang].map((d,i)=><div key={i} style={{fontSize:8,color:"#ffffff44",textAlign:"center"}}>{d}</div>)}</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
@@ -792,7 +838,7 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
   const t=T[lang];
   const fr=lang==="fr";
   const [mode,setMode]=useState("login");
-  const [email,setEmail]=useState("");const [pwd,setPwd]=useState("");
+  const [email,setEmail]=useState("");const [pwd,setPwd]=useState("");const [confirmPwd,setConfirmPwd]=useState("");
   const [error,setError]=useState("");const [loading,setLoading]=useState(false);
   const [signupDone,setSignupDone]=useState(false);
   const [resetSent,setResetSent]=useState(false);
@@ -802,6 +848,7 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
   const submit=async()=>{
     setError("");if(!email.trim()||!pwd.trim())return;
     if(pwd.trim().length<6){setError(fr?"Mot de passe trop court (6 car. min.)":"Password too short");return;}
+    if(mode==="signup"&&pwd.trim()!==confirmPwd.trim()){setError(t.confirmPwdError);return;}
     if(!db){setError(fr?"Service indisponible, réessayez.":"Service unavailable.");return;}
     setLoading(true);
     try {
@@ -850,7 +897,8 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
       <div className="slide-up" style={{width:"100%",maxWidth:360}}>
         <div style={{textAlign:"center",fontSize:9,color:"#ffffff44",letterSpacing:4,marginBottom:20,fontFamily:MONO}}>{mode==="login"?t.loginTitle.toUpperCase():t.signupBtn.toUpperCase()}</div>
         <input type="email" value={email} onChange={e=>{setEmail(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={t.loginEmailPlaceholder} style={{...inSt,marginBottom:10,fontSize:14}} autoFocus/>
-        <input type="password" value={pwd} onChange={e=>{setPwd(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={pwdPlaceholder} style={{...inSt,marginBottom:error?10:16,fontSize:14}}/>
+        <input type="password" value={pwd} onChange={e=>{setPwd(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={pwdPlaceholder} style={{...inSt,marginBottom:mode==="signup"?10:error?10:16,fontSize:14}}/>
+        {mode==="signup"&&<input type="password" value={confirmPwd} onChange={e=>{setConfirmPwd(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={t.confirmPwdPlaceholder} style={{...inSt,marginBottom:error?10:16,fontSize:14}}/>}
         {error&&<div style={{fontSize:11,color:"#ff4d4d",marginBottom:14,padding:"8px 12px",background:"rgba(255,77,77,0.08)",borderRadius:8,border:"1px solid rgba(255,77,77,0.2)"}}>{error}</div>}
         <button onClick={submit} disabled={loading} className="btn"
           style={{width:"100%",background:`${neon}22`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:16,fontSize:14,fontWeight:700,fontFamily:MONO,marginBottom:20,letterSpacing:2}}>
@@ -866,7 +914,7 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
         )}
           <div style={{fontSize:11,color:"#ffffff44",fontFamily:MONO}}>
             {mode==="login"?t.loginSwitch:t.signupSwitch}{" "}
-            <button onClick={()=>{setMode(mode==="login"?"signup":"login");setError("");}} style={{background:"transparent",border:"none",color:neon,fontSize:11,cursor:"pointer",fontFamily:MONO,textDecoration:"underline"}}>{mode==="login"?t.signupBtn:t.loginTitle}</button>
+            <button onClick={()=>{setMode(mode==="login"?"signup":"login");setError("");setConfirmPwd("");}} style={{background:"transparent",border:"none",color:neon,fontSize:11,cursor:"pointer",fontFamily:MONO,textDecoration:"underline"}}>{mode==="login"?t.signupBtn:t.loginTitle}</button>
           </div>
           {mode==="login"&&<div style={{fontSize:10,color:"#ffffff55",fontFamily:MONO,marginTop:4}}>{fr?"CGU & Confidentialité":"Terms & Privacy"}</div>}
         </div>
@@ -1766,7 +1814,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
       {tab==="strategie"&&<div>
         <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.strategyName}</div>
         <input value={stratName} onChange={e=>setStratName(e.target.value)} style={inSt}/>
-        <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
+        <Card3D neon={neonColor} style={{padding:14,marginBottom:14}}>
           <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.maxTradesLabel}</div>
           <div style={{display:"flex",gap:6}}>
             {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setMaxTrades(n)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:maxTrades===n?`${neonColor}26`:"#131318",border:`1px solid ${maxTrades===n?neonColor:`${neonColor}22`}`,color:maxTrades===n?neonColor:"#ffffffbb"}}>{n}</button>)}
@@ -1785,7 +1833,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
           <button onClick={()=>{if(customAsset.trim()){setAssets([...assets,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} className="btn" style={{background:`${neonColor}1a`,border:`1px solid ${neonColor}55`,color:neonColor,borderRadius:8,padding:"0 14px",fontSize:18}}>+</button>
         </div>
         {/* ── Timeframe par défaut ── */}
-        <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
+        <Card3D neon={neonColor} style={{padding:14,marginBottom:14}}>
           <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>TIMEFRAME</div>
           <div style={{display:"flex",gap:4}}>
             {["M1","M5","M15","H1","H4","D1"].map(tf=>(
@@ -1813,7 +1861,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
           </div>;
         })}
         <button onClick={()=>setItems([...items,""])} style={{width:"100%",background:"transparent",border:`1px dashed ${neon}35`,color:"#ffffff44",borderRadius:8,padding:10,fontSize:12,cursor:"pointer",fontFamily:MONO,marginBottom:16}}>{t.addCriteria}</button>
-        <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
+        <Card3D neon={neonColor} style={{padding:14,marginBottom:14}}>
           <Toggle label={t.calendarToggle} val={calendarOn} set={setCalendarOn}/>
           <Toggle label={t.enableNotif} val={notifOn} set={setNotifOn}/>
         </div>
@@ -1822,11 +1870,11 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
 
       {/* ══ ONGLET RÉGLAGES ══ */}
       {tab==="reglages"&&<div>
-        <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
+        <Card3D neon={neonColor} style={{padding:14,marginBottom:14}}>
           <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.langLabel}</div>
           <div style={{display:"flex",gap:8}}>{[["fr","Français"],["en","English"]].map(([l,label])=><button key={l} onClick={()=>onLangChange(l)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:lang===l?`${neonColor}26`:"#131318",border:`1px solid ${lang===l?neonColor:`${neonColor}22`}`,color:lang===l?neonColor:"#ffffffbb"}}>{label}</button>)}</div>
         </div>
-        <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
+        <Card3D neon={neonColor} style={{padding:14,marginBottom:14}}>
           <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.colorLabel}</div>
           <div style={{display:"flex",gap:8}}>{NEON_COLORS.map(c=><button key={c.value} onClick={()=>setNeonColor(c.value)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,background:neonColor===c.value?`${c.value}26`:"#131318",border:`2px solid ${neonColor===c.value?c.value:"transparent"}`,cursor:"pointer"}}><div style={{width:16,height:16,borderRadius:"50%",background:c.value,margin:"0 auto",boxShadow:neonColor===c.value?`0 0 8px ${c.value}`:"none"}}/></button>)}</div>
         </div>
