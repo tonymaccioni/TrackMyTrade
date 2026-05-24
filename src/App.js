@@ -2315,14 +2315,7 @@ export default function App() {
     if(currentUserRef.current?.email) saveUserData(uid, {
       trades:keptTrades, noTrades:keptNoTrades, phases:newPhases
     });
-    setNotif({
-      txt: lang==="fr"
-        ? "Compte supprimé.
-Retour au compte précédent."
-        : "Account deleted.
-Back to previous account.",
-      color:"#f0b429", icon:"warn", lang
-    });
+    setNotif({txt:lang==="fr"?`Compte supprimé.\nRetour au compte précédent.`:`Account deleted.\nBack to previous account.`,color:"#f0b429",icon:"warn",lang});
   };
 
   const pf=statsMode==="phase"?trades.filter(x=>x.id>currentPhaseTs):trades;
