@@ -119,7 +119,7 @@ const T = {
     resetExportBtn:"↓ Exporter (CSV) puis réinitialiser",resetSkipBtn:"Réinitialiser sans exporter",
     resetCancel:"Annuler",resetExportedTitle:"Export effectué ✓",
     resetExportedDesc:"Ton historique a été sauvegardé. Tu peux maintenant réinitialiser.",
-    resetConfirmBtn:"Confirmer la réinitialisation",resetBtn:"⊘ Réinitialiser les données",deletePhaseBtn:"⊘ Supprimer ce compte",deletePhaseConfirmQ:"Supprimer le compte actuel ?",deletePhaseDesc:"Les trades de ce compte seront effacés. Le compte précédent redevient actif.",deletePhaseConfirmBtn:"✓ Supprimer",
+    resetConfirmBtn:"Confirmer la réinitialisation",resetBtn:"⊘ Réinitialiser les données",
   },
   en:{
     welcome:"Welcome to\nTrackMyTrade",welcomeDesc:"The trading journal that turns your discipline into concrete data. Every logged trade is a step toward profitability.",
@@ -177,7 +177,7 @@ const T = {
     resetExportBtn:"↓ Export (CSV) then reset",resetSkipBtn:"Reset without exporting",
     resetCancel:"Cancel",resetExportedTitle:"Export done ✓",
     resetExportedDesc:"Your history has been saved. You can now reset.",
-    resetConfirmBtn:"Confirm reset",resetBtn:"⊘ Reset all data",deletePhaseBtn:"⊘ Delete this account",deletePhaseConfirmQ:"Delete current account?",deletePhaseDesc:"Trades in this account will be deleted. Previous account becomes active.",deletePhaseConfirmBtn:"✓ Delete",
+    resetConfirmBtn:"Confirm reset",resetBtn:"⊘ Reset all data",
   }
 };
 
@@ -1657,14 +1657,14 @@ function GuidedSetup({onDone,lang}) {
   );
 }
 
-function SettingsView({config,onSave,onLogout,onReset,onNewPhase,onDeletePhase,lang,onLangChange,neon,phases,onObjectifChange,onImport}) {
+function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChange,neon,phases,onObjectifChange,onImport}) {
   const t=T[lang];const inSt=mkInput(neon);
   const [items,setItems]=useState([...config.items]);const [threshold,setThreshold]=useState(config.threshold);
   const [stratName,setStratName]=useState(config.strategyName||"");const [maxTrades,setMaxTrades]=useState(config.maxTrades||1);
   const [neonColor,setNeonColor]=useState(neon);const [calendarOn,setCalendarOn]=useState(config.calendarOn!==false);
   const [notifOn,setNotifOn]=useState(config.notifOn!==false);const [customAsset,setCustomAsset]=useState("");
   const [assets,setAssets]=useState(config.customAssets||PRESET_ASSETS);
-  const [savedOk,setSavedOk]=useState(false);const [phaseConfirm,setPhaseConfirm]=useState(false);const [phaseDeleteConfirm,setPhaseDeleteConfirm]=useState(false);const [phaseDeleteIndex,setPhaseDeleteIndex]=useState(null);
+  const [savedOk,setSavedOk]=useState(false);const [phaseConfirm,setPhaseConfirm]=useState(false);
   const [newPhaseName,setNewPhaseName]=useState("");
   const [phaseName,setPhaseName]=useState(config.phaseName||"");
   const [objPnl,setObjPnl]=useState(config.objPnl||"");
@@ -1762,65 +1762,6 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,onDeletePhase,l
             </div>
           </div>
         )}
-        {/* ── Liste de tous les comptes avec suppression ── */}
-        <div style={{height:1,background:"rgba(255,255,255,0.06)",margin:"16px 0 12px"}}/>
-        <div style={{fontSize:8,color:"#ffffff44",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>
-          {fr?"TOUS LES COMPTES":"ALL ACCOUNTS"}
-        </div>
-        {(()=>{
-          const fr2 = lang==="fr";
-          const allPhases=[
-            {index:0,name:config.phaseName||(fr2?"Phase 1":"Phase 1"),date:null,isCurrent:!phases||phases.length===0},
-            ...(phases||[]).map((ph,i)=>({index:i+1,name:ph.name||`Phase ${i+2}`,date:ph.date,isCurrent:i===(phases.length-1)}))
-          ];
-          return allPhases.map(ph=>(
-            <div key={ph.index} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,
-              padding:"9px 12px",
-              background:ph.isCurrent?`${neon}0d`:"rgba(255,255,255,0.03)",
-              border:`1px solid ${ph.isCurrent?neon+"35":"rgba(255,255,255,0.07)"}`,
-              borderRadius:8}}>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:11,fontWeight:ph.isCurrent?700:400,
-                  color:ph.isCurrent?neon:"#ffffffcc",fontFamily:MONO,
-                  display:"flex",alignItems:"center",gap:6}}>
-                  {ph.name}
-                  {ph.isCurrent&&<span style={{fontSize:8,color:neon,opacity:0.8,
-                    background:`${neon}15`,padding:"1px 5px",borderRadius:4}}>
-                    {fr2?"EN COURS":"ACTIVE"}
-                  </span>}
-                </div>
-                {ph.date&&<div style={{fontSize:9,color:"#ffffff44",fontFamily:MONO,marginTop:2}}>
-                  {fr2?"depuis":"since"} {ph.date}
-                </div>}
-              </div>
-              {phaseDeleteIndex===ph.index?(
-                <div style={{display:"flex",gap:4,alignItems:"center"}}>
-                  <span style={{fontSize:9,color:"#ff4d4d",fontFamily:MONO,marginRight:2}}>
-                    {fr2?"Confirmer ?":"Confirm?"}
-                  </span>
-                  <button onClick={()=>{onDeletePhase(ph.index);setPhaseDeleteIndex(null);}} className="btn"
-                    style={{background:"rgba(255,77,77,0.2)",border:"1px solid #ff4d4d",
-                      color:"#ff4d4d",borderRadius:6,padding:"4px 10px",
-                      fontSize:10,fontWeight:700,fontFamily:MONO}}>
-                    ✓
-                  </button>
-                  <button onClick={()=>setPhaseDeleteIndex(null)} className="btn"
-                    style={{background:"transparent",border:"1px solid rgba(255,255,255,0.1)",
-                      color:"#ffffffaa",borderRadius:6,padding:"4px 8px",fontSize:10,fontFamily:MONO}}>
-                    ✕
-                  </button>
-                </div>
-              ):(
-                <button onClick={()=>setPhaseDeleteIndex(ph.index)} className="btn"
-                  style={{background:"transparent",border:"1px solid rgba(255,77,77,0.15)",
-                    color:"#ff4d4d66",borderRadius:6,padding:"4px 8px",fontSize:12,
-                    flexShrink:0,cursor:"pointer"}}>
-                  ⊘
-                </button>
-              )}
-            </div>
-          ));
-        })()}
       </div>}
 
       {/* ══ ONGLET STRATÉGIE ══ */}
@@ -1875,9 +1816,6 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,onDeletePhase,l
         })}
         <button onClick={()=>setItems([...items,""])} style={{width:"100%",background:"transparent",border:`1px dashed ${neon}35`,color:"#ffffff44",borderRadius:8,padding:10,fontSize:12,cursor:"pointer",fontFamily:MONO,marginBottom:16}}>{t.addCriteria}</button>
         <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
-          <Toggle label={t.calendarToggle} val={calendarOn} set={setCalendarOn}/>
-          <Toggle label={t.enableNotif} val={notifOn} set={setNotifOn}/>
-        </div>
         <SaveBtn/>
       </div>}
 
@@ -1890,6 +1828,11 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,onDeletePhase,l
         <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
           <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.colorLabel}</div>
           <div style={{display:"flex",gap:8}}>{NEON_COLORS.map(c=><button key={c.value} onClick={()=>setNeonColor(c.value)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,background:neonColor===c.value?`${c.value}26`:"#131318",border:`2px solid ${neonColor===c.value?c.value:"transparent"}`,cursor:"pointer"}}><div style={{width:16,height:16,borderRadius:"50%",background:c.value,margin:"0 auto",boxShadow:neonColor===c.value?`0 0 8px ${c.value}`:"none"}}/></button>)}</div>
+        </div>
+        <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
+        <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
+          <Toggle label={t.calendarToggle} val={calendarOn} set={setCalendarOn}/>
+          <Toggle label={t.enableNotif} val={notifOn} set={setNotifOn}/>
         </div>
         <SaveBtn/>
         <div style={{height:1,background:"rgba(255,77,77,0.1)",margin:"14px 0 10px"}}/>
@@ -2312,6 +2255,9 @@ export default function App() {
   const [showImport,setShowImport]=useState(false);
   const [inAppNotifs,setInAppNotifs]=useState([]);
   const [histSearch,setHistSearch]=useState("");
+  const [phaseEditIndex,setPhaseEditIndex]=useState(null);  // which phase is being renamed
+  const [phaseEditName,setPhaseEditName]=useState("");       // rename input value
+  const [phaseDeleteConfirmIdx,setPhaseDeleteConfirmIdx]=useState(null); // which phase has delete confirm open
   const [view,setView]=useState("dashboard");
   const [form,setForm]=useState(emptyForm("XAU/USD","M5"));
   const [editingId,setEditingId]=useState(null);
@@ -2379,29 +2325,51 @@ export default function App() {
     if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{phases:newPhases,config:newCfg});
   };
 
-  // Delete a specific phase by index (0 = original, 1 = phases[0], etc.)
-  const handleDeletePhase = () => handleDeleteSpecificPhase(phases.length); // legacy: delete last
-  const handleDeleteSpecificPhase = (phaseIndex) => {
-    // phaseIndex: 0 = original phase, 1 = after phases[0], etc.
-    // We remove the phases[phaseIndex-1] entry (the boundary that created this phase)
-    // Trades that were IN this phase get merged into the adjacent phase
-    let newPhases, deletedTrades, newTrades, newNoTrades;
-    if(phaseIndex === 0) {
-      // Delete the original phase (phase 0): remove all trades before phases[0]
-      const boundary = phases.length > 0 ? phases[0].id : Infinity;
-      newTrades   = trades.filter(x => x.id >= boundary);
-      newNoTrades = noTrades.filter(x => x.id >= boundary);
-      newPhases   = phases.slice(1);
-    } else {
-      // Delete phase N: remove the boundary entry phases[phaseIndex-1]
-      // Its trades merge into the previous phase
-      newPhases   = phases.filter((_, i) => i !== phaseIndex - 1);
-      newTrades   = trades; // trades stay, just reclassified by new boundaries
-      newNoTrades = noTrades;
+  // ── Phase management ──
+  const getPhaseTradeCount = (phaseIndex) => {
+    if(phases.length===0) return trades.length;
+    if(phaseIndex===0) {
+      return trades.filter(x=>x.id<=phases[0].id).length;
     }
-    setTrades(newTrades); setNoTrades(newNoTrades); setPhases(newPhases); setStatsMode("phase");
-    const uid = currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||"");
-    if(currentUserRef.current?.email) saveUserData(uid,{trades:newTrades,noTrades:newNoTrades,phases:newPhases});
+    const from = phases[phaseIndex-1].id;
+    const to   = phaseIndex < phases.length ? phases[phaseIndex].id : Infinity;
+    return trades.filter(x=>x.id>from&&x.id<=to).length;
+  };
+
+  const handleRenamePhase = (phaseIndex, newName) => {
+    if(!newName.trim()) return;
+    if(phaseIndex===0) {
+      // Rename the original phase = update config.phaseName
+      const newCfg={...config,phaseName:newName.trim()};
+      setConfig(newCfg);
+      if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:newCfg});
+    } else {
+      // Rename a created phase = update name in phases array
+      const newPhases=phases.map((ph,i)=>i===phaseIndex-1?{...ph,name:newName.trim()}:ph);
+      setPhases(newPhases);
+      if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{phases:newPhases});
+    }
+    setPhaseEditIndex(null);
+  };
+
+  const handleDeleteSpecificPhase = (phaseIndex) => {
+    if(phaseIndex===0) {
+      // Delete original phase: remove trades before phases[0], keep phases[1..]
+      const boundary=phases.length>0?phases[0].id:Infinity;
+      const newTrades=trades.filter(x=>x.id>boundary);
+      const newNoTrades=noTrades.filter(x=>x.id>boundary);
+      const newPhases=phases.slice(1);
+      setTrades(newTrades);setNoTrades(newNoTrades);setPhases(newPhases);setStatsMode("phase");
+      const uid=currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||"");
+      if(currentUserRef.current?.email) saveUserData(uid,{trades:newTrades,noTrades:newNoTrades,phases:newPhases});
+    } else {
+      // Delete phase N: remove boundary entry, trades of this phase merge into previous
+      const newPhases=phases.filter((_,i)=>i!==phaseIndex-1);
+      setPhases(newPhases);setStatsMode("phase");
+      const uid=currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||"");
+      if(currentUserRef.current?.email) saveUserData(uid,{phases:newPhases});
+    }
+    setPhaseDeleteConfirmIdx(null);
     setNotif({txt:lang==="fr"?`Compte supprimé.`:`Account deleted.`,color:"#f0b429",icon:"warn",lang});
   };
 
@@ -2942,6 +2910,79 @@ export default function App() {
                 <button key={v} className="btn" onClick={()=>setHistFilter(v)} style={{flex:1,background:histFilter===v?(v==="ALL"?`${neon}26`:`${rc(v,neon)}22`):"transparent",border:`1px solid ${histFilter===v?(v==="ALL"?neon:rc(v,neon)):`${neon}26`}`,color:histFilter===v?(v==="ALL"?neon:rc(v,neon)):"#ffffffaa",borderRadius:6,padding:"6px 0",fontSize:11,fontWeight:700,fontFamily:MONO}}>{l}</button>
               ))}
             </div>
+            {/* ── Gestion des comptes ── */}
+            {(()=>{
+              const fr2=lang==="fr";
+              const allPhases=[
+                {index:0,name:config.phaseName||(fr2?"Phase 1":"Phase 1"),date:null,isCurrent:phases.length===0},
+                ...phases.map((ph,i)=>({index:i+1,name:ph.name||`Phase ${i+2}`,date:ph.date,isCurrent:i===phases.length-1}))
+              ];
+              return (
+                <div style={{marginBottom:10}}>
+                  <div style={{fontSize:8,color:"#ffffff33",letterSpacing:2,marginBottom:6,fontFamily:MONO}}>{fr2?"COMPTES":"ACCOUNTS"} · {allPhases.length}</div>
+                  {allPhases.map(ph=>{
+                    const tradeCount=getPhaseTradeCount(ph.index);
+                    const isActive=ph.isCurrent;
+                    const isEditing=phaseEditIndex===ph.index;
+                    const isConfirm=phaseDeleteConfirmIdx===ph.index;
+                    return (
+                      <div key={ph.index} style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,padding:"8px 10px",
+                        background:isActive?`${neon}0d`:"rgba(255,255,255,0.02)",
+                        border:`1px solid ${isActive?neon+"30":"rgba(255,255,255,0.06)"}`,borderRadius:8}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          {isEditing?(
+                            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                              <input autoFocus value={phaseEditName} onChange={e=>setPhaseEditName(e.target.value)}
+                                onKeyDown={e=>{if(e.key==="Enter")handleRenamePhase(ph.index,phaseEditName);if(e.key==="Escape")setPhaseEditIndex(null);}}
+                                style={{flex:1,background:"#131318",border:`1px solid ${neon}55`,borderRadius:6,color:"#ffffff",padding:"4px 8px",fontSize:11,fontFamily:MONO,outline:"none"}}/>
+                              <button onClick={()=>handleRenamePhase(ph.index,phaseEditName)} className="btn"
+                                style={{background:`${neon}22`,border:`1px solid ${neon}`,color:neon,borderRadius:6,padding:"4px 8px",fontSize:10}}>✓</button>
+                              <button onClick={()=>setPhaseEditIndex(null)} className="btn"
+                                style={{background:"transparent",border:"1px solid rgba(255,255,255,0.1)",color:"#ffffffaa",borderRadius:6,padding:"4px 6px",fontSize:10}}>✕</button>
+                            </div>
+                          ):(
+                            <div>
+                              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                                <span style={{fontSize:11,fontWeight:isActive?700:400,color:isActive?neon:"#ffffffcc",fontFamily:MONO}}>{ph.name}</span>
+                                {isActive&&<span style={{fontSize:8,color:neon,background:`${neon}15`,padding:"1px 5px",borderRadius:4}}>
+                                  {fr2?"EN COURS":"ACTIVE"}
+                                </span>}
+                              </div>
+                              <div style={{fontSize:9,color:"#ffffff33",fontFamily:MONO,marginTop:1}}>
+                                {ph.date?`${fr2?"depuis":"since"} ${ph.date} · `:""}
+                                {tradeCount} trade{tradeCount!==1?"s":""}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        {!isEditing&&!isConfirm&&(
+                          <div style={{display:"flex",gap:4}}>
+                            <button onClick={()=>{setPhaseEditIndex(ph.index);setPhaseEditName(ph.name);setPhaseDeleteConfirmIdx(null);}} className="btn"
+                              style={{background:"transparent",border:`1px solid ${neon}22`,color:`${neon}66`,borderRadius:6,padding:"4px 7px",fontSize:11}}>✏</button>
+                            {isActive
+                              ?<button disabled style={{background:"transparent",border:"1px solid rgba(255,255,255,0.05)",color:"rgba(255,255,255,0.15)",borderRadius:6,padding:"4px 7px",fontSize:11,cursor:"not-allowed"}}>⊘</button>
+                              :<button onClick={()=>{setPhaseDeleteConfirmIdx(ph.index);setPhaseEditIndex(null);}} className="btn"
+                                style={{background:"transparent",border:"1px solid rgba(255,77,77,0.22)",color:"#ff4d4d66",borderRadius:6,padding:"4px 7px",fontSize:11}}>⊘</button>
+                            }
+                          </div>
+                        )}
+                        {isConfirm&&(
+                          <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                            <span style={{fontSize:9,color:"#ff4d4d",fontFamily:MONO}}>
+                              {tradeCount===0?(fr2?"Supprimer ?":"Delete?"):(fr2?`${tradeCount} trades → fusionner`:`${tradeCount} trades → merge`)}
+                            </span>
+                            <button onClick={()=>handleDeleteSpecificPhase(ph.index)} className="btn"
+                              style={{background:"rgba(255,77,77,0.2)",border:"1px solid #ff4d4d",color:"#ff4d4d",borderRadius:6,padding:"4px 8px",fontSize:10,fontWeight:700,fontFamily:MONO}}>✓</button>
+                            <button onClick={()=>setPhaseDeleteConfirmIdx(null)} className="btn"
+                              style={{background:"transparent",border:"1px solid rgba(255,255,255,0.1)",color:"#ffffffaa",borderRadius:6,padding:"4px 6px",fontSize:10}}>✕</button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
             {phases.length>0&&<div style={{display:"flex",gap:4,marginBottom:8,overflowX:"auto",paddingBottom:2}}>
               {[["ALL",lang==="fr"?"Toutes phases":"All phases"],...phases.map((ph,i)=>[String(i+1),ph.name||`Phase ${i+2}`]),["0",config.phaseName||(lang==="fr"?"Phase 1":"Phase 1")]].filter(([v])=>v==="ALL"||(v==="0"&&phases.length===0)||(v!=="0")).slice(0,phases.length+2).map(([v,l])=>(
                 <button key={v} className="btn" onClick={()=>setHistPhase(v)} style={{background:histPhase===v?`${neon}1a`:"transparent",border:`1px solid ${histPhase===v?neon:`${neon}1a`}`,color:histPhase===v?neon:"#ffffffaa",borderRadius:5,padding:"4px 10px",fontSize:9,fontWeight:700,fontFamily:MONO,whiteSpace:"nowrap"}}>{l}</button>
@@ -2963,7 +3004,7 @@ export default function App() {
                   const phTr=trades.filter(z=>z.date>=phStart&&z.date<phEnd);
                   const phWR=phTr.length?Math.round(phTr.filter(z=>z.result==="WIN").length/phTr.length*100):0;
                   const phPnl=phTr.reduce((s,z)=>s+(parseFloat(z.pnlPct)||0),0);
-                  els.push(<div key={`sep-${lastPk}`} style={{display:"flex",alignItems:"center",gap:8,margin:"4px 0 14px"}}><div style={{flex:1,height:1,background:`${neon}18`}}/><div style={{background:`${neon}08`,border:`1px solid ${neon}20`,borderRadius:8,padding:"5px 12px",textAlign:"center",flexShrink:0}}><span style={{fontSize:9,color:neon,fontFamily:MONO,fontWeight:700,letterSpacing:1}}>PHASE {lastPk+1}</span><span style={{fontSize:9,color:"#ffffff44",fontFamily:MONO}}> · {t.phaseSince} {phStart}</span><span style={{fontSize:9,color:"#ffffffaa",fontFamily:MONO}}> · {phTr.length}t · {phWR}% · {fmtPct(phPnl)}</span></div><div style={{flex:1,height:1,background:`${neon}18`}}/></div>);
+                  els.push(<div key={`sep-${lastPk}`} style={{display:"flex",alignItems:"center",gap:8,margin:"4px 0 14px"}}><div style={{flex:1,height:1,background:`${neon}18`}}/><div style={{background:`${neon}08`,border:`1px solid ${neon}20`,borderRadius:8,padding:"5px 12px",textAlign:"center",flexShrink:0}}><span style={{fontSize:9,color:neon,fontFamily:MONO,fontWeight:700,letterSpacing:1}}>{(()=>{if(lastPk===0)return config.phaseName||(lang==="fr"?"Phase 1":"Phase 1");const ph=phases[lastPk-1];return ph?.name||`Phase ${lastPk+1}`;})()}</span><span style={{fontSize:9,color:"#ffffff44",fontFamily:MONO}}> · {t.phaseSince} {phStart}</span><span style={{fontSize:9,color:"#ffffffaa",fontFamily:MONO}}> · {phTr.length}t · {phWR}% · {fmtPct(phPnl)}</span></div><div style={{flex:1,height:1,background:`${neon}18`}}/></div>);
                 }
                 lastPk=pk;
               }
@@ -3023,7 +3064,7 @@ export default function App() {
       )}
 
       
-      {view==="settings"&&<SettingsView config={config} onDeletePhase={(idx)=>handleDeleteSpecificPhase(idx)} onSave={cfg=>{
+      {view==="settings"&&<SettingsView config={config} onSave={cfg=>{
         const newCfg={...config,...cfg};
         setConfig(newCfg);
         if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:newCfg});
