@@ -1792,6 +1792,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
       )}
       <div style={{height:1,background:"rgba(255,77,77,0.1)",margin:"6px 0 10px"}}/>
       <button onClick={onReset} className="btn" style={{width:"100%",background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d88",borderRadius:10,padding:12,fontSize:12,fontFamily:MONO,marginBottom:10}}>{t.resetBtn}</button>
+      <button onClick={onImport} className="btn" style={{width:"100%",background:`${neon}0a`,border:`1px solid ${neon}28`,color:neon,borderRadius:10,padding:12,fontSize:12,fontFamily:MONO,marginBottom:10}}>↑ {lang==="fr"?"Importer un CSV (MT4/MT5/cTrader)":"Import CSV (MT4/MT5/cTrader)"}</button>
       <button onClick={onLogout} className="btn" style={{width:"100%",background:"transparent",border:"1px solid rgba(255,77,77,0.1)",color:"#ff4d4d88",borderRadius:10,padding:12,fontSize:11,fontFamily:MONO}}>{t.logout}</button>
     </div>
   );
@@ -2052,11 +2053,12 @@ function ExportModal({trades,onClose,lang,neon}) {
 
 function Tutorial({neon="#00ff9d", onEnd}) {
   const STEPS = [
-    {elId:"tut-kpi",        icon:"📈", title:"Win Rate & P&L",        body:"Tes deux KPI principaux. Win Rate = % de trades gagnants. P&L = performance totale de la phase en cours.",          pos:"below"},
-    {elId:"tut-discipline", icon:"🎯", title:"Score Discipline",       body:"Calculé sur ta conformité aux règles (60%) et l'absence de revenge trades (40%). Vise 8/10 minimum.",              pos:"below"},
-    {elId:"tut-lasttrade",  icon:"⚡", title:"Dernier Trade",          body:"Clique ici pour voir le détail complet : checklist, score de rejet, notes comportementales, screenshot.",           pos:"below"},
-    {elId:"tut-addtrade",   icon:"✚",  title:"Enregistrer un Trade",   body:"Après chaque trade, enregistre-le ici. Checklist, résultat, P&L, score de rejet et notes comportementales.",       pos:"above"},
-    {elId:"tut-nav",        icon:"🧭", title:"Navigation",             body:"Stats = Dashboard · + Trade = Nouveau trade · Historique = Tous tes trades · ⚙ = Paramètres.",                    pos:"above", last:true},
+    {elId:"tut-kpi",        icon:"📈", title:"Win Rate & P&L",        body:"Tes KPI en temps réel. Win Rate = % trades gagnants. P&L = performance % et en devise. Le capital total est recalculé automatiquement.",  pos:"below"},
+    {elId:"tut-discipline", icon:"🎯", title:"Score Discipline",       body:"Note sur 10 calculée sur ta conformité aux règles (60%) et l'absence de revenge trades (40%). Objectif : 8/10 minimum.",                   pos:"below"},
+    {elId:"tut-lasttrade",  icon:"⚡", title:"Dernier Trade",          body:"Ton dernier trade enregistré. Clique pour voir le détail complet : checklist, score de rejet, notes et screenshot.",                        pos:"below"},
+    {elId:"tut-addtrade",   icon:"✚",  title:"Enregistrer un Trade",   body:"Après chaque trade : sélectionne ton actif, coche ta checklist, note le résultat et le P&L en % ou en devise. Le score de conformité est calculé automatiquement.",  pos:"above"},
+    {elId:"tut-nav",        icon:"🧭", title:"Navigation",             body:"Stats = Dashboard · + Trade = Saisir un trade · Historique = Tous tes trades filtrables · ⚙ = Paramètres, actifs, seuil de conformité.",   pos:"above"},
+    {elId:"tut-nav",        icon:"📋", title:"Phases de trading",      body:"Une phase = un compte ou une période. Crée une nouvelle phase dans ⚙ pour remettre les stats à zéro tout en conservant l'historique complet. Idéal pour les prop firms.",  pos:"above", last:true},
   ];
   const [step, setStep] = useState(0);
   const [spotRect, setSpotRect] = useState(null);
@@ -2538,15 +2540,14 @@ export default function App() {
               </div>
               <div style={{flex:1,background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:14,padding:"14px 16px",boxShadow:`0 4px 24px ${totalPnl>=0?neon+"18":"#ff4d4d18"}, inset 0 1px 0 ${neon}15`}}>
                 <div style={{fontSize:9,color:"#ffffffbb",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>{t.totalPnl}</div>
-                <div style={{fontSize:32,fontWeight:900,fontFamily:MONO,lineHeight:1,textShadow:`0 0 32px ${totalPnl>=0?neon+"aa":"#ff4d4daa"}`,color:"#ffffff"}}>{fmtPct(totalPnl)}</div>
+                <div style={{fontSize:32,fontWeight:900,fontFamily:MONO,lineHeight:1,textShadow:`0 0 32px ${totalPnl>=0?neon+"aa":"#ff4d4daa"}`,color:"#ffffff"}}>{(()=>{const n=Math.round(totalPnl*10)/10;return `${n>=0?"+":""}${n}%`;})()} </div>
                 {config.capital?(()=>{
                   const gain=Math.round(parseFloat(config.capital)*totalPnl/100);
                   const cap_total=Math.round(parseFloat(config.capital))+gain;
                   const dv=config.devise||"€";
                   return <div style={{fontSize:10,marginTop:5,display:"flex",alignItems:"baseline",gap:5,flexWrap:"wrap"}}>
-                    <span style={{fontSize:12,fontWeight:700,color:totalPnl>=0?neon:"#ff4d4d",fontFamily:MONO}}>{totalPnl>=0?"+":""}{gain.toLocaleString()}{dv}</span>
-                    <span style={{color:"#ffffff33"}}>→</span>
-                    <span style={{color:"#ffffff55",fontFamily:MONO}}>{cap_total.toLocaleString()}{dv}</span>
+                    <span style={{fontSize:13,fontWeight:700,color:totalPnl>=0?neon:"#ff4d4d",fontFamily:MONO}}>{totalPnl>=0?"+":""}{gain.toLocaleString()}{dv}</span>
+                    <span style={{color:"#ffffff33",fontSize:10}}>→ {cap_total.toLocaleString()}{dv}</span>
                   </div>;
                 })():<div style={{fontSize:10,color:"#ffffff44",marginTop:6}}>{total} {t.trades}</div>}
               </div>
@@ -2582,7 +2583,17 @@ export default function App() {
                   <div style={{fontSize:14,fontWeight:700,color:"#ffffff"}}>{trades[0].asset} · {trades[0].direction}</div>
                   <div style={{display:"flex",gap:8,marginTop:6,alignItems:"center",flexWrap:"wrap"}}>
                     <span style={{fontSize:13,fontWeight:700,color:rc(trades[0].result,neon),textShadow:`0 0 12px ${rc(trades[0].result,neon)}99`}}>{trades[0].result}</span>
-                    {trades[0].pnlPct!==""&&parseFloat(trades[0].pnlPct)!==0&&<span style={{fontSize:12,color:parseFloat(trades[0].pnlPct)>0?neon:"#ff4d4d",fontWeight:600,textShadow:`0 0 10px ${parseFloat(trades[0].pnlPct)>0?neon+"88":"#ff4d4d88"}`}}>{fmtPct(parseFloat(trades[0].pnlPct))}{config.capital&&<span style={{fontSize:10,opacity:0.7,marginLeft:4}}>{parseFloat(trades[0].pnlPct)>=0?"+":""}{Math.round(parseFloat(config.capital)*parseFloat(trades[0].pnlPct)/100).toLocaleString()}{config.devise||"€"}</span>}</span>}
+                    {trades[0].pnlPct!==""&&parseFloat(trades[0].pnlPct)!==0&&(()=>{
+                      const pv=parseFloat(trades[0].pnlPct);
+                      const rounded=Math.round(pv*10)/10;
+                      const c=pv>0?neon:"#ff4d4d";
+                      const gain=config.capital?Math.round(parseFloat(config.capital)*pv/100):null;
+                      const dv=config.devise||"€";
+                      return <span style={{display:"flex",flexDirection:"column",alignItems:"flex-start",gap:1}}>
+                        <span style={{fontSize:12,color:c,fontWeight:600,textShadow:`0 0 10px ${c}88`,fontFamily:MONO}}>{rounded>=0?"+":""}{rounded}%</span>
+                        {gain!==null&&<span style={{fontSize:10,color:c,opacity:0.75,fontFamily:MONO}}>{gain>=0?"+":""}{gain.toLocaleString()}{dv}</span>}
+                      </span>;
+                    })()}
                     {trades[0].isRevenge&&<span style={{fontSize:10,padding:"2px 7px",borderRadius:4,background:"rgba(255,77,77,0.15)",color:"#ff4d4d",border:"1px solid rgba(255,77,77,0.3)"}}>REVENGE</span>}
                     <span style={{fontSize:10,padding:"2px 7px",borderRadius:4,background:trades[0].conforming?`${neon}1a`:"rgba(255,77,77,0.1)",color:trades[0].conforming?neon:"#ff4d4d",border:`1px solid ${trades[0].conforming?`${neon}35`:"rgba(255,77,77,0.2)"}`}}>{trades[0].conforming?t.conformLabel:t.nonConformLabel}</span>
                   </div>
@@ -2835,7 +2846,20 @@ export default function App() {
                       <div><div style={{fontSize:13,fontWeight:700,color:"#ffffff"}}>{x.asset} · {x.direction}{x.timeframe&&<span style={{fontSize:9,color:"#ffffff44",marginLeft:6,background:"#ffffff08",padding:"2px 6px",borderRadius:4,fontWeight:400}}>{x.timeframe}</span>}</div><div style={{fontSize:10,color:"#ffffff66",marginTop:3}}>{x.date}{x.time?" · "+x.time:""}</div></div>
                       <div style={{display:"flex",gap:8,alignItems:"center"}}>
                         <ScoreRing score={x.setupScore} max={x.checklistMax||config.items.length} size={42} threshold={config.threshold} neon={neon}/>
-                        <div style={{textAlign:"right"}}><div style={{fontSize:12,fontWeight:900,color:rc(x.result,neon),background:`${rc(x.result,neon)}18`,padding:"3px 10px",borderRadius:7,border:`1px solid ${rc(x.result,neon)}35`}}>{x.result}</div>{x.pnlPct!==""&&<div style={{fontSize:11,color:parseFloat(x.pnlPct)>=0?neon:"#ff4d4d",fontWeight:600}}>{fmtPct(parseFloat(x.pnlPct))}{config.capital&&parseFloat(x.pnlPct)!==0&&<span style={{fontSize:9,opacity:0.65,marginLeft:3}}>{parseFloat(x.pnlPct)>=0?"+":""}{Math.round(parseFloat(config.capital)*parseFloat(x.pnlPct)/100).toLocaleString()}{config.devise||"€"}</span>}</div>}</div>
+                        <div style={{textAlign:"right"}}>
+                        <div style={{fontSize:12,fontWeight:900,color:rc(x.result,neon),background:`${rc(x.result,neon)}18`,padding:"3px 10px",borderRadius:7,border:`1px solid ${rc(x.result,neon)}35`}}>{x.result}</div>
+                        {x.pnlPct!==""&&(()=>{
+                          const pv=parseFloat(x.pnlPct);
+                          const rounded=Math.round(pv*10)/10;
+                          const c=pv>=0?neon:"#ff4d4d";
+                          const gain=config.capital&&pv!==0?Math.round(parseFloat(config.capital)*pv/100):null;
+                          const dv=config.devise||"€";
+                          return <div>
+                            <div style={{fontSize:11,color:c,fontWeight:600,fontFamily:MONO}}>{rounded>=0?"+":""}{rounded}%</div>
+                            {gain!==null&&<div style={{fontSize:10,color:c,opacity:0.7,fontFamily:MONO}}>{gain>=0?"+":""}{gain.toLocaleString()}{dv}</div>}
+                          </div>;
+                        })()}
+                      </div>
                       </div>
                     </div>
                     <div style={{marginTop:8,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}>
