@@ -2368,8 +2368,19 @@ export default function App() {
   };
 
   const activeAcc=accounts.find(a=>a.id===activeAccountId)||null;
-  // Trades du compte actif = trades avec cet accountId OU trades sans accountId (anciens)
-  const pf=trades.filter(x=>!x.accountId||x.accountId===activeAccountId||!activeAccountId);
+  // pf = trades du compte actif selon le mode
+  // "Ce compte" : trades avec accountId du compte actif
+  //   OU trades sans accountId mais après le createdAt du compte actif (migration)
+  // "Tout" : tous les trades
+  const pf=(()=>{
+    if(statsMode!=="phase") return trades;
+    if(!activeAcc) return trades;
+    return trades.filter(x=>{
+      if(x.accountId) return x.accountId===activeAccountId;
+      // Trade sans accountId (ancien) : inclure si après la date de création du compte actif
+      return !activeAcc.createdAt||x.date>=activeAcc.createdAt;
+    });
+  })();
   const total=pf.length,wins=pf.filter(x=>x.result==="WIN").length,losses=pf.filter(x=>x.result==="LOSS").length;
   const winRate=total?Math.round(wins/total*100):0;
   const totalPnl=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
@@ -2493,14 +2504,14 @@ export default function App() {
           // Créer un compte par phase
           migratedAccounts=phasesData.map((ph,i)=>({
             id:ph.id,
-            name:i===phases.length-1?(cfg.phaseName||`Compte ${i+1}`):`Compte ${i+1}`,
-            type:i===phases.length-1?(cfg.accountType||"perso"):"perso",
-            capital:i===phases.length-1?(cfg.capital||""):"",
-            devise:i===phases.length-1?(cfg.devise||"€"):"€",
-            status:i===phases.length-1?"active":"inactive",
+            name:i===phasesData.length-1?(cfg.phaseName||`Compte ${i+1}`):`Compte ${i+1}`,
+            type:i===phasesData.length-1?(cfg.accountType||"perso"):"perso",
+            capital:i===phasesData.length-1?(cfg.capital||""):"",
+            devise:i===phasesData.length-1?(cfg.devise||"€"):"€",
+            status:i===phasesData.length-1?"active":"inactive",
             createdAt:ph.date||new Date().toISOString().split("T")[0],
-            objPnl:i===phases.length-1?(cfg.objPnl||""):"",
-            objDrawdown:i===phases.length-1?(cfg.objDrawdown||""):"",
+            objPnl:i===phasesData.length-1?(cfg.objPnl||""):"",
+            objDrawdown:i===phasesData.length-1?(cfg.objDrawdown||""):"",
           }));
         } else {
           // Pas de phases non plus → 1 compte depuis config
@@ -2511,7 +2522,7 @@ export default function App() {
             capital:cfg.capital||"",
             devise:cfg.devise||"€",
             status:"active",
-            createdAt:new Date().toISOString().split("T")[0],
+            createdAt:"2000-01-01",
             objPnl:cfg.objPnl||"",
             objDrawdown:cfg.objDrawdown||"",
           }];
@@ -2578,22 +2589,10 @@ export default function App() {
             <div style={{marginBottom:6}}><SplashLogo neon={neon}/></div>
             <div style={{fontSize:10,color:"#ffffff33",letterSpacing:1}}>{config.strategyName}</div>
           </div>
-          {(objectif.pnl||config.capital)&&(()=>{
-            const cur=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
-            const pct=objectif.pnl?Math.min(100,Math.max(0,cur/(parseFloat(objectif.pnl)||1)*100)):0;
-            return <div style={{padding:"10px 18px",borderBottom:"1px solid #ffffff08"}}>
-              <div style={{fontSize:9,color:neon,fontWeight:700,marginBottom:4}}>{activeAcc?.name||config.phaseName||"PHASE"}{config.capital?` · ${parseInt(config.capital).toLocaleString()}${config.devise||"€"}`:""}</div>
-              {objectif.pnl&&<div style={{height:3,background:"#ffffff10",borderRadius:3,marginBottom:4}}><div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${neon}66,${neon})`,borderRadius:3,boxShadow:`0 0 6px ${neon}55`}}/></div>}
-              <div style={{display:"flex",justifyContent:"space-between"}}>
-                <span style={{fontSize:8,color:"#ffffff44"}}>{lang==="fr"?"Compte en cours":"Current account"}</span>
-                <span style={{fontSize:10,fontWeight:700,color:cur>=0?neon:"#ff4d4d"}}>{cur>=0?"+":""}{cur.toFixed(1)}%{objectif.pnl?<span style={{fontSize:8,color:"#ffffff44",fontWeight:400}}> / +{objectif.pnl}%</span>:null}</span>
-              </div>
-            </div>;
-          })()}
-          {/* Compte actif dans sidebar */}
           {activeAcc&&<div style={{padding:"10px 18px",borderBottom:"1px solid #ffffff08"}}>
             <div style={{fontSize:9,color:neon,fontWeight:700,marginBottom:2,fontFamily:MONO}}>{activeAcc.name}</div>
             <div style={{fontSize:9,color:"#ffffff33"}}>{activeAcc.type==="prop"?"Prop Firm":activeAcc.type==="demo"?"Démo":"Perso"}{activeAcc.capital?` · ${parseInt(activeAcc.capital).toLocaleString()}${activeAcc.devise||"€"}`:""}</div>
+            <div style={{fontSize:9,color:neon,marginTop:3,fontWeight:700}}>{pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0)>=0?"+":""}{Math.round(pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0)*10)/10}%</div>
           </div>}
           {total>0&&<div style={{padding:"12px 18px",borderBottom:"1px solid #ffffff08"}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
