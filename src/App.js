@@ -1885,6 +1885,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
         <button onClick={onLogout} className="btn" style={{width:"100%",background:"transparent",border:"1px solid rgba(255,77,77,0.1)",color:"#ff4d4d88",borderRadius:10,padding:12,fontSize:11,fontFamily:MONO}}>{t.logout}</button>
       </div>}
 
+    </div>
   );
 }
 
