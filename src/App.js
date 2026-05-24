@@ -1828,21 +1828,6 @@ function SettingsView({config,onSave,onLogout,onReset,lang,onLangChange,neon,acc
             <button onClick={()=>setMaxTrades(0)} className="btn" style={{flex:1.4,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:maxTrades===0?`${neon}26`:"#131318",border:`1px solid ${maxTrades===0?neon:`${neon}22`}`,color:maxTrades===0?neon:"#ffffffaa"}}>∞</button>
           </div>
 
-          <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:16}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${neon}0d`}}>
-              <span style={{fontSize:12,color:"#ffffff",fontFamily:MONO}}>{t.calendarToggle}</span>
-              <button onClick={()=>setCalendarOn(!calendarOn)} className="btn" style={{width:44,height:24,borderRadius:12,background:calendarOn?`${neon}33`:"#ffffff12",border:`1px solid ${calendarOn?neon:`${neon}30`}`,position:"relative"}}>
-                <div style={{width:16,height:16,borderRadius:"50%",background:calendarOn?neon:"#ffffffaa",position:"absolute",top:3,left:calendarOn?24:4,transition:"all 0.2s"}}/>
-              </button>
-            </div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0"}}>
-              <span style={{fontSize:12,color:"#ffffff",fontFamily:MONO}}>{t.enableNotif}</span>
-              <button onClick={()=>setNotifOn(!notifOn)} className="btn" style={{width:44,height:24,borderRadius:12,background:notifOn?`${neon}33`:"#ffffff12",border:`1px solid ${notifOn?neon:`${neon}30`}`,position:"relative"}}>
-                <div style={{width:16,height:16,borderRadius:"50%",background:notifOn?neon:"#ffffffaa",position:"absolute",top:3,left:notifOn?24:4,transition:"all 0.2s"}}/>
-              </button>
-            </div>
-          </div>
-
           <button onClick={saveStrategy} className="btn" style={{width:"100%",background:`${neon}26`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:14,fontSize:13,fontWeight:700,fontFamily:MONO}}>{savedOk?t.savedOk:t.saveBtn}</button>
         </div>
       )}
@@ -1858,14 +1843,21 @@ function SettingsView({config,onSave,onLogout,onReset,lang,onLangChange,neon,acc
             <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.colorLabel}</div>
             <div style={{display:"flex",gap:8}}>{NEON_COLORS.map(c=><button key={c.value} onClick={()=>setNeonColor(c.value)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,background:neonColor===c.value?`${c.value}26`:"#131318",border:`2px solid ${neonColor===c.value?c.value:"transparent"}`,cursor:"pointer"}}><div style={{width:16,height:16,borderRadius:"50%",background:c.value,margin:"0 auto",boxShadow:neonColor===c.value?`0 0 8px ${c.value}`:"none"}}/></button>)}</div>
           </div>
-          <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0"}}>
+          <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${neon}0d`}}>
               <span style={{fontSize:12,color:"#ffffff",fontFamily:MONO}}>{t.calendarToggle}</span>
-              <button onClick={()=>setCalendarOn(!calendarOn)} className="btn" style={{width:44,height:24,borderRadius:12,background:calendarOn?`${neon}33`:"#ffffff12",border:`1px solid ${calendarOn?neon:`${neon}30`}`,position:"relative"}}>
+              <button onClick={()=>setCalendarOn(!calendarOn)} className="btn" style={{width:44,height:24,borderRadius:12,background:calendarOn?`${neon}33`:"#ffffff12",border:`1px solid ${calendarOn?neon:`${neon}30`}`,position:"relative",transition:"all 0.2s"}}>
                 <div style={{width:16,height:16,borderRadius:"50%",background:calendarOn?neon:"#ffffffaa",position:"absolute",top:3,left:calendarOn?24:4,transition:"all 0.2s"}}/>
               </button>
             </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0"}}>
+              <span style={{fontSize:12,color:"#ffffff",fontFamily:MONO}}>{t.enableNotif}</span>
+              <button onClick={()=>setNotifOn(!notifOn)} className="btn" style={{width:44,height:24,borderRadius:12,background:notifOn?`${neon}33`:"#ffffff12",border:`1px solid ${notifOn?neon:`${neon}30`}`,position:"relative",transition:"all 0.2s"}}>
+                <div style={{width:16,height:16,borderRadius:"50%",background:notifOn?neon:"#ffffffaa",position:"absolute",top:3,left:notifOn?24:4,transition:"all 0.2s"}}/>
+              </button>
+            </div>
           </div>
+          <button onClick={()=>{onSave({neonColor,calendarOn,notifOn});}} className="btn" style={{width:"100%",background:`${neon}26`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:14,fontSize:13,fontWeight:700,fontFamily:MONO}}>{t.saveBtn}</button>
         </div>
       )}
     </div>
@@ -2368,17 +2360,17 @@ export default function App() {
   };
 
   const activeAcc=accounts.find(a=>a.id===activeAccountId)||null;
-  // pf = trades du compte actif selon le mode
-  // "Ce compte" : trades avec accountId du compte actif
-  //   OU trades sans accountId mais après le createdAt du compte actif (migration)
-  // "Tout" : tous les trades
+  // pf = trades filtrés selon le mode sélectionné
   const pf=(()=>{
-    if(statsMode!=="phase") return trades;
+    if(statsMode!=="phase") return trades; // "Tout" → tous les trades
     if(!activeAcc) return trades;
+    // "Ce compte" → trades qui appartiennent à ce compte :
+    // 1. Trades avec accountId = ce compte
+    // 2. Trades sans accountId ET après le createdAt du compte (anciens trades migrés)
+    const since = activeAcc.createdAt||"2000-01-01";
     return trades.filter(x=>{
       if(x.accountId) return x.accountId===activeAccountId;
-      // Trade sans accountId (ancien) : inclure si après la date de création du compte actif
-      return !activeAcc.createdAt||x.date>=activeAcc.createdAt;
+      return x.date>=since;
     });
   })();
   const total=pf.length,wins=pf.filter(x=>x.result==="WIN").length,losses=pf.filter(x=>x.result==="LOSS").length;
