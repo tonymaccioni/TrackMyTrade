@@ -1886,31 +1886,55 @@ function SettingsView({config, onSave, onLogout, onReset, onNewPhase, lang, onLa
 
   const [savedOk, setSavedOk] = useState(false);
 
-  // ── Re-sync local state when config loads from Firestore ──
-  // (SettingsView can mount before async data arrives)
+  // ── Sync from config when it loads from Firestore ──
+  // Uses a ref to track last synced strategyName to avoid overwriting user edits
+  const lastSyncedStrategy = useRef(null);
   useEffect(() => {
-    setNeonColor(config.neonColor || "#00ff9d");
+    // Only sync if config has real data AND it's different from last sync
+    const hasRealData = config.strategyName && config.strategyName !== lastSyncedStrategy.current;
+    if(!hasRealData && lastSyncedStrategy.current !== null) return;
+    lastSyncedStrategy.current = config.strategyName || null;
+    if(config.neonColor)          setNeonColor(config.neonColor);
     setCalendarOn(config.calendarOn !== false);
     setNotifOn(config.notifOn !== false);
-    setPhaseName(config.phaseName || "");
-    setCapital(config.capital || "");
-    setDevise(config.devise || "€");
-    setAccountType(config.accountType || "perso");
-    setObjPnl(config.objPnl || "");
-    setObjDrawdown(config.objDrawdown || "");
-    setStratName(config.strategyName || "");
-    setItems([...(config.items || DEFAULT_CRITERIA)]);
-    setThreshold(config.threshold || 6);
-    setMaxTrades(config.maxTrades || 1);
-    setDefaultTf(config.defaultTimeframe || "M5");
-    setAssets(config.customAssets || PRESET_ASSETS);
-    setEliminatoires(config.eliminatoires || []);
-  }, [config]);
+    if(config.phaseName !== undefined) setPhaseName(config.phaseName || "");
+    if(config.capital   !== undefined) setCapital(config.capital || "");
+    if(config.devise)                  setDevise(config.devise);
+    if(config.accountType)             setAccountType(config.accountType);
+    if(config.objPnl    !== undefined) setObjPnl(config.objPnl || "");
+    if(config.objDrawdown !== undefined) setObjDrawdown(config.objDrawdown || "");
+    if(config.strategyName)            setStratName(config.strategyName);
+    if(config.items?.length)           setItems([...config.items]);
+    if(config.threshold)               setThreshold(config.threshold);
+    if(config.maxTrades !== undefined) setMaxTrades(config.maxTrades || 1);
+    if(config.defaultTimeframe)        setDefaultTf(config.defaultTimeframe);
+    if(config.customAssets?.length)    setAssets(config.customAssets);
+    if(config.eliminatoires)           setEliminatoires(config.eliminatoires || []);
+  }, [config.strategyName, config.items, config.phaseName, config.capital]);
 
   const save = () => {
-    onSave({items, threshold, strategyName:stratName, maxTrades, neonColor,
-      calendarOn, notifOn, customAssets:assets, eliminatoires,
-      objPnl, phaseName, capital, devise, accountType, objDrawdown, defaultTimeframe:defaultTf});
+    // Guards: never overwrite real data with empty defaults
+    const safeItems     = items.filter(i=>i.trim()).length > 0 ? items.filter(i=>i.trim()) : (config.items || DEFAULT_CRITERIA);
+    const safeAssets    = assets.length > 0 ? assets : (config.customAssets || PRESET_ASSETS);
+    const safeStratName = stratName.trim() || config.strategyName || "";
+    onSave({
+      items: safeItems,
+      threshold,
+      strategyName: safeStratName,
+      maxTrades,
+      neonColor,
+      calendarOn,
+      notifOn,
+      customAssets: safeAssets,
+      eliminatoires,
+      objPnl,
+      phaseName,
+      capital,
+      devise,
+      accountType,
+      objDrawdown,
+      defaultTimeframe: defaultTf
+    });
     onObjectifChange({pnl:objPnl, wr:"", trades:"", drawdown:objDrawdown, editMode:false});
     setSavedOk(true);
     setTimeout(() => setSavedOk(false), 2000);
@@ -2711,7 +2735,10 @@ export default function App() {
     else{const trade={...form,pnlPct:pnl,id:Date.now(),setupScore:score,conforming,isRevenge,checklistMax:config.items.length};ut=trade;updated=[trade,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);}
     setTrades(updated);
     if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{trades:updated});
-    const newCfgAfterSave={...config,lastPnlMode:form.pnlMode||"eur",lastTimeframe:form.timeframe||"M5"};setConfig(newCfgAfterSave);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:newCfgAfterSave});
+    // Update lastPnlMode + lastTimeframe in state only (NOT Firestore)
+    // Config is only saved when user explicitly saves in Settings
+    const newCfgAfterSave={...config,lastPnlMode:form.pnlMode||"eur",lastTimeframe:form.timeframe||"M5"};
+    setConfig(newCfgAfterSave);
     setForm(emptyForm(config.defaultAsset||"XAU/USD",config.defaultTimeframe||config.lastTimeframe||"M5",config.lastPnlMode||"eur"));setEditingId(null);setCheckinOpen(false);
     // Conseil biais/direction incohérents
     const biaisCheck=form.checkin?.biais||"";
@@ -3305,7 +3332,7 @@ export default function App() {
       )}
 
       
-      {view==="settings"&&<SettingsView key={config.strategyName+"|"+config.capital+"|"+config.phaseName} config={config} onSave={cfg=>{
+      {view==="settings"&&<SettingsView config={config} onSave={cfg=>{
         const newCfg={...config,...cfg};
         setConfig(newCfg);
         if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:newCfg});
