@@ -119,7 +119,7 @@ const T = {
     resetExportBtn:"↓ Exporter (CSV) puis réinitialiser",resetSkipBtn:"Réinitialiser sans exporter",
     resetCancel:"Annuler",resetExportedTitle:"Export effectué ✓",
     resetExportedDesc:"Ton historique a été sauvegardé. Tu peux maintenant réinitialiser.",
-    resetConfirmBtn:"Confirmer la réinitialisation",resetBtn:"⊘ Réinitialiser les données",deletePhaseBtn:"⊘ Supprimer ce compte",deletePhaseConfirmQ:"Supprimer le compte actuel ?",deletePhaseDesc:"Les trades de ce compte seront effacés. Le compte précédent redevient actif.",deletePhaseConfirmBtn:"✓ Supprimer",
+    resetConfirmBtn:"Confirmer la réinitialisation",resetBtn:"⊘ Réinitialiser les données",
   },
   en:{
     welcome:"Welcome to\nTrackMyTrade",welcomeDesc:"The trading journal that turns your discipline into concrete data. Every logged trade is a step toward profitability.",
@@ -177,7 +177,7 @@ const T = {
     resetExportBtn:"↓ Export (CSV) then reset",resetSkipBtn:"Reset without exporting",
     resetCancel:"Cancel",resetExportedTitle:"Export done ✓",
     resetExportedDesc:"Your history has been saved. You can now reset.",
-    resetConfirmBtn:"Confirm reset",resetBtn:"⊘ Reset all data",deletePhaseBtn:"⊘ Delete this account",deletePhaseConfirmQ:"Delete current account?",deletePhaseDesc:"Trades in this account will be deleted. Previous account becomes active.",deletePhaseConfirmBtn:"✓ Delete",
+    resetConfirmBtn:"Confirm reset",resetBtn:"⊘ Reset all data",
   }
 };
 
@@ -1655,14 +1655,14 @@ function GuidedSetup({onDone,lang}) {
   );
 }
 
-function SettingsView({config,onSave,onLogout,onReset,onNewPhase,onDeletePhase,lang,onLangChange,neon,phases,onObjectifChange,onImport}) {
+function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChange,neon,phases,onObjectifChange,onImport}) {
   const t=T[lang];const inSt=mkInput(neon);
   const [items,setItems]=useState([...config.items]);const [threshold,setThreshold]=useState(config.threshold);
   const [stratName,setStratName]=useState(config.strategyName||"");const [maxTrades,setMaxTrades]=useState(config.maxTrades||1);
   const [neonColor,setNeonColor]=useState(neon);const [calendarOn,setCalendarOn]=useState(config.calendarOn!==false);
   const [notifOn,setNotifOn]=useState(config.notifOn!==false);const [customAsset,setCustomAsset]=useState("");
   const [assets,setAssets]=useState(config.customAssets||PRESET_ASSETS);
-  const [savedOk,setSavedOk]=useState(false);const [phaseConfirm,setPhaseConfirm]=useState(false);const [phaseDeleteConfirm,setPhaseDeleteConfirm]=useState(false);
+  const [savedOk,setSavedOk]=useState(false);const [phaseConfirm,setPhaseConfirm]=useState(false);
   const [newPhaseName,setNewPhaseName]=useState("");
   const [phaseName,setPhaseName]=useState(config.phaseName||"");
   const [objPnl,setObjPnl]=useState(config.objPnl||"");
@@ -1683,42 +1683,113 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,onDeletePhase,l
       </button>
     </div>
   );
+  const [tab,setTab]=useState("compte");
+  const fr=lang==="fr";
+  const TABS=[
+    {id:"compte",  label:fr?"Compte":"Account"},
+    {id:"strategie",label:fr?"Stratégie":"Strategy"},
+    {id:"reglages",label:fr?"Réglages":"Settings"},
+  ];
+  const SaveBtn=()=>(
+    <button onClick={save} className="btn" style={{width:"100%",background:`${neonColor}26`,border:`1px solid ${neonColor}`,color:neonColor,borderRadius:10,padding:14,fontSize:13,fontWeight:700,fontFamily:MONO,marginTop:4,marginBottom:2}}>{savedOk?t.savedOk:t.saveBtn}</button>
+  );
   return (
     <div className="fi" style={{padding:20}}>
-      <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
-        <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.langLabel}</div>
-        <div style={{display:"flex",gap:8}}>{[["fr","Français"],["en","English"]].map(([l,label])=><button key={l} onClick={()=>onLangChange(l)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:lang===l?`${neonColor}26`:"#131318",border:`1px solid ${lang===l?neonColor:`${neonColor}22`}`,color:lang===l?neonColor:"#ffffffbb"}}>{label}</button>)}</div>
+      {/* ── Sélecteur d'onglets ── */}
+      <div style={{display:"flex",gap:4,background:"#0f0f14",borderRadius:10,padding:4,marginBottom:20}}>
+        {TABS.map(tb=>(
+          <button key={tb.id} onClick={()=>setTab(tb.id)} className="btn"
+            style={{flex:1,padding:"9px 0",borderRadius:7,fontSize:11,fontWeight:700,fontFamily:MONO,
+              background:tab===tb.id?neonColor:"transparent",
+              color:tab===tb.id?"#131318":"#ffffffaa",border:"none",transition:"all 0.2s"}}>
+            {tb.label}
+          </button>
+        ))}
       </div>
-      <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
-        <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.colorLabel}</div>
-        <div style={{display:"flex",gap:8}}>{NEON_COLORS.map(c=><button key={c.value} onClick={()=>setNeonColor(c.value)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,background:neonColor===c.value?`${c.value}26`:"#131318",border:`2px solid ${neonColor===c.value?c.value:"transparent"}`,cursor:"pointer"}}><div style={{width:16,height:16,borderRadius:"50%",background:c.value,margin:"0 auto",boxShadow:neonColor===c.value?`0 0 8px ${c.value}`:"none"}}/></button>)}</div>
-      </div>
-      <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
-        <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.maxTradesLabel}</div>
-        <div style={{display:"flex",gap:6}}>
-          {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setMaxTrades(n)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:maxTrades===n?`${neonColor}26`:"#131318",border:`1px solid ${maxTrades===n?neonColor:`${neonColor}22`}`,color:maxTrades===n?neonColor:"#ffffffbb"}}>{n}</button>)}
-          <button onClick={()=>setMaxTrades(0)} className="btn" style={{flex:1.4,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:maxTrades===0?`${neonColor}26`:"#131318",border:`1px solid ${maxTrades===0?neonColor:`${neonColor}22`}`,color:maxTrades===0?neonColor:"#ffffffaa"}}>∞</button>
+
+      {/* ══ ONGLET COMPTE ══ */}
+      {tab==="compte"&&<div>
+        <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:4}}>{fr?"NOM DU COMPTE":"ACCOUNT NAME"}</div>
+        <input value={phaseName} onChange={e=>setPhaseName(e.target.value)}
+          placeholder={fr?"ex: FTMO Phase 1, Compte Perso…":"e.g. FTMO Phase 1, Live Account…"}
+          style={{...inSt,fontSize:12}}/>
+        <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{fr?"TYPE DE COMPTE":"ACCOUNT TYPE"}</div>
+        <div style={{display:"flex",gap:6,marginBottom:14}}>
+          {[["prop","Prop Firm"],["perso","Perso"],["demo","Démo"]].map(([v,l])=>(
+            <button key={v} onClick={()=>setAccountType(v)} className="btn" style={{flex:1,padding:"9px 0",background:accountType===v?`${neonColor}18`:"#131318",border:`1px solid ${accountType===v?neonColor:`${neonColor}22`}`,borderRadius:8,fontSize:10,fontWeight:700,color:accountType===v?neonColor:"#ffffffaa",fontFamily:MONO}}>{l}</button>
+          ))}
         </div>
-      </div>
-      <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>ACTIFS</div>
-      <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
-        {assets.map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4,background:"#131318",border:`1px solid ${neon}26`,borderRadius:6,padding:"4px 8px"}}>
-          <span style={{fontSize:11,color:"#ffffff",fontFamily:MONO}}>{a}</span>
-          {!PRESET_ASSETS.includes(a)&&<button onClick={()=>setAssets(assets.filter(x=>x!==a))} style={{background:"transparent",border:"none",color:"#ff4d4d",fontSize:10,cursor:"pointer"}}>✕</button>}
-        </div>)}
-      </div>
-      <div style={{display:"flex",gap:8,marginBottom:14}}>
-        <input value={customAsset} onChange={e=>setCustomAsset(e.target.value)} placeholder={t.customAsset} onKeyDown={e=>{if(e.key==="Enter"&&customAsset.trim()){setAssets([...assets,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} style={{...inSt,marginBottom:0,flex:1}}/>
-        <button onClick={()=>{if(customAsset.trim()){setAssets([...assets,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} className="btn" style={{background:`${neonColor}1a`,border:`1px solid ${neonColor}55`,color:neonColor,borderRadius:8,padding:"0 14px",fontSize:18}}>+</button>
-      </div>
-      <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.strategyName}</div>
-      <input value={stratName} onChange={e=>setStratName(e.target.value)} style={inSt}/>
-      <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.thresholdLabel}</div>
-      <div style={{display:"flex",gap:6,marginBottom:16}}>
-        {[4,5,6,7,8].map(n=><button key={n} onClick={()=>setThreshold(n)} className="btn" style={{flex:1,padding:8,borderRadius:8,fontSize:13,fontWeight:700,fontFamily:MONO,background:threshold===n?`${neonColor}33`:"#131318",border:`1px solid ${threshold===n?neonColor:`${neonColor}22`}`,color:threshold===n?neonColor:"#ffffffbb"}}>{n}</button>)}
-      </div>
-      <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.criteriaLabel} ({items.length})</div>
-      {items.map((item,i)=>{
+        <div style={{display:"flex",gap:8,marginBottom:14}}>
+          <div style={{flex:2}}>
+            <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>CAPITAL</div>
+            <input type="number" value={capital} onChange={e=>setCapital(e.target.value)} placeholder="10000" style={{...inSt,marginBottom:0}}/>
+          </div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>DEVISE</div>
+            <div style={{display:"flex",flexDirection:"column",gap:3}}>
+              {["€","$","£","CHF"].map(d=>(
+                <button key={d} onClick={()=>setDevise(d)} className="btn" style={{padding:"5px 0",background:devise===d?`${neonColor}18`:"#131318",border:`1px solid ${devise===d?neonColor:`${neonColor}22`}`,borderRadius:6,fontSize:11,fontWeight:800,color:devise===d?neonColor:"#ffffffaa",fontFamily:MONO}}>{d}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:8,marginBottom:14}}>
+          <div style={{flex:1}}>
+            <div style={{fontSize:8,color:"#ff4d4d88",marginBottom:4}}>DRAWDOWN MAX %</div>
+            <input type="number" value={objDrawdown} onChange={e=>setObjDrawdown(e.target.value)} placeholder="5" style={{...inSt,marginBottom:0,borderColor:"#ff4d4d33"}}/>
+          </div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>{fr?"OBJECTIF P&L %":"P&L TARGET %"}</div>
+            <input type="number" value={objPnl} onChange={e=>setObjPnl(e.target.value)} placeholder="+10" style={{...inSt,marginBottom:0}}/>
+          </div>
+        </div>
+        <SaveBtn/>
+        <div style={{height:1,background:`${neon}14`,margin:"14px 0"}}/>
+        {!phaseConfirm?(
+          <button onClick={()=>setPhaseConfirm(true)} className="btn" style={{width:"100%",background:`${neon}0a`,border:`1px solid ${neon}28`,color:neon,borderRadius:10,padding:12,fontSize:12,fontFamily:MONO,marginBottom:10}}>{t.newPhaseBtn}</button>
+        ):(
+          <div style={{background:`${neon}08`,border:`1px solid ${neon}30`,borderRadius:10,padding:14,marginBottom:10}}>
+            <div style={{fontSize:12,fontWeight:700,color:neon,fontFamily:MONO,marginBottom:4}}>{t.newPhaseConfirmQ}</div>
+            <div style={{fontSize:11,color:"#ffffffaa",marginBottom:10,lineHeight:1.5}}>{t.newPhaseDesc}</div>
+            <input value={newPhaseName} onChange={e=>setNewPhaseName(e.target.value)}
+              placeholder={fr?"Nom de ce compte (ex: FTMO Step 1)…":"Account name (e.g. FTMO Step 1)…"}
+              style={{...inSt,marginBottom:10,fontSize:12}}/>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>{onNewPhase(newPhaseName);setPhaseConfirm(false);setNewPhaseName("");}} className="btn" style={{flex:2,background:`${neon}22`,border:`1px solid ${neon}`,color:neon,borderRadius:8,padding:"10px 0",fontSize:12,fontWeight:700,fontFamily:MONO}}>{t.newPhaseConfirmBtn}</button>
+              <button onClick={()=>{setPhaseConfirm(false);setNewPhaseName("");}} className="btn" style={{flex:1,background:"transparent",border:`1px solid ${neon}26`,color:"#ffffffaa",borderRadius:8,padding:"10px 0",fontSize:11,fontFamily:MONO}}>{t.cancelBtn}</button>
+            </div>
+          </div>
+        )}
+      </div>}
+
+      {/* ══ ONGLET STRATÉGIE ══ */}
+      {tab==="strategie"&&<div>
+        <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.strategyName}</div>
+        <input value={stratName} onChange={e=>setStratName(e.target.value)} style={inSt}/>
+        <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
+          <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.maxTradesLabel}</div>
+          <div style={{display:"flex",gap:6}}>
+            {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setMaxTrades(n)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:maxTrades===n?`${neonColor}26`:"#131318",border:`1px solid ${maxTrades===n?neonColor:`${neonColor}22`}`,color:maxTrades===n?neonColor:"#ffffffbb"}}>{n}</button>)}
+            <button onClick={()=>setMaxTrades(0)} className="btn" style={{flex:1.4,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:maxTrades===0?`${neonColor}26`:"#131318",border:`1px solid ${maxTrades===0?neonColor:`${neonColor}22`}`,color:maxTrades===0?neonColor:"#ffffffaa"}}>∞</button>
+          </div>
+        </div>
+        <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>ACTIFS</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
+          {assets.map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4,background:"#131318",border:`1px solid ${neon}26`,borderRadius:6,padding:"4px 8px"}}>
+            <span style={{fontSize:11,color:"#ffffff",fontFamily:MONO}}>{a}</span>
+            {!PRESET_ASSETS.includes(a)&&<button onClick={()=>setAssets(assets.filter(x=>x!==a))} style={{background:"transparent",border:"none",color:"#ff4d4d",fontSize:10,cursor:"pointer"}}>✕</button>}
+          </div>)}
+        </div>
+        <div style={{display:"flex",gap:8,marginBottom:14}}>
+          <input value={customAsset} onChange={e=>setCustomAsset(e.target.value)} placeholder={t.customAsset} onKeyDown={e=>{if(e.key==="Enter"&&customAsset.trim()){setAssets([...assets,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} style={{...inSt,marginBottom:0,flex:1}}/>
+          <button onClick={()=>{if(customAsset.trim()){setAssets([...assets,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} className="btn" style={{background:`${neonColor}1a`,border:`1px solid ${neonColor}55`,color:neonColor,borderRadius:8,padding:"0 14px",fontSize:18}}>+</button>
+        </div>
+        <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.thresholdLabel}</div>
+        <div style={{display:"flex",gap:6,marginBottom:16}}>
+          {[4,5,6,7,8].map(n=><button key={n} onClick={()=>setThreshold(n)} className="btn" style={{flex:1,padding:8,borderRadius:8,fontSize:13,fontWeight:700,fontFamily:MONO,background:threshold===n?`${neonColor}33`:"#131318",border:`1px solid ${threshold===n?neonColor:`${neonColor}22`}`,color:threshold===n?neonColor:"#ffffffbb"}}>{n}</button>)}
+        </div>
+        <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.criteriaLabel} ({items.length})</div>
+        {items.map((item,i)=>{
           const isE=(eliminatoires||[]).includes(i);
           return <div key={i} style={{display:"flex",gap:6,marginBottom:8,alignItems:"center"}}>
             <input value={item} onChange={e=>{const n=[...items];n[i]=e.target.value;setItems(n);}} style={{...inSt,marginBottom:0,flex:1}}/>
@@ -1726,99 +1797,31 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,onDeletePhase,l
             <button onClick={()=>setItems(items.filter((_,idx)=>idx!==i))} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d",borderRadius:6,padding:"8px 10px",cursor:"pointer",flexShrink:0}}>✕</button>
           </div>;
         })}
-      <button onClick={()=>setItems([...items,""])} style={{width:"100%",background:"transparent",border:`1px dashed ${neon}35`,color:"#ffffff44",borderRadius:8,padding:10,fontSize:12,cursor:"pointer",fontFamily:MONO,marginBottom:16}}>{t.addCriteria}</button>
-      <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:16}}>
-        <Toggle label={t.calendarToggle} val={calendarOn} set={setCalendarOn}/>
-        <Toggle label={t.enableNotif} val={notifOn} set={setNotifOn}/>
-      </div>
-      {/* Phase en cours — nom + capital + devise + type + drawdown + objectif */}
-    <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
-      <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:12}}>PHASE EN COURS</div>
-      <div style={{marginBottom:10}}>
-        <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>{lang==="fr"?"NOM DE LA PHASE":"PHASE NAME"}</div>
-        <input value={phaseName} onChange={e=>setPhaseName(e.target.value)}
-          placeholder={lang==="fr"?"ex: FTMO 1ère étape…":"e.g. FTMO Step 1…"}
-          style={{...inSt,fontSize:12,marginBottom:0}}/>
-      </div>
-      <div style={{marginBottom:10}}>
-        <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>TYPE DE COMPTE</div>
-        <div style={{display:"flex",gap:6}}>
-          {[["prop","Prop Firm"],["perso","Perso"],["demo","Démo"]].map(([v,l])=>(
-            <button key={v} onClick={()=>setAccountType(v)} className="btn" style={{flex:1,padding:"9px 0",background:accountType===v?`${neonColor}18`:"#131318",border:`1px solid ${accountType===v?neonColor:`${neonColor}22`}`,borderRadius:8,fontSize:10,fontWeight:700,color:accountType===v?neonColor:"#ffffffaa",fontFamily:MONO}}>{l}</button>
-          ))}
+        <button onClick={()=>setItems([...items,""])} style={{width:"100%",background:"transparent",border:`1px dashed ${neon}35`,color:"#ffffff44",borderRadius:8,padding:10,fontSize:12,cursor:"pointer",fontFamily:MONO,marginBottom:16}}>{t.addCriteria}</button>
+        <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
+          <Toggle label={t.calendarToggle} val={calendarOn} set={setCalendarOn}/>
+          <Toggle label={t.enableNotif} val={notifOn} set={setNotifOn}/>
         </div>
-      </div>
-      <div style={{display:"flex",gap:8,marginBottom:10}}>
-        <div style={{flex:2}}>
-          <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>CAPITAL</div>
-          <input type="number" value={capital} onChange={e=>setCapital(e.target.value)} placeholder="10000" style={{...inSt,marginBottom:0}}/>
+        <SaveBtn/>
+      </div>}
+
+      {/* ══ ONGLET RÉGLAGES ══ */}
+      {tab==="reglages"&&<div>
+        <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
+          <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.langLabel}</div>
+          <div style={{display:"flex",gap:8}}>{[["fr","Français"],["en","English"]].map(([l,label])=><button key={l} onClick={()=>onLangChange(l)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:lang===l?`${neonColor}26`:"#131318",border:`1px solid ${lang===l?neonColor:`${neonColor}22`}`,color:lang===l?neonColor:"#ffffffbb"}}>{label}</button>)}</div>
         </div>
-        <div style={{flex:1}}>
-          <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>DEVISE</div>
-          <div style={{display:"flex",flexDirection:"column",gap:3}}>
-            {["€","$","£","CHF"].map(d=>(
-              <button key={d} onClick={()=>setDevise(d)} className="btn" style={{padding:"5px 0",background:devise===d?`${neonColor}18`:"#131318",border:`1px solid ${devise===d?neonColor:`${neonColor}22`}`,borderRadius:6,fontSize:11,fontWeight:800,color:devise===d?neonColor:"#ffffffaa",fontFamily:MONO}}>{d}</button>
-            ))}
-          </div>
+        <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
+          <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.colorLabel}</div>
+          <div style={{display:"flex",gap:8}}>{NEON_COLORS.map(c=><button key={c.value} onClick={()=>setNeonColor(c.value)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,background:neonColor===c.value?`${c.value}26`:"#131318",border:`2px solid ${neonColor===c.value?c.value:"transparent"}`,cursor:"pointer"}}><div style={{width:16,height:16,borderRadius:"50%",background:c.value,margin:"0 auto",boxShadow:neonColor===c.value?`0 0 8px ${c.value}`:"none"}}/></button>)}</div>
         </div>
-      </div>
-      <div style={{display:"flex",gap:8,marginBottom:0}}>
-        <div style={{flex:1}}>
-          <div style={{fontSize:8,color:"#ff4d4d88",marginBottom:4}}>DRAWDOWN MAX %</div>
-          <input type="number" value={objDrawdown} onChange={e=>setObjDrawdown(e.target.value)} placeholder="5" style={{...inSt,marginBottom:0,borderColor:"#ff4d4d33"}}/>
-        </div>
-        <div style={{flex:1}}>
-          <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>{lang==="fr"?"OBJECTIF P&L %":"P&L TARGET %"}</div>
-          <input type="number" value={objPnl} onChange={e=>setObjPnl(e.target.value)} placeholder="+10" style={{...inSt,marginBottom:0}}/>
-        </div>
-      </div>
-    </div>
-    <button onClick={save} className="btn" style={{width:"100%",background:`${neonColor}26`,border:`1px solid ${neonColor}`,color:neonColor,borderRadius:10,padding:14,fontSize:13,fontWeight:700,fontFamily:MONO,marginBottom:10}}>{savedOk?t.savedOk:t.saveBtn}</button>
-      <div style={{height:1,background:`${neon}14`,margin:"14px 0"}}/>
-      {!phaseConfirm?(
-        <button onClick={()=>setPhaseConfirm(true)} className="btn" style={{width:"100%",background:`${neon}0a`,border:`1px solid ${neon}28`,color:neon,borderRadius:10,padding:12,fontSize:12,fontFamily:MONO,marginBottom:10}}>{t.newPhaseBtn}</button>
-      ):(
-        <div style={{background:`${neon}08`,border:`1px solid ${neon}30`,borderRadius:10,padding:14,marginBottom:10}}>
-          <div style={{fontSize:12,fontWeight:700,color:neon,fontFamily:MONO,marginBottom:4}}>{t.newPhaseConfirmQ}</div>
-          <div style={{fontSize:11,color:"#ffffffaa",marginBottom:10,lineHeight:1.5}}>{t.newPhaseDesc}</div>
-          <input value={newPhaseName} onChange={e=>setNewPhaseName(e.target.value)}
-            placeholder={lang==="fr"?"Nom de cette phase (ex: FTMO Step 1)…":"Phase name (e.g. FTMO Step 1)…"}
-            style={{...inSt,marginBottom:10,fontSize:12}}/>
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>{onNewPhase(newPhaseName);setPhaseConfirm(false);setNewPhaseName("");}} className="btn" style={{flex:2,background:`${neon}22`,border:`1px solid ${neon}`,color:neon,borderRadius:8,padding:"10px 0",fontSize:12,fontWeight:700,fontFamily:MONO}}>{t.newPhaseConfirmBtn}</button>
-            <button onClick={()=>{setPhaseConfirm(false);setNewPhaseName("");}} className="btn" style={{flex:1,background:"transparent",border:`1px solid ${neon}26`,color:"#ffffffaa",borderRadius:8,padding:"10px 0",fontSize:11,fontFamily:MONO}}>{t.cancelBtn}</button>
-          </div>
-        </div>
-      )}
-      {phases&&phases.length>0&&(
-        <div style={{marginBottom:10}}>
-          {!phaseDeleteConfirm?(
-            <button onClick={()=>setPhaseDeleteConfirm(true)} className="btn"
-              style={{width:"100%",background:"transparent",border:"1px solid rgba(255,77,77,0.18)",color:"#ff4d4d88",borderRadius:10,padding:10,fontSize:11,fontFamily:MONO}}>
-              {t.deletePhaseBtn}
-            </button>
-          ):(
-            <div style={{background:"rgba(255,77,77,0.07)",border:"1px solid rgba(255,77,77,0.28)",borderRadius:10,padding:14}}>
-              <div style={{fontSize:12,fontWeight:700,color:"#ff4d4d",fontFamily:MONO,marginBottom:6}}>{t.deletePhaseConfirmQ}</div>
-              <div style={{fontSize:11,color:"#ffffffaa",marginBottom:12,lineHeight:1.6}}>{t.deletePhaseDesc}</div>
-              <div style={{display:"flex",gap:8}}>
-                <button onClick={()=>{onDeletePhase();setPhaseDeleteConfirm(false);}} className="btn"
-                  style={{flex:2,background:"rgba(255,77,77,0.18)",border:"1px solid #ff4d4d",color:"#ff4d4d",borderRadius:8,padding:"10px 0",fontSize:12,fontWeight:700,fontFamily:MONO}}>
-                  {t.deletePhaseConfirmBtn}
-                </button>
-                <button onClick={()=>setPhaseDeleteConfirm(false)} className="btn"
-                  style={{flex:1,background:"transparent",border:"1px solid rgba(255,255,255,0.1)",color:"#ffffffaa",borderRadius:8,padding:"10px 0",fontSize:11,fontFamily:MONO}}>
-                  {t.cancelBtn}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-      <div style={{height:1,background:"rgba(255,77,77,0.1)",margin:"6px 0 10px"}}/>
-      <button onClick={onReset} className="btn" style={{width:"100%",background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d88",borderRadius:10,padding:12,fontSize:12,fontFamily:MONO,marginBottom:10}}>{t.resetBtn}</button>
-      <button onClick={onImport} className="btn" style={{width:"100%",background:`${neon}0a`,border:`1px solid ${neon}28`,color:neon,borderRadius:10,padding:12,fontSize:12,fontFamily:MONO,marginBottom:10}}>↑ {lang==="fr"?"Importer un CSV (MT4/MT5/cTrader)":"Import CSV (MT4/MT5/cTrader)"}</button>
-      <button onClick={onLogout} className="btn" style={{width:"100%",background:"transparent",border:"1px solid rgba(255,77,77,0.1)",color:"#ff4d4d88",borderRadius:10,padding:12,fontSize:11,fontFamily:MONO}}>{t.logout}</button>
+        <SaveBtn/>
+        <div style={{height:1,background:"rgba(255,77,77,0.1)",margin:"14px 0 10px"}}/>
+        <button onClick={onImport} className="btn" style={{width:"100%",background:`${neon}0a`,border:`1px solid ${neon}28`,color:neon,borderRadius:10,padding:12,fontSize:12,fontFamily:MONO,marginBottom:10}}>↑ {fr?"Importer un CSV (MT4/MT5/cTrader)":"Import CSV (MT4/MT5/cTrader)"}</button>
+        <button onClick={onReset} className="btn" style={{width:"100%",background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d88",borderRadius:10,padding:12,fontSize:12,fontFamily:MONO,marginBottom:10}}>{t.resetBtn}</button>
+        <button onClick={onLogout} className="btn" style={{width:"100%",background:"transparent",border:"1px solid rgba(255,77,77,0.1)",color:"#ff4d4d88",borderRadius:10,padding:12,fontSize:11,fontFamily:MONO}}>{t.logout}</button>
+      </div>}
+
     </div>
   );
 }
@@ -2298,24 +2301,6 @@ export default function App() {
     setConfig(newCfg);
     setNotif({txt:lang==="fr"?`${name} démarrée.\nStats remises à zéro.`:`${name} started.\nStats reset.`,color:neon,icon:"ok",lang});
     if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{phases:newPhases,config:newCfg});
-  };
-
-  const handleDeletePhase = () => {
-    if(!phases||phases.length===0) return;
-    const lastPhase = phases[phases.length-1];
-    // Garder uniquement les trades antérieurs à ce compte
-    const keptTrades   = trades.filter(x => x.id <= lastPhase.id);
-    const keptNoTrades = noTrades.filter(x => x.id <= lastPhase.id);
-    const newPhases    = phases.slice(0, -1);
-    setTrades(keptTrades);
-    setNoTrades(keptNoTrades);
-    setPhases(newPhases);
-    setStatsMode("phase");
-    const uid = currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||"");
-    if(currentUserRef.current?.email) saveUserData(uid, {
-      trades:keptTrades, noTrades:keptNoTrades, phases:newPhases
-    });
-    setNotif({txt:lang==="fr"?`Compte supprimé.\nRetour au compte précédent.`:`Account deleted.\nBack to previous account.`,color:"#f0b429",icon:"warn",lang});
   };
 
   const pf=statsMode==="phase"?trades.filter(x=>x.id>currentPhaseTs):trades;
@@ -2936,7 +2921,7 @@ export default function App() {
       )}
 
       
-      {view==="settings"&&<SettingsView config={config} onDeletePhase={handleDeletePhase} onSave={cfg=>{
+      {view==="settings"&&<SettingsView config={config} onSave={cfg=>{
         const newCfg={...config,...cfg};
         setConfig(newCfg);
         if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:newCfg});
