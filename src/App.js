@@ -107,7 +107,7 @@ const T = {
     loginEmailPlaceholder:"ton@email.com",loginPasswordPlaceholder:"········",
     disciplineLabel:"DISCIPLINE",disciplineExcellent:"Excellent",disciplineGood:"Bon",disciplineWork:"À améliorer",disciplinePoor:"Insuffisant",
     conformiteLabel:"Conformité",sansRevengeLabel:"Sans revenge",
-    phaseEnCours:"Phase en cours",toutHistorique:"Tout",
+    phaseEnCours:"Compte en cours",toutHistorique:"Tout",
     newPhaseBtn:"▶ Nouvelle phase",newPhaseConfirmQ:"Démarrer une nouvelle phase ?",
     newPhaseDesc:"Les stats repartent à zéro à partir d'aujourd'hui. L'historique est conservé.",
     newPhaseConfirmBtn:"✓ Confirmer",phaseSince:"depuis",
@@ -165,7 +165,7 @@ const T = {
     loginEmailPlaceholder:"your@email.com",loginPasswordPlaceholder:"········",
     disciplineLabel:"DISCIPLINE",disciplineExcellent:"Excellent",disciplineGood:"Good",disciplineWork:"Needs work",disciplinePoor:"Poor",
     conformiteLabel:"Compliance",sansRevengeLabel:"Revenge-free",
-    phaseEnCours:"Current phase",toutHistorique:"All",
+    phaseEnCours:"Current account",toutHistorique:"All",
     newPhaseBtn:"▶ New phase",newPhaseConfirmQ:"Start a new phase?",
     newPhaseDesc:"Dashboard stats reset from today. Full history is kept.",
     newPhaseConfirmBtn:"✓ Confirm",phaseSince:"since",
@@ -1663,14 +1663,16 @@ function SettingsView({config,onSave,onLogout,onReset,lang,onLangChange,neon,acc
   // Stratégie
   const [items,setItems]=useState([...config.items]);
   const [threshold,setThreshold]=useState(config.threshold);
+  const [stratName,setStratName]=useState(config.strategyName||"");
   const [maxTrades,setMaxTrades]=useState(config.maxTrades||1);
   const [calendarOn,setCalendarOn]=useState(config.calendarOn!==false);
+  const [notifOn,setNotifOn]=useState(config.notifOn!==false);
   const [customAsset,setCustomAsset]=useState("");
   const [assets,setAssets]=useState(config.customAssets||PRESET_ASSETS);
   const [eliminatoires,setEliminatoires]=useState(config.eliminatoires||[]);
 
   const saveStrategy=()=>{
-    onSave({items,threshold,maxTrades,calendarOn,customAssets:assets,eliminatoires,neonColor});
+    onSave({items,threshold,strategyName:stratName,maxTrades,calendarOn,notifOn,customAssets:assets,eliminatoires,neonColor});
     setSavedOk(true);setTimeout(()=>setSavedOk(false),2000);
   };
 
@@ -1823,6 +1825,24 @@ function SettingsView({config,onSave,onLogout,onReset,lang,onLangChange,neon,acc
           <div style={{display:"flex",gap:6,marginBottom:20}}>
             {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setMaxTrades(n)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:maxTrades===n?`${neon}26`:"#131318",border:`1px solid ${maxTrades===n?neon:`${neon}22`}`,color:maxTrades===n?neon:"#ffffffbb"}}>{n}</button>)}
             <button onClick={()=>setMaxTrades(0)} className="btn" style={{flex:1.4,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:maxTrades===0?`${neon}26`:"#131318",border:`1px solid ${maxTrades===0?neon:`${neon}22`}`,color:maxTrades===0?neon:"#ffffffaa"}}>∞</button>
+          </div>
+
+          <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.strategyName}</div>
+          <input value={stratName} onChange={e=>setStratName(e.target.value)} style={{...inSt,marginBottom:16}}/>
+
+          <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:16}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${neon}0d`}}>
+              <span style={{fontSize:12,color:"#ffffff",fontFamily:MONO}}>{t.calendarToggle}</span>
+              <button onClick={()=>setCalendarOn(!calendarOn)} className="btn" style={{width:44,height:24,borderRadius:12,background:calendarOn?`${neon}33`:"#ffffff12",border:`1px solid ${calendarOn?neon:`${neon}30`}`,position:"relative"}}>
+                <div style={{width:16,height:16,borderRadius:"50%",background:calendarOn?neon:"#ffffffaa",position:"absolute",top:3,left:calendarOn?24:4,transition:"all 0.2s"}}/>
+              </button>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0"}}>
+              <span style={{fontSize:12,color:"#ffffff",fontFamily:MONO}}>{t.enableNotif}</span>
+              <button onClick={()=>setNotifOn(!notifOn)} className="btn" style={{width:44,height:24,borderRadius:12,background:notifOn?`${neon}33`:"#ffffff12",border:`1px solid ${notifOn?neon:`${neon}30`}`,position:"relative"}}>
+                <div style={{width:16,height:16,borderRadius:"50%",background:notifOn?neon:"#ffffffaa",position:"absolute",top:3,left:notifOn?24:4,transition:"all 0.2s"}}/>
+              </button>
+            </div>
           </div>
 
           <button onClick={saveStrategy} className="btn" style={{width:"100%",background:`${neon}26`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:14,fontSize:13,fontWeight:700,fontFamily:MONO}}>{savedOk?t.savedOk:t.saveBtn}</button>
@@ -2350,6 +2370,7 @@ export default function App() {
   };
 
   const activeAcc=accounts.find(a=>a.id===activeAccountId);
+  const activeAcc=accounts.find(a=>a.id===activeAccountId)||null;
   const pf=activeAccountId
     ? (statsMode==="phase"?trades.filter(x=>x.accountId===activeAccountId):trades.filter(x=>x.accountId===activeAccountId||!x.accountId))
     : trades;
@@ -2492,8 +2513,13 @@ export default function App() {
   if(phase==="login") return <LoginScreen onLogin={handleLogin} lang={lang} setLang={setLang} neon={neon}/>;
   if(phase==="setup") return <><CSS neon={neon}/><GuidedSetup onDone={async cfg=>{
     const newCfg={...config,...cfg};
-    setConfig(newCfg);setForm(emptyForm(cfg.defaultAsset||"XAU/USD"));setPhase("app");
-    if(currentUserRef.current?.email) await saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:newCfg,setupDone:true,lang,trades:[],noTrades:[],phases:[]});
+    setConfig(newCfg);setForm(emptyForm(cfg.defaultAsset||"XAU/USD"));
+    // Créer un compte par défaut actif
+    const defaultAcc={id:Date.now(),name:cfg.strategyName||"Mon compte",type:"perso",capital:cfg.capital||"",devise:cfg.devise||"€",status:"active",createdAt:today(),objPnl:"",objDrawdown:""};
+    setAccounts([defaultAcc]);
+    setActiveAccountId(defaultAcc.id);
+    setPhase("app");
+    if(currentUserRef.current?.uid) await saveUserData(currentUserRef.current.uid,{config:newCfg,setupDone:true,lang,trades:[],noTrades:[],accounts:[defaultAcc]});
   }} lang={lang}/></>;
 
   return (
@@ -2516,10 +2542,10 @@ export default function App() {
             const cur=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
             const pct=objectif.pnl?Math.min(100,Math.max(0,cur/(parseFloat(objectif.pnl)||1)*100)):0;
             return <div style={{padding:"10px 18px",borderBottom:"1px solid #ffffff08"}}>
-              <div style={{fontSize:9,color:neon,fontWeight:700,marginBottom:4}}>{config.phaseName||"PHASE"}{config.capital?` · ${parseInt(config.capital).toLocaleString()}${config.devise||"€"}`:""}</div>
+              <div style={{fontSize:9,color:neon,fontWeight:700,marginBottom:4}}>{activeAcc?.name||config.phaseName||"PHASE"}{config.capital?` · ${parseInt(config.capital).toLocaleString()}${config.devise||"€"}`:""}</div>
               {objectif.pnl&&<div style={{height:3,background:"#ffffff10",borderRadius:3,marginBottom:4}}><div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${neon}66,${neon})`,borderRadius:3,boxShadow:`0 0 6px ${neon}55`}}/></div>}
               <div style={{display:"flex",justifyContent:"space-between"}}>
-                <span style={{fontSize:8,color:"#ffffff44"}}>{lang==="fr"?"Phase en cours":"Current phase"}</span>
+                <span style={{fontSize:8,color:"#ffffff44"}}>{lang==="fr"?"Compte en cours":"Current account"}</span>
                 <span style={{fontSize:10,fontWeight:700,color:cur>=0?neon:"#ff4d4d"}}>{cur>=0?"+":""}{cur.toFixed(1)}%{objectif.pnl?<span style={{fontSize:8,color:"#ffffff44",fontWeight:400}}> / +{objectif.pnl}%</span>:null}</span>
               </div>
             </div>;
@@ -2572,7 +2598,7 @@ export default function App() {
           </div>}
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <span style={{fontSize:10,color:neon,fontFamily:MONO,fontWeight:700,letterSpacing:0.5}}>
-              {config.phaseName||"PHASE"}{config.capital?` · ${parseInt(config.capital).toLocaleString()}${config.devise||"€"}`:""}
+              {activeAcc?.name||config.phaseName||"PHASE"}{config.capital?` · ${parseInt(config.capital).toLocaleString()}${config.devise||"€"}`:""}
             </span>
             <span style={{fontSize:11,fontWeight:800,color:cur>=0?neon:"#ff4d4d",fontFamily:MONO}}>
               {cur>=0?"+":""}{cur.toFixed(1)}%{objectif.pnl?<span style={{fontSize:9,color:"#ffffff44",fontWeight:400}}> / +{objectif.pnl}%</span>:null}
@@ -2603,7 +2629,7 @@ export default function App() {
           {trades.length>0&&(
             <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
               <div style={{flex:1,display:"flex",gap:4,background:"#0f0f14",borderRadius:8,padding:3}}>
-                {[["phase",t.phaseEnCours],["all",t.toutHistorique]].map(([m,l])=>(
+                {[["phase",lang==="fr"?"Ce compte":"This account"],["all",t.toutHistorique]].map(([m,l])=>(
                   <button key={m} onClick={()=>setStatsMode(m)} className="btn" style={{flex:1,padding:"7px 0",borderRadius:6,fontSize:10,fontWeight:700,fontFamily:MONO,background:statsMode===m?neon:"transparent",color:statsMode===m?"#131318":"#ffffffaa",border:"none",transition:"all 0.2s"}}>{l}</button>
                 ))}
               </div>
