@@ -119,7 +119,7 @@ const T = {
     resetExportBtn:"↓ Exporter (CSV) puis réinitialiser",resetSkipBtn:"Réinitialiser sans exporter",
     resetCancel:"Annuler",resetExportedTitle:"Export effectué ✓",
     resetExportedDesc:"Ton historique a été sauvegardé. Tu peux maintenant réinitialiser.",
-    resetConfirmBtn:"Confirmer la réinitialisation",resetBtn:"⊘ Réinitialiser les données",
+    resetConfirmBtn:"Confirmer la réinitialisation",resetBtn:"⊘ Réinitialiser les données",deletePhaseBtn:"⊘ Supprimer ce compte",deletePhaseConfirmQ:"Supprimer le compte actuel ?",deletePhaseDesc:"Les trades de ce compte seront effacés. Le compte précédent redevient actif.",deletePhaseConfirmBtn:"✓ Supprimer",
   },
   en:{
     welcome:"Welcome to\nTrackMyTrade",welcomeDesc:"The trading journal that turns your discipline into concrete data. Every logged trade is a step toward profitability.",
@@ -177,7 +177,7 @@ const T = {
     resetExportBtn:"↓ Export (CSV) then reset",resetSkipBtn:"Reset without exporting",
     resetCancel:"Cancel",resetExportedTitle:"Export done ✓",
     resetExportedDesc:"Your history has been saved. You can now reset.",
-    resetConfirmBtn:"Confirm reset",resetBtn:"⊘ Reset all data",
+    resetConfirmBtn:"Confirm reset",resetBtn:"⊘ Reset all data",deletePhaseBtn:"⊘ Delete this account",deletePhaseConfirmQ:"Delete current account?",deletePhaseDesc:"Trades in this account will be deleted. Previous account becomes active.",deletePhaseConfirmBtn:"✓ Delete",
   }
 };
 
@@ -1655,14 +1655,14 @@ function GuidedSetup({onDone,lang}) {
   );
 }
 
-function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChange,neon,phases,onObjectifChange,onImport}) {
+function SettingsView({config,onSave,onLogout,onReset,onNewPhase,onDeletePhase,lang,onLangChange,neon,phases,onObjectifChange,onImport}) {
   const t=T[lang];const inSt=mkInput(neon);
   const [items,setItems]=useState([...config.items]);const [threshold,setThreshold]=useState(config.threshold);
   const [stratName,setStratName]=useState(config.strategyName||"");const [maxTrades,setMaxTrades]=useState(config.maxTrades||1);
   const [neonColor,setNeonColor]=useState(neon);const [calendarOn,setCalendarOn]=useState(config.calendarOn!==false);
   const [notifOn,setNotifOn]=useState(config.notifOn!==false);const [customAsset,setCustomAsset]=useState("");
   const [assets,setAssets]=useState(config.customAssets||PRESET_ASSETS);
-  const [savedOk,setSavedOk]=useState(false);const [phaseConfirm,setPhaseConfirm]=useState(false);
+  const [savedOk,setSavedOk]=useState(false);const [phaseConfirm,setPhaseConfirm]=useState(false);const [phaseDeleteConfirm,setPhaseDeleteConfirm]=useState(false);
   const [newPhaseName,setNewPhaseName]=useState("");
   const [phaseName,setPhaseName]=useState(config.phaseName||"");
   const [objPnl,setObjPnl]=useState(config.objPnl||"");
@@ -1788,6 +1788,31 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
             <button onClick={()=>{onNewPhase(newPhaseName);setPhaseConfirm(false);setNewPhaseName("");}} className="btn" style={{flex:2,background:`${neon}22`,border:`1px solid ${neon}`,color:neon,borderRadius:8,padding:"10px 0",fontSize:12,fontWeight:700,fontFamily:MONO}}>{t.newPhaseConfirmBtn}</button>
             <button onClick={()=>{setPhaseConfirm(false);setNewPhaseName("");}} className="btn" style={{flex:1,background:"transparent",border:`1px solid ${neon}26`,color:"#ffffffaa",borderRadius:8,padding:"10px 0",fontSize:11,fontFamily:MONO}}>{t.cancelBtn}</button>
           </div>
+        </div>
+      )}
+      {phases&&phases.length>0&&(
+        <div style={{marginBottom:10}}>
+          {!phaseDeleteConfirm?(
+            <button onClick={()=>setPhaseDeleteConfirm(true)} className="btn"
+              style={{width:"100%",background:"transparent",border:"1px solid rgba(255,77,77,0.18)",color:"#ff4d4d88",borderRadius:10,padding:10,fontSize:11,fontFamily:MONO}}>
+              {t.deletePhaseBtn}
+            </button>
+          ):(
+            <div style={{background:"rgba(255,77,77,0.07)",border:"1px solid rgba(255,77,77,0.28)",borderRadius:10,padding:14}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#ff4d4d",fontFamily:MONO,marginBottom:6}}>{t.deletePhaseConfirmQ}</div>
+              <div style={{fontSize:11,color:"#ffffffaa",marginBottom:12,lineHeight:1.6}}>{t.deletePhaseDesc}</div>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={()=>{onDeletePhase();setPhaseDeleteConfirm(false);}} className="btn"
+                  style={{flex:2,background:"rgba(255,77,77,0.18)",border:"1px solid #ff4d4d",color:"#ff4d4d",borderRadius:8,padding:"10px 0",fontSize:12,fontWeight:700,fontFamily:MONO}}>
+                  {t.deletePhaseConfirmBtn}
+                </button>
+                <button onClick={()=>setPhaseDeleteConfirm(false)} className="btn"
+                  style={{flex:1,background:"transparent",border:"1px solid rgba(255,255,255,0.1)",color:"#ffffffaa",borderRadius:8,padding:"10px 0",fontSize:11,fontFamily:MONO}}>
+                  {t.cancelBtn}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
       <div style={{height:1,background:"rgba(255,77,77,0.1)",margin:"6px 0 10px"}}/>
@@ -2273,6 +2298,31 @@ export default function App() {
     setConfig(newCfg);
     setNotif({txt:lang==="fr"?`${name} démarrée.\nStats remises à zéro.`:`${name} started.\nStats reset.`,color:neon,icon:"ok",lang});
     if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{phases:newPhases,config:newCfg});
+  };
+
+  const handleDeletePhase = () => {
+    if(!phases||phases.length===0) return;
+    const lastPhase = phases[phases.length-1];
+    // Garder uniquement les trades antérieurs à ce compte
+    const keptTrades   = trades.filter(x => x.id <= lastPhase.id);
+    const keptNoTrades = noTrades.filter(x => x.id <= lastPhase.id);
+    const newPhases    = phases.slice(0, -1);
+    setTrades(keptTrades);
+    setNoTrades(keptNoTrades);
+    setPhases(newPhases);
+    setStatsMode("phase");
+    const uid = currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||"");
+    if(currentUserRef.current?.email) saveUserData(uid, {
+      trades:keptTrades, noTrades:keptNoTrades, phases:newPhases
+    });
+    setNotif({
+      txt: lang==="fr"
+        ? "Compte supprimé.
+Retour au compte précédent."
+        : "Account deleted.
+Back to previous account.",
+      color:"#f0b429", icon:"warn", lang
+    });
   };
 
   const pf=statsMode==="phase"?trades.filter(x=>x.id>currentPhaseTs):trades;
@@ -2893,7 +2943,7 @@ export default function App() {
       )}
 
       
-      {view==="settings"&&<SettingsView config={config} onSave={cfg=>{
+      {view==="settings"&&<SettingsView config={config} onDeletePhase={handleDeletePhase} onSave={cfg=>{
         const newCfg={...config,...cfg};
         setConfig(newCfg);
         if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:newCfg});
