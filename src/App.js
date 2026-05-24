@@ -1749,7 +1749,7 @@ function SettingsView({config,onSave,onLogout,onReset,lang,onLangChange,neon,acc
                     <div style={{width:6,height:6,borderRadius:"50%",background:neon,boxShadow:`0 0 6px ${neon}`}}/>
                     <span style={{fontSize:10,color:neon,fontFamily:MONO}}>{lang==="fr"?"Compte actif":"Active account"}</span>
                   </div>}
-                  <button onClick={()=>{if(window.confirm(lang==="fr"?`Clôturer "${acc.name}" ?`:`Close "${acc.name}"?`))onCloseAccount(acc.id);}} className="btn"
+                  <button onClick={()=>{if(window.confirm(lang==="fr"?`Clôturer ${acc.name} ?`:`Close ${acc.name}?`))onCloseAccount(acc.id);}} className="btn"
                     style={{flex:1,padding:"8px 0",background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d88",borderRadius:8,fontSize:10,fontFamily:MONO}}>
                     ⊘ {lang==="fr"?"Clôturer":"Close"}
                   </button>
@@ -2328,9 +2328,7 @@ export default function App() {
   const handleActivateAccount=(accId)=>{
     const already=accounts.find(a=>a.status==="active");
     if(already&&already.id!==accId&&!isPro){
-      setNotif({txt:lang==="fr"?"Version Pro requise.
-Switcher entre comptes actifs est une fonctionnalité Pro.":"Pro required.
-Switching active accounts is a Pro feature.",color:"#f0b429",icon:"warn",lang});
+      setNotif({txt:lang==="fr"?"Version Pro requise.\nSwitcher entre comptes actifs est une fonctionnalité Pro.":"Pro required.\nSwitching active accounts is a Pro feature.",color:"#f0b429",icon:"warn",lang});
       return;
     }
     const newAccounts=accounts.map(a=>({...a,status:a.id===accId?"active":"inactive"}));
