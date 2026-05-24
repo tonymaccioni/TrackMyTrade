@@ -331,19 +331,33 @@ const CSS = ({neon="#00ff9d"}) => (
     @keyframes p1{0%{opacity:0.2;transform:scale(0.95)}50%{opacity:0.07;transform:scale(1.03)}100%{opacity:0.2;transform:scale(0.95)}}
     @keyframes p2{0%{opacity:0.25;transform:scale(0.93)}50%{opacity:0.05;transform:scale(1.05)}100%{opacity:0.25;transform:scale(0.93)}}
 
-    /* ── Effet 3D universel ── */
+    /* ══ EFFET 3D UNIVERSEL ══
+       S'applique automatiquement à tous les éléments avec gradient
+       via le sélecteur CSS + la classe .card3d explicite
+    */
+
+    /* Sélecteurs CSS universels - catches TOUS les gradient cards */
+    .card3d,
+    div.row[style*="linear-gradient"],
+    div[style*="background:&quot;linear-gradient(145deg,#1a1a24"],
+    div[style*="background:&quot;linear-gradient(145deg,#0f0f18"] {
+      position:relative !important; overflow:hidden;
+    }
+
+    /* Classe explicite - utilisée sur Card3D et les sections du formulaire */
     .card3d {
-      position:relative;overflow:hidden;
-      box-shadow:0 10px 30px rgba(0,0,0,0.55),0 3px 8px rgba(0,0,0,0.4),0 1px 0 rgba(255,255,255,0.05) inset, 0 -1px 0 rgba(0,0,0,0.4) inset !important;
-      border-top-color:rgba(255,255,255,0.13) !important;
+      box-shadow:0 10px 30px rgba(0,0,0,0.52),0 3px 8px rgba(0,0,0,0.38),
+                 0 1px 0 rgba(255,255,255,0.055) inset,
+                 0 -1px 0 rgba(0,0,0,0.35) inset !important;
+      border-top-color:rgba(255,255,255,0.12) !important;
     }
     .card3d::before {
       content:'';position:absolute;top:0;left:0;right:0;height:1.5px;z-index:2;pointer-events:none;
-      background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.18) 25%,rgba(255,255,255,0.18) 75%,transparent 100%);
+      background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.16) 25%,rgba(255,255,255,0.16) 75%,transparent 100%);
     }
     .card3d::after {
       content:'';position:absolute;bottom:0;left:0;right:0;height:1px;z-index:2;pointer-events:none;
-      background:rgba(0,0,0,0.3);
+      background:rgba(0,0,0,0.28);
     }
   `}</style>
 );
@@ -374,7 +388,7 @@ function StreakBadge({trades,neon,lang}) {
   for(let i=1;i<trades.length;i++){if(trades[i].result===type)streak++;else break;}
   if(streak<2||type==="BE") return null;
   const color=type==="WIN"?neon:"#ff4d4d";
-  return <div style={{background:`${color}12`,border:`1px solid ${color}35`,borderRadius:10,padding:"8px 14px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between",boxShadow:`0 2px 12px ${color}18`}}><span style={{fontSize:12,color,fontWeight:700,fontFamily:MONO,textShadow:`0 0 10px ${color}88`}}>{streak} {type==="WIN"?t.streakWin:t.streakLoss}</span>{type==="LOSS"&&<span style={{fontSize:10,color:"#ffffffaa"}}>{t.checkRules}</span>}</div>;
+  return <div className="card3d" style={{background:`${color}12`,border:`1px solid ${color}35`,borderRadius:10,padding:"8px 14px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between",boxShadow:`0 2px 12px ${color}18`}}><span style={{fontSize:12,color,fontWeight:700,fontFamily:MONO,textShadow:`0 0 10px ${color}88`}}>{streak} {type==="WIN"?t.streakWin:t.streakLoss}</span>{type==="LOSS"&&<span style={{fontSize:10,color:"#ffffffaa"}}>{t.checkRules}</span>}</div>;
 }
 
 
@@ -435,7 +449,7 @@ function Dots({total,current,neon="#00ff9d"}) {
 
 function Stat({label,value,color="#00ff9d"}) {
   return (
-    <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${color}28`,borderRadius:14,padding:"14px 16px",flex:1,boxShadow:"0 8px 32px #00000060,inset 0 1px 0 #ffffff08"}}>
+    <div className="card3d" style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${color}28`,borderRadius:14,padding:"14px 16px",flex:1,boxShadow:"0 8px 32px #00000060,inset 0 1px 0 #ffffff08"}}>
       <div style={{fontSize:9,color:"#ffffffaa",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>{label}</div>
       <div style={{fontSize:22,fontWeight:900,color:"#ffffff",fontFamily:MONO,lineHeight:1,textShadow:`0 0 20px ${color}cc, 0 2px 6px rgba(0,0,0,0.6)`}}>{value}</div>
     </div>
@@ -805,7 +819,7 @@ function NoTradeButton({onSave,alreadyDone,lang,neon}) {
   const ntr=NTR[lang]||NTR.fr;
   const [open,setOpen]=useState(false);
   const [reason,setReason]=useState("");
-  if(alreadyDone) return <div style={{background:"rgba(90,90,90,0.06)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}><span style={{color:"#ffffff66"}}>⊘</span><span style={{fontSize:11,color:"#ffffffaa",fontFamily:MONO}}>{t.noTradeToday}</span></div>;
+  if(alreadyDone) return <div className="card3d" style={{background:"rgba(90,90,90,0.06)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}><span style={{color:"#ffffff66"}}>⊘</span><span style={{fontSize:11,color:"#ffffffaa",fontFamily:MONO}}>{t.noTradeToday}</span></div>;
   if(!open) return <button onClick={()=>setOpen(true)} className="btn" style={{width:"100%",background:"transparent",border:"1px dashed rgba(255,255,255,0.1)",borderRadius:10,padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:10,color:"#ffffffaa",fontFamily:MONO,fontSize:12}}><span>⊘</span><span>{t.noTradeToday}</span></button>;
   return (
     <div style={{background:"rgba(90,90,90,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:14,marginBottom:12}}>
@@ -1655,13 +1669,13 @@ function Onboarding({onDone}) {
         <div style={{position:"relative",zIndex:2,maxWidth:280,width:"100%",padding:"0 10px"}}>
           <div style={{display:"flex",gap:10,marginBottom:10}}>
             {[["WIN RATE","73%"],["P&L","+4.2%"]].map(([l,v])=>(
-              <div key={l} style={{flex:1,background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:14,padding:"14px 12px",textAlign:"center",boxShadow:`0 4px 24px ${neon}10,inset 0 1px 0 ${neon}15`}}>
+              <div key={l} className="card3d" style={{flex:1,background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:14,padding:"14px 12px",textAlign:"center",boxShadow:`0 4px 24px ${neon}10,inset 0 1px 0 ${neon}15`}}>
                 <div style={{fontSize:26,fontWeight:900,color:"#ffffff",fontFamily:MONO,lineHeight:1,textShadow:`0 0 20px ${neon}55`}}>{v}</div>
                 <div style={{fontSize:9,color:"#ffffffaa",marginTop:6,letterSpacing:2,textTransform:"uppercase"}}>{l}</div>
               </div>
             ))}
           </div>
-          <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:10,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div className="card3d" style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:10,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div>
               <div style={{fontSize:9,color:"#ffffffaa",letterSpacing:2,marginBottom:6}}>CONFORMITÉ</div>
               <div style={{height:3,width:140,background:"#ffffff10",borderRadius:2,overflow:"hidden"}}>
@@ -2155,7 +2169,7 @@ function ExportModal({trades,onClose,lang,neon}) {
           <div style={{fontSize:13,fontWeight:700,color:neon,fontFamily:MONO}}>{t.exportTitle}</div>
           <button onClick={onClose} style={{background:"transparent",border:"none",color:"#ffffffaa",fontSize:18,cursor:"pointer"}}>✕</button>
         </div>
-        <div style={{display:"flex",gap:10,marginBottom:20}}>
+        <div className="card3d" style={{display:"flex",gap:10,marginBottom:20,background:"linear-gradient(155deg,#1a1a28,#111118)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:14}}>
           <Stat label={t.trades.toUpperCase()} value={trades.length} color="#38bdf8"/>
           <Stat label="WIN RATE" value={trades.length?Math.round(wins/trades.length*100)+"%":"—"} color={trades.length&&wins/trades.length>=0.5?neon:"#ff4d4d"}/>
           <Stat label="P&L" value={fmtPct(pnl)} color={pnl>=0?neon:"#ff4d4d"}/>
@@ -2560,7 +2574,7 @@ export default function App() {
           {(objectif.pnl||config.capital)&&(()=>{
             const cur=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
             const pct=objectif.pnl?Math.min(100,Math.max(0,cur/(parseFloat(objectif.pnl)||1)*100)):0;
-            return <div style={{padding:"10px 18px",borderBottom:"1px solid #ffffff08"}}>
+            return <div className="card3d" style={{padding:"10px 18px",borderBottom:"1px solid #ffffff08",background:"linear-gradient(155deg,#1a1a28,#111118)",border:"1px solid rgba(255,255,255,0.07)"}}>
               <div style={{fontSize:9,color:neon,fontWeight:700,marginBottom:4}}>{config.phaseName||"PHASE"}{config.capital?` · ${parseInt(config.capital).toLocaleString()}${config.devise||"€"}`:""}</div>
               {objectif.pnl&&<div style={{height:3,background:"#ffffff10",borderRadius:3,marginBottom:4}}><div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${neon}66,${neon})`,borderRadius:3,boxShadow:`0 0 6px ${neon}55`}}/></div>}
               <div style={{display:"flex",justifyContent:"space-between"}}>
@@ -2606,7 +2620,7 @@ export default function App() {
         const cur=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
         const target=parseFloat(objectif.pnl)||1;
         const pct=objectif.pnl?Math.min(100,Math.max(0,cur/target*100)):0;
-        return <div style={{background:"rgba(9,9,16,0.6)",borderBottom:`1px solid #ffffff06`,padding:"7px 18px 6px"}}>
+        return <div className="card3d" style={{background:"rgba(9,9,16,0.6)",borderBottom:`1px solid #ffffff06`,padding:"7px 18px 6px"}}>
           {objectif.pnl&&<div style={{height:3,background:"#ffffff10",borderRadius:3,marginBottom:6}}>
             <div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${neon}66,${neon})`,borderRadius:3,transition:"width 0.6s ease",boxShadow:`0 0 8px ${neon}55`}}/>
           </div>}
@@ -2642,7 +2656,7 @@ export default function App() {
           <button onClick={()=>setShowTutorial(true)} className="btn" style={{position:"fixed",bottom:isDesktop?24:88,right:20,zIndex:50,width:40,height:40,borderRadius:"50%",background:`linear-gradient(145deg,#1e1e2e,#131320)`,border:`1px solid ${neon}35`,color:neon,fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 4px 20px rgba(0,0,0,0.6),0 0 12px ${neon}18`,cursor:"pointer"}}>?</button>
           {trades.length>0&&(
             <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
-              <div style={{flex:1,display:"flex",gap:4,background:"#0f0f14",borderRadius:8,padding:3}}>
+              <div className="card3d" style={{flex:1,display:"flex",gap:4,background:"#0f0f14",borderRadius:8,padding:3}}>
                 {[["phase",t.phaseEnCours],["all",t.toutHistorique]].map(([m,l])=>(
                   <button key={m} onClick={()=>setStatsMode(m)} className="btn" style={{flex:1,padding:"7px 0",borderRadius:6,fontSize:10,fontWeight:700,fontFamily:MONO,background:statsMode===m?neon:"transparent",color:statsMode===m?"#131318":"#ffffffaa",border:"none",transition:"all 0.2s"}}>{l}</button>
                 ))}
@@ -2725,7 +2739,7 @@ export default function App() {
               </div>
             </div>
           )}
-          {total>=3&&<button onClick={()=>setShowStats(true)} className="btn" style={{width:"100%",background:`${neon}0d`,border:`1px solid ${neon}28`,borderRadius:10,padding:"12px 0",color:neon,fontSize:11,fontWeight:700,fontFamily:MONO,letterSpacing:2,marginBottom:12}}>
+          {total>=3&&<button onClick={()=>setShowStats(true)} className="btn card3d" style={{width:"100%",background:`${neon}0d`,border:`1px solid ${neon}28`,borderRadius:10,padding:"12px 0",color:neon,fontSize:11,fontWeight:700,fontFamily:MONO,letterSpacing:2,marginBottom:12}}>
             {lang==="fr"?"◈ RÉSUMÉ & INSIGHTS":"◈ SUMMARY & INSIGHTS"}
           </button>}
           <NoTradeButton onSave={e=>{
@@ -2829,7 +2843,7 @@ export default function App() {
           </Card3D>
           <div className="card3d" style={{display:"flex",gap:8,marginBottom:10,background:"linear-gradient(155deg,#1e1e30,#0f0f1a)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:10,padding:"10px 10px"}}>{["WIN","LOSS","BE"].map(r=><button key={r} onClick={()=>setForm({...form,result:r,slDirection:r!=="LOSS"?"":form.slDirection})} className="btn" style={{flex:1,background:form.result===r?`${rc(r,neon)}22`:"#131318",border:`1px solid ${form.result===r?rc(r,neon):`${neon}26`}`,color:form.result===r?rc(r,neon):"#ffffffbb",borderRadius:8,padding:10,fontSize:12,fontWeight:700,fontFamily:MONO}}>{r}</button>)}</div>
           {form.result==="LOSS"&&(
-            <div style={{background:"rgba(255,77,77,0.06)",border:"1px solid rgba(255,77,77,0.15)",borderRadius:8,padding:"10px 12px",marginBottom:10}}>
+            <div className="card3d" style={{background:"rgba(255,77,77,0.06)",border:"1px solid rgba(255,77,77,0.15)",borderRadius:8,padding:"10px 12px",marginBottom:10}}>
               <div style={{fontSize:9,color:"#ff4d4d",letterSpacing:2,marginBottom:8}}>{t.slDirectionLabel} <span style={{color:"#ffffffaa"}}>{t.optional}</span></div>
               <div style={{display:"flex",gap:8}}>
                 {[["with",t.slWith,neon],["against",t.slAgainst,"#ff4d4d"]].map(([v,l,c])=>(
