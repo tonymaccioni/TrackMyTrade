@@ -1682,7 +1682,6 @@ function SettingsView({config,onSave,onLogout,onReset,lang,onLangChange,neon,acc
     {id:"prefs",label:lang==="fr"?"Préférences":"Prefs"},
   ];
 
-  const activeAcc=accounts?.find(a=>a.status==="active");
   const [showFilter,setShowFilter]=useState("active"); // active | all | closed
 
   return (
@@ -2369,7 +2368,6 @@ export default function App() {
     if(currentUserRef.current?.uid) saveUserData(currentUserRef.current.uid,{accounts:newAccounts});
   };
 
-  const activeAcc=accounts.find(a=>a.id===activeAccountId);
   const activeAcc=accounts.find(a=>a.id===activeAccountId)||null;
   const pf=activeAccountId
     ? (statsMode==="phase"?trades.filter(x=>x.accountId===activeAccountId):trades.filter(x=>x.accountId===activeAccountId||!x.accountId))
