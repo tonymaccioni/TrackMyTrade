@@ -1655,152 +1655,205 @@ function GuidedSetup({onDone,lang}) {
   );
 }
 
-function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChange,neon,phases,onObjectifChange,onImport}) {
+function SettingsView({config,onSave,onLogout,onReset,lang,onLangChange,neon,accounts,activeAccountId,onActivateAccount,onCloseAccount,onNewAccount,isPro,onObjectifChange,onImport}) {
   const t=T[lang];const inSt=mkInput(neon);
-  const [items,setItems]=useState([...config.items]);const [threshold,setThreshold]=useState(config.threshold);
-  const [stratName,setStratName]=useState(config.strategyName||"");const [maxTrades,setMaxTrades]=useState(config.maxTrades||1);
-  const [neonColor,setNeonColor]=useState(neon);const [calendarOn,setCalendarOn]=useState(config.calendarOn!==false);
-  const [notifOn,setNotifOn]=useState(config.notifOn!==false);const [customAsset,setCustomAsset]=useState("");
+  const [tab,setTab]=useState("accounts");
+  const [neonColor,setNeonColor]=useState(neon);
+  const [savedOk,setSavedOk]=useState(false);
+  // Stratégie
+  const [items,setItems]=useState([...config.items]);
+  const [threshold,setThreshold]=useState(config.threshold);
+  const [maxTrades,setMaxTrades]=useState(config.maxTrades||1);
+  const [calendarOn,setCalendarOn]=useState(config.calendarOn!==false);
+  const [customAsset,setCustomAsset]=useState("");
   const [assets,setAssets]=useState(config.customAssets||PRESET_ASSETS);
-  const [savedOk,setSavedOk]=useState(false);const [phaseConfirm,setPhaseConfirm]=useState(false);
-  const [newPhaseName,setNewPhaseName]=useState("");
-  const [phaseName,setPhaseName]=useState(config.phaseName||"");
-  const [objPnl,setObjPnl]=useState(config.objPnl||"");
-  const [objWr,setObjWr]=useState(config.objWr||"");
-  const [objTrades,setObjTrades]=useState(config.objTrades||"");const [eliminatoires,setEliminatoires]=useState(config.eliminatoires||[]);
-  const [capital,setCapital]=useState(config.capital||"");
-  const [devise,setDevise]=useState(config.devise||"€");
-  const [accountType,setAccountType]=useState(config.accountType||"perso");
-  const [objDrawdown,setObjDrawdown]=useState(config.objDrawdown||"");
-  const save=()=>{const savedObj={pnl:objPnl,wr:"",trades:"",drawdown:objDrawdown,editMode:false};
-    onSave({items,threshold,strategyName:stratName,maxTrades,neonColor,calendarOn,notifOn,customAssets:assets,eliminatoires,objPnl,phaseName,capital,devise,accountType,objDrawdown});
-    onObjectifChange(savedObj);setSavedOk(true);setTimeout(()=>setSavedOk(false),2000);};
-  const Toggle=({label,val,set})=>(
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${neonColor}0d`}}>
-      <span style={{fontSize:12,color:"#ffffff",fontFamily:MONO}}>{label}</span>
-      <button onClick={()=>set(!val)} className="btn" style={{width:44,height:24,borderRadius:12,background:val?`${neonColor}33`:"#ffffff12",border:`1px solid ${val?neonColor:`${neonColor}30`}`,position:"relative",transition:"all 0.2s"}}>
-        <div style={{width:16,height:16,borderRadius:"50%",background:val?neonColor:"#ffffffaa",position:"absolute",top:3,left:val?24:4,transition:"all 0.2s"}}/>
-      </button>
-    </div>
-  );
+  const [eliminatoires,setEliminatoires]=useState(config.eliminatoires||[]);
+
+  const saveStrategy=()=>{
+    onSave({items,threshold,maxTrades,calendarOn,customAssets:assets,eliminatoires,neonColor});
+    setSavedOk(true);setTimeout(()=>setSavedOk(false),2000);
+  };
+
+  const tabs=[
+    {id:"accounts",label:lang==="fr"?"Comptes":"Accounts"},
+    {id:"strategy",label:lang==="fr"?"Stratégie":"Strategy"},
+    {id:"prefs",label:lang==="fr"?"Préférences":"Prefs"},
+  ];
+
+  const activeAcc=accounts?.find(a=>a.status==="active");
+  const [showFilter,setShowFilter]=useState("active"); // active | all | closed
+
   return (
     <div className="fi" style={{padding:20}}>
-      <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
-        <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.langLabel}</div>
-        <div style={{display:"flex",gap:8}}>{[["fr","Français"],["en","English"]].map(([l,label])=><button key={l} onClick={()=>onLangChange(l)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:lang===l?`${neonColor}26`:"#131318",border:`1px solid ${lang===l?neonColor:`${neonColor}22`}`,color:lang===l?neonColor:"#ffffffbb"}}>{label}</button>)}</div>
+      {/* Onglets */}
+      <div style={{display:"flex",gap:4,marginBottom:16,background:"#0f0f14",borderRadius:10,padding:3}}>
+        {tabs.map(({id,label})=>(
+          <button key={id} onClick={()=>setTab(id)} className="btn"
+            style={{flex:1,padding:"8px 0",borderRadius:7,fontSize:11,fontWeight:700,fontFamily:MONO,
+              background:tab===id?neon:"transparent",
+              color:tab===id?"#000":"#ffffffaa",border:"none"}}>
+            {label}
+          </button>
+        ))}
       </div>
-      <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
-        <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.colorLabel}</div>
-        <div style={{display:"flex",gap:8}}>{NEON_COLORS.map(c=><button key={c.value} onClick={()=>setNeonColor(c.value)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,background:neonColor===c.value?`${c.value}26`:"#131318",border:`2px solid ${neonColor===c.value?c.value:"transparent"}`,cursor:"pointer"}}><div style={{width:16,height:16,borderRadius:"50%",background:c.value,margin:"0 auto",boxShadow:neonColor===c.value?`0 0 8px ${c.value}`:"none"}}/></button>)}</div>
-      </div>
-      <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
-        <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.maxTradesLabel}</div>
-        <div style={{display:"flex",gap:6}}>
-          {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setMaxTrades(n)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:maxTrades===n?`${neonColor}26`:"#131318",border:`1px solid ${maxTrades===n?neonColor:`${neonColor}22`}`,color:maxTrades===n?neonColor:"#ffffffbb"}}>{n}</button>)}
-          <button onClick={()=>setMaxTrades(0)} className="btn" style={{flex:1.4,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:maxTrades===0?`${neonColor}26`:"#131318",border:`1px solid ${maxTrades===0?neonColor:`${neonColor}22`}`,color:maxTrades===0?neonColor:"#ffffffaa"}}>∞</button>
-        </div>
-      </div>
-      <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>ACTIFS</div>
-      <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
-        {assets.map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4,background:"#131318",border:`1px solid ${neon}26`,borderRadius:6,padding:"4px 8px"}}>
-          <span style={{fontSize:11,color:"#ffffff",fontFamily:MONO}}>{a}</span>
-          {!PRESET_ASSETS.includes(a)&&<button onClick={()=>setAssets(assets.filter(x=>x!==a))} style={{background:"transparent",border:"none",color:"#ff4d4d",fontSize:10,cursor:"pointer"}}>✕</button>}
-        </div>)}
-      </div>
-      <div style={{display:"flex",gap:8,marginBottom:14}}>
-        <input value={customAsset} onChange={e=>setCustomAsset(e.target.value)} placeholder={t.customAsset} onKeyDown={e=>{if(e.key==="Enter"&&customAsset.trim()){setAssets([...assets,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} style={{...inSt,marginBottom:0,flex:1}}/>
-        <button onClick={()=>{if(customAsset.trim()){setAssets([...assets,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} className="btn" style={{background:`${neonColor}1a`,border:`1px solid ${neonColor}55`,color:neonColor,borderRadius:8,padding:"0 14px",fontSize:18}}>+</button>
-      </div>
-      <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.strategyName}</div>
-      <input value={stratName} onChange={e=>setStratName(e.target.value)} style={inSt}/>
-      <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.thresholdLabel}</div>
-      <div style={{display:"flex",gap:6,marginBottom:16}}>
-        {[4,5,6,7,8].map(n=><button key={n} onClick={()=>setThreshold(n)} className="btn" style={{flex:1,padding:8,borderRadius:8,fontSize:13,fontWeight:700,fontFamily:MONO,background:threshold===n?`${neonColor}33`:"#131318",border:`1px solid ${threshold===n?neonColor:`${neonColor}22`}`,color:threshold===n?neonColor:"#ffffffbb"}}>{n}</button>)}
-      </div>
-      <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.criteriaLabel} ({items.length})</div>
-      {items.map((item,i)=>{
-          const isE=(eliminatoires||[]).includes(i);
-          return <div key={i} style={{display:"flex",gap:6,marginBottom:8,alignItems:"center"}}>
-            <input value={item} onChange={e=>{const n=[...items];n[i]=e.target.value;setItems(n);}} style={{...inSt,marginBottom:0,flex:1}}/>
-            <button onClick={()=>setEliminatoires(p=>isE?p.filter(x=>x!==i):[...p,i])} title={isE?"Retirer éliminatoire":"Marquer éliminatoire"} style={{background:isE?"rgba(255,77,77,0.15)":"transparent",border:`1px solid ${isE?"#ff4d4d":"rgba(255,77,77,0.25)"}`,color:isE?"#ff4d4d":"#ffffff44",borderRadius:6,padding:"6px 8px",cursor:"pointer",fontSize:10,fontWeight:700,flexShrink:0}}>⚡</button>
-            <button onClick={()=>setItems(items.filter((_,idx)=>idx!==i))} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d",borderRadius:6,padding:"8px 10px",cursor:"pointer",flexShrink:0}}>✕</button>
-          </div>;
-        })}
-      <button onClick={()=>setItems([...items,""])} style={{width:"100%",background:"transparent",border:`1px dashed ${neon}35`,color:"#ffffff44",borderRadius:8,padding:10,fontSize:12,cursor:"pointer",fontFamily:MONO,marginBottom:16}}>{t.addCriteria}</button>
-      <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:16}}>
-        <Toggle label={t.calendarToggle} val={calendarOn} set={setCalendarOn}/>
-        <Toggle label={t.enableNotif} val={notifOn} set={setNotifOn}/>
-      </div>
-      {/* Phase en cours — nom + capital + devise + type + drawdown + objectif */}
-    <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
-      <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:12}}>PHASE EN COURS</div>
-      <div style={{marginBottom:10}}>
-        <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>{lang==="fr"?"NOM DE LA PHASE":"PHASE NAME"}</div>
-        <input value={phaseName} onChange={e=>setPhaseName(e.target.value)}
-          placeholder={lang==="fr"?"ex: FTMO 1ère étape…":"e.g. FTMO Step 1…"}
-          style={{...inSt,fontSize:12,marginBottom:0}}/>
-      </div>
-      <div style={{marginBottom:10}}>
-        <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>TYPE DE COMPTE</div>
-        <div style={{display:"flex",gap:6}}>
-          {[["prop","Prop Firm"],["perso","Perso"],["demo","Démo"]].map(([v,l])=>(
-            <button key={v} onClick={()=>setAccountType(v)} className="btn" style={{flex:1,padding:"9px 0",background:accountType===v?`${neonColor}18`:"#131318",border:`1px solid ${accountType===v?neonColor:`${neonColor}22`}`,borderRadius:8,fontSize:10,fontWeight:700,color:accountType===v?neonColor:"#ffffffaa",fontFamily:MONO}}>{l}</button>
-          ))}
-        </div>
-      </div>
-      <div style={{display:"flex",gap:8,marginBottom:10}}>
-        <div style={{flex:2}}>
-          <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>CAPITAL</div>
-          <input type="number" value={capital} onChange={e=>setCapital(e.target.value)} placeholder="10000" style={{...inSt,marginBottom:0}}/>
-        </div>
-        <div style={{flex:1}}>
-          <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>DEVISE</div>
-          <div style={{display:"flex",flexDirection:"column",gap:3}}>
-            {["€","$","£","CHF"].map(d=>(
-              <button key={d} onClick={()=>setDevise(d)} className="btn" style={{padding:"5px 0",background:devise===d?`${neonColor}18`:"#131318",border:`1px solid ${devise===d?neonColor:`${neonColor}22`}`,borderRadius:6,fontSize:11,fontWeight:800,color:devise===d?neonColor:"#ffffffaa",fontFamily:MONO}}>{d}</button>
+
+      {/* ── TAB COMPTES ── */}
+      {tab==="accounts"&&(
+        <div>
+          {/* Filtre */}
+          <div style={{display:"flex",gap:4,marginBottom:14}}>
+            {[["active",lang==="fr"?"Actifs":"Active"],["all",lang==="fr"?"Tous":"All"],["closed",lang==="fr"?"Clôturés":"Closed"]].map(([v,l])=>(
+              <button key={v} onClick={()=>setShowFilter(v)} className="btn"
+                style={{flex:1,padding:"6px 0",borderRadius:7,fontSize:10,fontWeight:700,fontFamily:MONO,
+                  background:showFilter===v?"#ffffff12":"transparent",
+                  border:`1px solid ${showFilter===v?"#ffffff26":"#ffffff0a"}`,
+                  color:showFilter===v?"#ffffff":"#ffffffaa"}}>
+                {l}
+              </button>
             ))}
           </div>
+
+          {/* Liste comptes */}
+          {(accounts||[]).filter(a=>{
+            if(showFilter==="active") return a.status!=="closed";
+            if(showFilter==="closed") return a.status==="closed";
+            return true;
+          }).map(acc=>{
+            const accTrades=[];// trades filtrés par compte — pas accessible ici directement
+            const isActive=acc.status==="active";
+            const isClosed=acc.status==="closed";
+            const c=isActive?neon:isClosed?"#ff4d4d44":"#ffffff44";
+            return (
+              <div key={acc.id} style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${isActive?neon+"33":"#ffffff0a"}`,borderRadius:14,padding:14,marginBottom:10}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                  <div>
+                    <div style={{fontSize:14,fontWeight:700,color:isClosed?"#ffffff55":"#ffffff"}}>{acc.name}</div>
+                    <div style={{fontSize:10,color:"#ffffff44",marginTop:2,fontFamily:MONO}}>
+                      {acc.type==="prop"?"Prop Firm":acc.type==="demo"?"Démo":"Perso"} · {acc.capital?`${parseInt(acc.capital).toLocaleString()} ${acc.devise||"€"}`:lang==="fr"?"Capital non défini":"No capital"} · {lang==="fr"?"depuis":"since"} {acc.createdAt}
+                    </div>
+                  </div>
+                  <span style={{fontSize:9,padding:"3px 8px",borderRadius:10,fontWeight:700,fontFamily:MONO,
+                    background:isActive?`${neon}18`:isClosed?"rgba(255,77,77,0.1)":"#ffffff0a",
+                    color:isActive?neon:isClosed?"#ff4d4d":"#ffffff55",
+                    border:`1px solid ${isActive?neon+"44":isClosed?"rgba(255,77,77,0.25)":"#ffffff14"}`}}>
+                    {isActive?(lang==="fr"?"● ACTIF":"● ACTIVE"):isClosed?(lang==="fr"?"CLÔTURÉ":"CLOSED"):(lang==="fr"?"INACTIF":"INACTIVE")}
+                  </span>
+                </div>
+                {!isClosed&&<div style={{display:"flex",gap:6}}>
+                  {!isActive&&<button onClick={()=>onActivateAccount(acc.id)} className="btn"
+                    style={{flex:2,padding:"8px 0",background:`${neon}18`,border:`1px solid ${neon}44`,color:neon,borderRadius:8,fontSize:11,fontWeight:700,fontFamily:MONO}}>
+                    ▶ {lang==="fr"?"Activer":"Activate"}
+                    {!isPro&&accounts.find(a=>a.status==="active")&&acc.status!=="active"&&<span style={{fontSize:9,opacity:0.7}}> Pro</span>}
+                  </button>}
+                  {isActive&&<div style={{flex:2,display:"flex",alignItems:"center",gap:6,padding:"8px 10px",background:`${neon}08`,borderRadius:8,border:`1px solid ${neon}14`}}>
+                    <div style={{width:6,height:6,borderRadius:"50%",background:neon,boxShadow:`0 0 6px ${neon}`}}/>
+                    <span style={{fontSize:10,color:neon,fontFamily:MONO}}>{lang==="fr"?"Compte actif":"Active account"}</span>
+                  </div>}
+                  <button onClick={()=>{if(window.confirm(lang==="fr"?`Clôturer "${acc.name}" ?`:`Close "${acc.name}"?`))onCloseAccount(acc.id);}} className="btn"
+                    style={{flex:1,padding:"8px 0",background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d88",borderRadius:8,fontSize:10,fontFamily:MONO}}>
+                    ⊘ {lang==="fr"?"Clôturer":"Close"}
+                  </button>
+                </div>}
+                {isClosed&&<div style={{fontSize:10,color:"#ffffff33",fontFamily:MONO}}>{lang==="fr"?"Clôturé le":"Closed on"} {acc.closedAt}</div>}
+              </div>
+            );
+          })}
+
+          {(accounts||[]).filter(a=>showFilter==="active"?a.status!=="closed":showFilter==="closed"?a.status==="closed":true).length===0&&(
+            <div style={{textAlign:"center",padding:"24px 0",color:"#ffffff44",fontSize:12}}>
+              {lang==="fr"?"Aucun compte dans cette catégorie":"No accounts in this category"}
+            </div>
+          )}
+
+          {/* Ajouter compte */}
+          <button onClick={onNewAccount} className="btn"
+            style={{width:"100%",background:"transparent",border:`1px dashed ${neon}35`,borderRadius:10,padding:"12px 0",color:neon,fontSize:12,fontFamily:MONO,marginTop:4}}>
+            + {lang==="fr"?"Nouveau compte":"New account"}
+          </button>
+
+          {!isPro&&<div style={{textAlign:"center",padding:"12px 0 4px",fontSize:10,color:"#ffffff33",fontFamily:MONO}}>
+            {lang==="fr"?"Version Free · 1 compte actif à la fois":"Free · 1 active account at a time"}
+          </div>}
+
+          <div style={{height:1,background:"rgba(255,77,77,0.1)",margin:"16px 0 10px"}}/>
+          <button onClick={onImport} className="btn" style={{width:"100%",background:`${neon}0a`,border:`1px solid ${neon}28`,color:neon,borderRadius:10,padding:12,fontSize:12,fontFamily:MONO,marginBottom:10}}>
+            ↑ {lang==="fr"?"Importer un CSV (MT4/MT5/cTrader)":"Import CSV (MT4/MT5/cTrader)"}
+          </button>
+          <button onClick={onReset} className="btn" style={{width:"100%",background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d88",borderRadius:10,padding:12,fontSize:12,fontFamily:MONO,marginBottom:8}}>
+            {t.resetBtn}
+          </button>
+          <button onClick={onLogout} className="btn" style={{width:"100%",background:"transparent",border:"1px solid rgba(255,77,77,0.1)",color:"#ff4d4d88",borderRadius:10,padding:12,fontSize:11,fontFamily:MONO}}>
+            {t.logout}
+          </button>
         </div>
-      </div>
-      <div style={{display:"flex",gap:8,marginBottom:0}}>
-        <div style={{flex:1}}>
-          <div style={{fontSize:8,color:"#ff4d4d88",marginBottom:4}}>DRAWDOWN MAX %</div>
-          <input type="number" value={objDrawdown} onChange={e=>setObjDrawdown(e.target.value)} placeholder="5" style={{...inSt,marginBottom:0,borderColor:"#ff4d4d33"}}/>
+      )}
+
+      {/* ── TAB STRATÉGIE ── */}
+      {tab==="strategy"&&(
+        <div>
+          <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.criteriaLabel} ({items.length})</div>
+          {items.map((item,i)=>{
+            const isE=(eliminatoires||[]).includes(i);
+            return <div key={i} style={{display:"flex",gap:6,marginBottom:8,alignItems:"center"}}>
+              <input value={item} onChange={e=>{const n=[...items];n[i]=e.target.value;setItems(n);}} style={{...inSt,marginBottom:0,flex:1}}/>
+              <button onClick={()=>setEliminatoires(p=>isE?p.filter(x=>x!==i):[...p,i])} title={isE?"Retirer éliminatoire":"Marquer éliminatoire"} style={{background:isE?"rgba(255,77,77,0.15)":"transparent",border:`1px solid ${isE?"#ff4d4d":"rgba(255,77,77,0.25)"}`,color:isE?"#ff4d4d":"#ffffff44",borderRadius:6,padding:"6px 8px",cursor:"pointer",fontSize:10,fontWeight:700,flexShrink:0}}>⚡</button>
+              <button onClick={()=>setItems(items.filter((_,idx)=>idx!==i))} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d",borderRadius:6,padding:"8px 10px",cursor:"pointer",flexShrink:0}}>✕</button>
+            </div>;
+          })}
+          <button onClick={()=>setItems([...items,""])} style={{width:"100%",background:"transparent",border:`1px dashed ${neon}35`,color:"#ffffff44",borderRadius:8,padding:10,fontSize:12,cursor:"pointer",fontFamily:MONO,marginBottom:16}}>{t.addCriteria}</button>
+
+          <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:8}}>{t.thresholdLabel}</div>
+          <div style={{display:"flex",gap:6,marginBottom:16}}>
+            {[3,4,5,6,7,8].map(n=><button key={n} onClick={()=>setThreshold(n)} className="btn" style={{flex:1,padding:8,borderRadius:8,fontSize:13,fontWeight:700,fontFamily:MONO,background:threshold===n?`${neon}33`:"#131318",border:`1px solid ${threshold===n?neon:`${neon}22`}`,color:threshold===n?neon:"#ffffffbb"}}>{n}</button>)}
+          </div>
+
+          <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>ACTIFS</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
+            {assets.map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4,background:"#131318",border:`1px solid ${neon}26`,borderRadius:6,padding:"4px 8px"}}>
+              <span style={{fontSize:11,color:"#ffffff",fontFamily:MONO}}>{a}</span>
+              {!PRESET_ASSETS.includes(a)&&<button onClick={()=>setAssets(assets.filter(x=>x!==a))} style={{background:"transparent",border:"none",color:"#ff4d4d",fontSize:10,cursor:"pointer"}}>✕</button>}
+            </div>)}
+          </div>
+          <div style={{display:"flex",gap:8,marginBottom:16}}>
+            <input value={customAsset} onChange={e=>setCustomAsset(e.target.value)} placeholder={t.customAsset} onKeyDown={e=>{if(e.key==="Enter"&&customAsset.trim()){setAssets([...assets,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} style={{...inSt,marginBottom:0,flex:1}}/>
+            <button onClick={()=>{if(customAsset.trim()){setAssets([...assets,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} className="btn" style={{background:`${neon}1a`,border:`1px solid ${neon}55`,color:neon,borderRadius:8,padding:"0 14px",fontSize:18}}>+</button>
+          </div>
+
+          <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:8}}>{t.maxTradesLabel}</div>
+          <div style={{display:"flex",gap:6,marginBottom:20}}>
+            {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setMaxTrades(n)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:maxTrades===n?`${neon}26`:"#131318",border:`1px solid ${maxTrades===n?neon:`${neon}22`}`,color:maxTrades===n?neon:"#ffffffbb"}}>{n}</button>)}
+            <button onClick={()=>setMaxTrades(0)} className="btn" style={{flex:1.4,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:maxTrades===0?`${neon}26`:"#131318",border:`1px solid ${maxTrades===0?neon:`${neon}22`}`,color:maxTrades===0?neon:"#ffffffaa"}}>∞</button>
+          </div>
+
+          <button onClick={saveStrategy} className="btn" style={{width:"100%",background:`${neon}26`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:14,fontSize:13,fontWeight:700,fontFamily:MONO}}>{savedOk?t.savedOk:t.saveBtn}</button>
         </div>
-        <div style={{flex:1}}>
-          <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>{lang==="fr"?"OBJECTIF P&L %":"P&L TARGET %"}</div>
-          <input type="number" value={objPnl} onChange={e=>setObjPnl(e.target.value)} placeholder="+10" style={{...inSt,marginBottom:0}}/>
-        </div>
-      </div>
-    </div>
-    <button onClick={save} className="btn" style={{width:"100%",background:`${neonColor}26`,border:`1px solid ${neonColor}`,color:neonColor,borderRadius:10,padding:14,fontSize:13,fontWeight:700,fontFamily:MONO,marginBottom:10}}>{savedOk?t.savedOk:t.saveBtn}</button>
-      <div style={{height:1,background:`${neon}14`,margin:"14px 0"}}/>
-      {!phaseConfirm?(
-        <button onClick={()=>setPhaseConfirm(true)} className="btn" style={{width:"100%",background:`${neon}0a`,border:`1px solid ${neon}28`,color:neon,borderRadius:10,padding:12,fontSize:12,fontFamily:MONO,marginBottom:10}}>{t.newPhaseBtn}</button>
-      ):(
-        <div style={{background:`${neon}08`,border:`1px solid ${neon}30`,borderRadius:10,padding:14,marginBottom:10}}>
-          <div style={{fontSize:12,fontWeight:700,color:neon,fontFamily:MONO,marginBottom:4}}>{t.newPhaseConfirmQ}</div>
-          <div style={{fontSize:11,color:"#ffffffaa",marginBottom:10,lineHeight:1.5}}>{t.newPhaseDesc}</div>
-          <input value={newPhaseName} onChange={e=>setNewPhaseName(e.target.value)}
-            placeholder={lang==="fr"?"Nom de cette phase (ex: FTMO Step 1)…":"Phase name (e.g. FTMO Step 1)…"}
-            style={{...inSt,marginBottom:10,fontSize:12}}/>
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>{onNewPhase(newPhaseName);setPhaseConfirm(false);setNewPhaseName("");}} className="btn" style={{flex:2,background:`${neon}22`,border:`1px solid ${neon}`,color:neon,borderRadius:8,padding:"10px 0",fontSize:12,fontWeight:700,fontFamily:MONO}}>{t.newPhaseConfirmBtn}</button>
-            <button onClick={()=>{setPhaseConfirm(false);setNewPhaseName("");}} className="btn" style={{flex:1,background:"transparent",border:`1px solid ${neon}26`,color:"#ffffffaa",borderRadius:8,padding:"10px 0",fontSize:11,fontFamily:MONO}}>{t.cancelBtn}</button>
+      )}
+
+      {/* ── TAB PRÉFÉRENCES ── */}
+      {tab==="prefs"&&(
+        <div>
+          <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
+            <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.langLabel}</div>
+            <div style={{display:"flex",gap:8}}>{[["fr","Français"],["en","English"]].map(([l,label])=><button key={l} onClick={()=>onLangChange(l)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:lang===l?`${neon}26`:"#131318",border:`1px solid ${lang===l?neon:`${neon}22`}`,color:lang===l?neon:"#ffffffbb"}}>{label}</button>)}</div>
+          </div>
+          <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
+            <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.colorLabel}</div>
+            <div style={{display:"flex",gap:8}}>{NEON_COLORS.map(c=><button key={c.value} onClick={()=>setNeonColor(c.value)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,background:neonColor===c.value?`${c.value}26`:"#131318",border:`2px solid ${neonColor===c.value?c.value:"transparent"}`,cursor:"pointer"}}><div style={{width:16,height:16,borderRadius:"50%",background:c.value,margin:"0 auto",boxShadow:neonColor===c.value?`0 0 8px ${c.value}`:"none"}}/></button>)}</div>
+          </div>
+          <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0"}}>
+              <span style={{fontSize:12,color:"#ffffff",fontFamily:MONO}}>{t.calendarToggle}</span>
+              <button onClick={()=>setCalendarOn(!calendarOn)} className="btn" style={{width:44,height:24,borderRadius:12,background:calendarOn?`${neon}33`:"#ffffff12",border:`1px solid ${calendarOn?neon:`${neon}30`}`,position:"relative"}}>
+                <div style={{width:16,height:16,borderRadius:"50%",background:calendarOn?neon:"#ffffffaa",position:"absolute",top:3,left:calendarOn?24:4,transition:"all 0.2s"}}/>
+              </button>
+            </div>
           </div>
         </div>
       )}
-      <div style={{height:1,background:"rgba(255,77,77,0.1)",margin:"6px 0 10px"}}/>
-      <button onClick={onReset} className="btn" style={{width:"100%",background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d88",borderRadius:10,padding:12,fontSize:12,fontFamily:MONO,marginBottom:10}}>{t.resetBtn}</button>
-      <button onClick={onImport} className="btn" style={{width:"100%",background:`${neon}0a`,border:`1px solid ${neon}28`,color:neon,borderRadius:10,padding:12,fontSize:12,fontFamily:MONO,marginBottom:10}}>↑ {lang==="fr"?"Importer un CSV (MT4/MT5/cTrader)":"Import CSV (MT4/MT5/cTrader)"}</button>
-      <button onClick={onLogout} className="btn" style={{width:"100%",background:"transparent",border:"1px solid rgba(255,77,77,0.1)",color:"#ff4d4d88",borderRadius:10,padding:12,fontSize:11,fontFamily:MONO}}>{t.logout}</button>
     </div>
   );
 }
 
-
-// ── Gestionnaire de notifications ──
-const NOTIF_PERMISSION_KEY = "tmt_notif_perm";
 
 function InAppBanner({notifs, onDismiss, neon}) {
   if(!notifs||!notifs.length) return null;
@@ -2195,12 +2248,14 @@ export default function App() {
   const [notif,setNotif]=useState(null);
   const [showNoTrades,setShowNoTrades]=useState(true);
   const [statsMode,setStatsMode]=useState("phase");
-  const [phases,setPhases]=useState([]);
+  const [accounts,setAccounts]=useState([]);
+  const [activeAccountId,setActiveAccountId]=useState(null);
+  const [isPro,setIsPro]=useState(false);
   const [showWeeklyRecap,setShowWeeklyRecap]=useState(false);
   const [showExport,setShowExport]=useState(false);
   const [showReset,setShowReset]=useState(false);
   const [objectif,setObjectif]=useState({pnl:"",wr:"",trades:"",drawdown:"",editMode:false});
-  const [showNewPhase,setShowNewPhase]=useState(false);
+  const [showNewAccount,setShowNewAccount]=useState(false);
   const [showShare,setShowShare]=useState(false);
   const [shareTarget,setShareTarget]=useState(null);
   const [showStats,setShowStats]=useState(false);
@@ -2240,7 +2295,6 @@ export default function App() {
             if(userData.setupDone){
               if(Array.isArray(userData.trades))setTrades(userData.trades);
               if(Array.isArray(userData.noTrades))setNoTrades(userData.noTrades);
-              if(Array.isArray(userData.phases))setPhases(userData.phases);
               if(userData.config&&typeof userData.config==="object")setConfig(c=>({...c,...userData.config}));
               if(userData.lang)setLang(userData.lang);
               setPhase("app");
@@ -2261,21 +2315,46 @@ export default function App() {
 
   const scrollToTop=()=>{if(pageRef.current)pageRef.current.scrollTo({top:0,behavior:"smooth"});};
   // Phase uses trade.id (timestamp) not date — trades before phase creation excluded even if date is today
-  const currentPhaseTs=phases.length>0?phases[phases.length-1].id:0;
-  const getPhaseKey=useCallback(tradeId=>{if(phases.length===0)return 0;for(let i=phases.length-1;i>=0;i--){if(tradeId>phases[i].id)return i+1;}return 0;},[phases]);
-  const handleNewPhase=(phaseData={})=>{
-    const num=phases.length+2;
-    const name=phaseData.name||`Phase ${num}`;
-    const newPhases=[...phases,{id:Date.now(),date:today()}];
-    setPhases(newPhases);setStatsMode("phase");
-    setObjectif({pnl:phaseData.obj||"",wr:"",trades:"",drawdown:phaseData.drawdown||"",editMode:false});
-    const newCfg={...config,phaseName:name,capital:phaseData.capital||config.capital,devise:phaseData.devise||config.devise,accountType:phaseData.accountType||config.accountType};
-    setConfig(newCfg);
-    setNotif({txt:lang==="fr"?`${name} démarrée.\nStats remises à zéro.`:`${name} started.\nStats reset.`,color:neon,icon:"ok",lang});
-    if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{phases:newPhases,config:newCfg});
+  // accounts system replaces phases
+  
+  const handleNewAccount=(data={})=>{
+    const newAcc={id:Date.now(),name:data.name||`Compte ${accounts.length+1}`,type:data.accountType||"perso",capital:data.capital||"",devise:data.devise||"€",status:"inactive",createdAt:today(),objPnl:data.obj||"",objDrawdown:data.drawdown||""};
+    const newAccounts=[...accounts,newAcc];
+    setAccounts(newAccounts);
+    if(currentUserRef.current?.uid) saveUserData(currentUserRef.current.uid,{accounts:newAccounts});
+    setNotif({txt:lang==="fr"?`${newAcc.name} créé !`:`${newAcc.name} created!`,color:neon,icon:"ok",lang});
   };
 
-  const pf=statsMode==="phase"?trades.filter(x=>x.id>currentPhaseTs):trades;
+  const handleActivateAccount=(accId)=>{
+    const already=accounts.find(a=>a.status==="active");
+    if(already&&already.id!==accId&&!isPro){
+      setNotif({txt:lang==="fr"?"Version Pro requise.
+Switcher entre comptes actifs est une fonctionnalité Pro.":"Pro required.
+Switching active accounts is a Pro feature.",color:"#f0b429",icon:"warn",lang});
+      return;
+    }
+    const newAccounts=accounts.map(a=>({...a,status:a.id===accId?"active":"inactive"}));
+    const acc=accounts.find(a=>a.id===accId);
+    setAccounts(newAccounts);
+    setActiveAccountId(accId);
+    if(acc){
+      const newCfg={...config,phaseName:acc.name,capital:acc.capital,devise:acc.devise,accountType:acc.type};
+      setConfig(newCfg);
+      if(currentUserRef.current?.uid) saveUserData(currentUserRef.current.uid,{accounts:newAccounts,config:newCfg});
+    }
+  };
+
+  const handleCloseAccount=(accId)=>{
+    const newAccounts=accounts.map(a=>a.id===accId?{...a,status:"closed",closedAt:today()}:a);
+    setAccounts(newAccounts);
+    if(activeAccountId===accId) setActiveAccountId(null);
+    if(currentUserRef.current?.uid) saveUserData(currentUserRef.current.uid,{accounts:newAccounts});
+  };
+
+  const activeAcc=accounts.find(a=>a.id===activeAccountId);
+  const pf=activeAccountId
+    ? (statsMode==="phase"?trades.filter(x=>x.accountId===activeAccountId):trades.filter(x=>x.accountId===activeAccountId||!x.accountId))
+    : trades;
   const total=pf.length,wins=pf.filter(x=>x.result==="WIN").length,losses=pf.filter(x=>x.result==="LOSS").length;
   const winRate=total?Math.round(wins/total*100):0;
   const totalPnl=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
@@ -2296,7 +2375,7 @@ export default function App() {
       const conforming=isRevenge?false:elimFail?false:score>=config.threshold;
     let updated,ut=null;
     if(editingId!==null){updated=trades.map(x=>x.id===editingId?{...x,...form,pnlPct:pnl,setupScore:score,conforming,isRevenge,checklistMax:config.items.length}:x);}
-    else{const trade={...form,pnlPct:pnl,id:Date.now(),setupScore:score,conforming,isRevenge,checklistMax:config.items.length};ut=trade;updated=[trade,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);}
+    else{const trade={...form,pnlPct:pnl,id:Date.now(),setupScore:score,conforming,isRevenge,checklistMax:config.items.length,accountId:activeAccountId||null};ut=trade;updated=[trade,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);}
     setTrades(updated);
     if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{trades:updated});
     const newCfgAfterSave={...config,lastPnlMode:form.pnlMode||"pct"};setConfig(newCfgAfterSave);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:newCfgAfterSave});
@@ -2332,19 +2411,15 @@ export default function App() {
   };
   const handleReset=()=>{
     setObjectif({pnl:"",wr:"",trades:"",editMode:false});
-    setTrades([]);setNoTrades([]);setPhases([]);setShowReset(false);
-    if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{trades:[],noTrades:[],phases:[]});
+    setTrades([]);setNoTrades([]);setAccounts([]);setActiveAccountId(null);setShowReset(false);
+    if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{trades:[],noTrades:[],accounts:[]});
   };
 
-  const [histPhase,setHistPhase]=useState("ALL");
+  const [histAccount,setHistAccount]=useState("ALL");
   const histFiltered=trades.filter(x=>{
     const matchResult=histFilter==="ALL"||x.result===histFilter;
     const matchAsset=histAsset==="ALL"||x.asset===histAsset;
-    const matchPhase=histPhase==="ALL"||(()=>{
-      if(phases.length===0)return histPhase==="0";
-      const pk=getPhaseKey(x.id);
-      return String(pk)===histPhase;
-    })();
+    const matchAccount=histAccount==="ALL"||(x.accountId?x.accountId===histAccount:histAccount==="none");
     const q=(histSearch||"").toLowerCase().trim();
     const matchSearch=!q||
       (x.asset||"").toLowerCase().includes(q)||
@@ -2353,7 +2428,7 @@ export default function App() {
       (x.notes||"").toLowerCase().includes(q)||
       (x.date||"").includes(q)||
       (x.checkin?.humeur||"").toLowerCase().includes(q);
-    return matchResult&&matchAsset&&matchSearch&&matchPhase;
+    return matchResult&&matchAsset&&matchSearch&&matchAccount;
   });
   const mergedHistory=[...histFiltered.map(x=>({...x,_type:"trade"})),...(showNoTrades?noTrades.map(x=>({...x,_type:"notrade"})):[])].sort((a,b)=>new Date(b.date)-new Date(a.date)||b.id-a.id);
   const editingTrade=editingId!==null?trades.find(x=>x.id===editingId):null;
@@ -2386,7 +2461,8 @@ export default function App() {
       const config = parseObj(userData.config);
       if(trades.length) setTrades(trades);
       if(noTrades.length) setNoTrades(noTrades);
-      if(phases.length) setPhases(phases);
+      const accs=parseSafe(userData.accounts);
+      if(accs.length){setAccounts(accs);const active=accs.find(a=>a.status==="active");if(active)setActiveAccountId(active.id);}
       if(Object.keys(config).length) setConfig(c=>({...c,...config}));
       if(userData.lang) setLang(userData.lang);
       if(userData.objectif&&typeof userData.objectif==="object") setObjectif(o=>({...o,...userData.objectif}));
@@ -2450,10 +2526,15 @@ export default function App() {
               </div>
             </div>;
           })()}
+          {/* Compte actif dans sidebar */}
+          {activeAcc&&<div style={{padding:"10px 18px",borderBottom:"1px solid #ffffff08"}}>
+            <div style={{fontSize:9,color:neon,fontWeight:700,marginBottom:2,fontFamily:MONO}}>{activeAcc.name}</div>
+            <div style={{fontSize:9,color:"#ffffff33"}}>{activeAcc.type==="prop"?"Prop Firm":activeAcc.type==="demo"?"Démo":"Perso"}{activeAcc.capital?` · ${parseInt(activeAcc.capital).toLocaleString()}${activeAcc.devise||"€"}`:""}</div>
+          </div>}
           {total>0&&<div style={{padding:"12px 18px",borderBottom:"1px solid #ffffff08"}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
               <div><div style={{fontSize:7,color:"#ffffff44",letterSpacing:2,marginBottom:4}}>WIN RATE</div><div style={{fontSize:20,fontWeight:900,color:"#ffffff",textShadow:`0 0 20px ${neon}55`}}>{winRate}%</div></div>
-              <div style={{textAlign:"right"}}><div style={{fontSize:7,color:"#ffffff44",letterSpacing:2,marginBottom:4}}>P&L</div><div style={{fontSize:20,fontWeight:900,color:totalPnl>=0?neon:"#ff4d4d"}}>{fmtPct(totalPnl)}</div></div>
+              <div style={{textAlign:"right"}}><div style={{fontSize:7,color:"#ffffff44",letterSpacing:2,marginBottom:4}}>P&L</div><div style={{fontSize:20,fontWeight:900,color:totalPnl>=0?neon:"#ff4d4d"}}>{(()=>{const n=Math.round(totalPnl*10)/10;return`${n>=0?"+":""}${n}%`;})()}</div></div>
             </div>
             <div style={{fontSize:9,color:"#ffffff33"}}>{wins}W · {losses}L · {total} {lang==="fr"?"trades":"trades"}</div>
           </div>}
@@ -2467,7 +2548,7 @@ export default function App() {
           </div>
           <div style={{padding:"10px 14px",borderTop:"1px solid #ffffff08",display:"flex",gap:8}}>
             <button onClick={()=>setShowExport(true)} style={{flex:1,padding:"8px 0",background:`${neon}0f`,border:`1px solid ${neon}26`,borderRadius:8,color:neon,fontFamily:MONO,fontSize:10,cursor:"pointer"}}>↓ Export</button>
-            <button onClick={()=>setShowNewPhase(true)} style={{padding:"8px 10px",background:"transparent",border:`1px solid ${neon}20`,borderRadius:8,color:`${neon}88`,fontFamily:MONO,fontSize:10,cursor:"pointer"}}>▶</button>
+
           </div>
         </div>
       )}
@@ -2513,7 +2594,7 @@ export default function App() {
           <div style={{fontSize:26,fontWeight:900,color:"#ffffff",letterSpacing:-0.5}}>{view==="dashboard"?(lang==="fr"?"Statistiques":"Statistics"):view==="log"?(editingId?lang==="fr"?"✏ Édition":"✏ Edit":lang==="fr"?"Nouveau trade":"New trade"):view==="history"?(lang==="fr"?"Historique":"History"):lang==="fr"?"Paramètres":"Settings"}</div>
           <div style={{fontSize:10,color:"#ffffff33",marginTop:4}}>{config.strategyName}{total>0?` · ${total} trades`:""}</div>
         </div>
-        {view==="dashboard"&&<button onClick={()=>setShowNewPhase(true)} style={{padding:"9px 18px",background:`${neon}10`,border:`1px solid ${neon}25`,borderRadius:10,fontSize:11,color:neon,fontFamily:MONO,cursor:"pointer",fontWeight:700}}>▶ {lang==="fr"?"Nouvelle phase":"New phase"}</button>}
+        
       </div>}
 
       
@@ -2528,7 +2609,7 @@ export default function App() {
                   <button key={m} onClick={()=>setStatsMode(m)} className="btn" style={{flex:1,padding:"7px 0",borderRadius:6,fontSize:10,fontWeight:700,fontFamily:MONO,background:statsMode===m?neon:"transparent",color:statsMode===m?"#131318":"#ffffffaa",border:"none",transition:"all 0.2s"}}>{l}</button>
                 ))}
               </div>
-              <button onClick={()=>setShowNewPhase(true)} className="btn" style={{padding:"7px 10px",background:`${neon}10`,border:`1px solid ${neon}30`,borderRadius:8,fontSize:9,fontWeight:700,color:neon,whiteSpace:"nowrap",flexShrink:0}}>▶ Phase</button>
+
             </div>
           )}
           {total>0&&(
@@ -2812,9 +2893,10 @@ export default function App() {
                 <button key={v} className="btn" onClick={()=>setHistFilter(v)} style={{flex:1,background:histFilter===v?(v==="ALL"?`${neon}26`:`${rc(v,neon)}22`):"transparent",border:`1px solid ${histFilter===v?(v==="ALL"?neon:rc(v,neon)):`${neon}26`}`,color:histFilter===v?(v==="ALL"?neon:rc(v,neon)):"#ffffffaa",borderRadius:6,padding:"6px 0",fontSize:11,fontWeight:700,fontFamily:MONO}}>{l}</button>
               ))}
             </div>
-            {phases.length>0&&<div style={{display:"flex",gap:4,marginBottom:8,overflowX:"auto",paddingBottom:2}}>
-              {[["ALL",lang==="fr"?"Toutes phases":"All phases"],...phases.map((_,i)=>[String(i+1),`Phase ${i+1}`]),["0",lang==="fr"?"Phase 1":"Phase 1"]].filter(([v])=>v==="ALL"||(v==="0"&&phases.length===0)||(v!=="0")).slice(0,phases.length+2).map(([v,l])=>(
-                <button key={v} className="btn" onClick={()=>setHistPhase(v)} style={{background:histPhase===v?`${neon}1a`:"transparent",border:`1px solid ${histPhase===v?neon:`${neon}1a`}`,color:histPhase===v?neon:"#ffffffaa",borderRadius:5,padding:"4px 10px",fontSize:9,fontWeight:700,fontFamily:MONO,whiteSpace:"nowrap"}}>{l}</button>
+            {accounts.length>0&&<div style={{display:"flex",gap:4,marginBottom:8,overflowX:"auto",paddingBottom:2}}>
+              {[{id:"ALL",name:lang==="fr"?"Tous comptes":"All"},...accounts].map(acc=>(
+                <button key={acc.id||"ALL"} className="btn" onClick={()=>setHistAccount(acc.id==="ALL"?"ALL":acc.id)}
+                  style={{background:histAccount===(acc.id==="ALL"?"ALL":acc.id)?`${neon}1a`:"transparent",border:`1px solid ${histAccount===(acc.id==="ALL"?"ALL":acc.id)?neon:`${neon}1a`}`,color:histAccount===(acc.id==="ALL"?"ALL":acc.id)?neon:"#ffffffaa",borderRadius:5,padding:"4px 10px",fontSize:9,fontWeight:700,fontFamily:MONO,whiteSpace:"nowrap"}}>{acc.name}</button>
               ))}
             </div>}
             {usedAssets.length>1&&<div style={{display:"flex",gap:4,marginBottom:14,overflowX:"auto",paddingBottom:4}}>
@@ -2825,18 +2907,7 @@ export default function App() {
           {(()=>{
             const els=[];let lastPk=null;
             for(const x of mergedHistory){
-              if(x._type==="trade"&&phases.length>0){
-                const pk=getPhaseKey(x.id);
-                if(lastPk!==null&&pk!==lastPk){
-                  const phStart=lastPk>0?phases[lastPk-1].date:"0000-00-00";
-                  const phEnd=lastPk<phases.length?phases[lastPk].date:"9999-99-99";
-                  const phTr=trades.filter(z=>z.date>=phStart&&z.date<phEnd);
-                  const phWR=phTr.length?Math.round(phTr.filter(z=>z.result==="WIN").length/phTr.length*100):0;
-                  const phPnl=phTr.reduce((s,z)=>s+(parseFloat(z.pnlPct)||0),0);
-                  els.push(<div key={`sep-${lastPk}`} style={{display:"flex",alignItems:"center",gap:8,margin:"4px 0 14px"}}><div style={{flex:1,height:1,background:`${neon}18`}}/><div style={{background:`${neon}08`,border:`1px solid ${neon}20`,borderRadius:8,padding:"5px 12px",textAlign:"center",flexShrink:0}}><span style={{fontSize:9,color:neon,fontFamily:MONO,fontWeight:700,letterSpacing:1}}>PHASE {lastPk+1}</span><span style={{fontSize:9,color:"#ffffff44",fontFamily:MONO}}> · {t.phaseSince} {phStart}</span><span style={{fontSize:9,color:"#ffffffaa",fontFamily:MONO}}> · {phTr.length}t · {phWR}% · {fmtPct(phPnl)}</span></div><div style={{flex:1,height:1,background:`${neon}18`}}/></div>);
-                }
-                lastPk=pk;
-              }
+
               if(x._type==="notrade"){
                 els.push(<div key={x.id} style={{background:"rgba(90,90,90,0.06)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"12px 14px",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:16,color:"#ffffff66"}}>⊘</span><div><div style={{fontSize:12,color:"#ffffffaa",fontFamily:MONO,fontWeight:700}}>{t.noTradeToday}</div><div style={{fontSize:10,color:"#ffffffaa",marginTop:2}}>{x.date}{x.reason?" · "+x.reason:""}</div></div></div><button onClick={()=>{const upd=noTrades.filter(n=>n.id!==x.id);setNoTrades(upd);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{noTrades:upd});}} style={{background:"transparent",border:"none",color:"#ffffff55",fontSize:12,cursor:"pointer"}}>✕</button></div>);
               } else {
@@ -2896,16 +2967,24 @@ export default function App() {
       {view==="settings"&&<SettingsView config={config} onSave={cfg=>{
         const newCfg={...config,...cfg};
         setConfig(newCfg);
-        if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:newCfg});
+        if(currentUserRef.current?.uid) saveUserData(currentUserRef.current.uid,{config:newCfg});
       }} onLogout={async()=>{
         currentUserRef.current=null;
         try{localStorage.removeItem("tmt_user");}catch(e){}
         if(auth) try{ await signOut(auth); }catch(e){}
-        setTrades([]);setNoTrades([]);setPhases([]);setPhase("onboarding");
-      }} onReset={()=>setShowReset(true)} onNewPhase={handleNewPhase} lang={lang} onLangChange={l=>{
+        setTrades([]);setNoTrades([]);setAccounts([]);setActiveAccountId(null);setPhase("login");
+      }} onReset={()=>setShowReset(true)}
+      lang={lang} onLangChange={l=>{
         setLang(l);
-        if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{lang:l});
-      }} neon={neon} phases={phases} onObjectifChange={obj=>{setObjectif(obj);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{objectif:obj});}} onImport={()=>setShowImport(true)}/>}
+        if(currentUserRef.current?.uid) saveUserData(currentUserRef.current.uid,{lang:l});
+      }} neon={neon}
+      accounts={accounts} activeAccountId={activeAccountId}
+      onActivateAccount={handleActivateAccount}
+      onCloseAccount={handleCloseAccount}
+      onNewAccount={()=>setShowNewAccount(true)}
+      isPro={isPro}
+      onObjectifChange={obj=>{setObjectif(obj);if(currentUserRef.current?.uid)saveUserData(currentUserRef.current.uid,{objectif:obj});}}
+      onImport={()=>setShowImport(true)}/>}
 
       {!isDesktop&&<div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(9,9,16,0.97)",backdropFilter:"blur(12px)",borderTop:`1px solid ${neon}18`,padding:"10px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div style={{fontSize:9,color:`${neon}22`,fontFamily:"'Geist Mono','IBM Plex Mono',monospace"}}>◈ TrackMyTrade</div>
@@ -2916,14 +2995,81 @@ export default function App() {
       {showStats&&<StatsInsightsModal trades={trades} lang={lang} neon={neon} onClose={()=>setShowStats(false)}/>}
       {showShare&&<ShareModal trade={shareTarget} trades={trades} lang={lang} neon={neon} config={config} onClose={()=>{setShowShare(false);setShareTarget(null);}}/> }
       {showReset&&<ResetModal trades={trades} onReset={handleReset} onClose={()=>setShowReset(false)} lang={lang} neon={neon}/>}
-      {showNewPhase&&<NewPhaseModal onConfirm={data=>{handleNewPhase(data);setShowNewPhase(false);}} onClose={()=>setShowNewPhase(false)} lang={lang} neon={neon} phases={phases} config={config}/>}
+      {showNewAccount&&<NewAccountModal onConfirm={data=>{handleNewAccount(data);setShowNewAccount(false);}} onClose={()=>setShowNewAccount(false)} lang={lang} neon={neon}  config={config}/>}
       </div>
       </div>
     </div>
   );
 }
 
-function NewPhaseModal({onConfirm,onClose,lang,neon,phases,config}){
+function NewAccountModal({onConfirm,onClose,lang,neon}){
+  const MONO2="'Geist Mono','IBM Plex Mono',monospace";
+  const [name,setName]=useState("");
+  const [accountType,setAccountType]=useState("perso");
+  const [capital,setCapital]=useState("");
+  const [devise,setDevise]=useState("€");
+  const [obj,setObj]=useState("");
+  const [drawdown,setDrawdown]=useState("");
+  const fr=lang==="fr";
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(6,6,10,0.92)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
+      <div style={{background:"#0f0f18",borderRadius:"24px 24px 0 0",padding:"20px 20px 36px",width:"100%",maxWidth:480,border:"1px solid #ffffff0f",borderBottom:"none",maxHeight:"90vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <div>
+            <div style={{fontSize:15,fontWeight:800,color:"#ffffff",fontFamily:MONO2}}>{fr?"Nouveau compte":"New account"}</div>
+            <div style={{fontSize:9,color:"#ffffff33",marginTop:3,fontFamily:MONO2}}>{fr?"Les trades s'enregistreront sur ce compte":"Trades will be recorded on this account"}</div>
+          </div>
+          <button onClick={onClose} style={{background:"transparent",border:"none",color:"#ffffff44",fontSize:20,cursor:"pointer"}}>✕</button>
+        </div>
+
+        <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6,fontFamily:MONO2}}>{fr?"NOM DU COMPTE":"ACCOUNT NAME"}</div>
+        <input value={name} onChange={e=>setName(e.target.value)} placeholder={fr?"ex: FTMO 100K, Compte perso…":"e.g. FTMO 100K, Personal…"}
+          style={{width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO2,marginBottom:14,outline:"none"}} autoFocus/>
+
+        <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:8,fontFamily:MONO2}}>{fr?"TYPE DE COMPTE":"ACCOUNT TYPE"}</div>
+        <div style={{display:"flex",gap:6,marginBottom:14}}>
+          {[["prop","Prop Firm"],["perso",fr?"Perso":"Personal"],["demo","Démo"]].map(([v,l])=>(
+            <button key={v} onClick={()=>setAccountType(v)} style={{flex:1,padding:"10px 0",background:accountType===v?`${neon}18`:"#131318",border:`1px solid ${accountType===v?neon:"#ffffff0d"}`,borderRadius:10,fontSize:10,fontWeight:700,color:accountType===v?neon:"#ffffff33",fontFamily:MONO2,cursor:"pointer"}}>{l}</button>
+          ))}
+        </div>
+
+        <div style={{display:"flex",gap:10,marginBottom:14}}>
+          <div style={{flex:2}}>
+            <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6,fontFamily:MONO2}}>CAPITAL</div>
+            <input type="number" value={capital} onChange={e=>setCapital(e.target.value)} placeholder="10000"
+              style={{width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO2,outline:"none"}}/>
+          </div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6,fontFamily:MONO2}}>DEVISE</div>
+            <div style={{display:"flex",flexDirection:"column",gap:4}}>
+              {["€","$","£","CHF"].map(d=>(
+                <button key={d} onClick={()=>setDevise(d)} style={{padding:"5px 0",background:devise===d?`${neon}18`:"#131318",border:`1px solid ${devise===d?neon:"#ffffff0d"}`,borderRadius:7,fontSize:12,fontWeight:800,color:devise===d?neon:"#ffffff30",fontFamily:MONO2,cursor:"pointer"}}>{d}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div style={{display:"flex",gap:10,marginBottom:22}}>
+          <div style={{flex:1}}>
+            <div style={{fontSize:8,color:"#ff4d4d88",letterSpacing:2,marginBottom:6,fontFamily:MONO2}}>DRAWDOWN MAX %</div>
+            <input type="number" value={drawdown} onChange={e=>setDrawdown(e.target.value)} placeholder="5"
+              style={{width:"100%",background:"#131318",border:"1px solid #ff4d4d33",borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO2,outline:"none"}}/>
+          </div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6,fontFamily:MONO2}}>{fr?"OBJECTIF P&L %":"P&L TARGET %"}</div>
+            <input type="number" value={obj} onChange={e=>setObj(e.target.value)} placeholder="+10"
+              style={{width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:10,color:"#ffffff",padding:"11px 14px",fontSize:13,fontFamily:MONO2,outline:"none"}}/>
+          </div>
+        </div>
+
+        <button onClick={()=>{if(!name.trim()){return;}onConfirm({name:name.trim(),accountType,capital,devise,obj,drawdown});}}
+          style={{width:"100%",background:name.trim()?`linear-gradient(135deg,${neon}22,${neon}0c)`:"#ffffff08",border:`1.5px solid ${name.trim()?neon:"#ffffff1a"}`,borderRadius:14,padding:"15px 0",fontSize:13,fontWeight:900,color:name.trim()?neon:"#ffffff33",fontFamily:MONO2,cursor:"pointer",letterSpacing:1}}>
+          {fr?"✓ Créer ce compte":"✓ Create account"}
+        </button>
+      </div>
+    </div>
+  );
+}){
   const MONO="'Geist Mono','IBM Plex Mono',monospace";
   const num=(phases?.length||0)+2;
   const [name,setName]=useState(`Phase ${num}`);
