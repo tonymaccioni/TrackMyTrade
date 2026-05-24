@@ -2479,28 +2479,50 @@ export default function App() {
       if(trades.length) setTrades(trades);
       if(noTrades.length) setNoTrades(noTrades);
       const accs=parseSafe(userData.accounts);
+      const cfg=parseObj(userData.config);
       if(accs.length){
+        // Nouveau système accounts — charger directement
         setAccounts(accs);
         const active=accs.find(a=>a.status==="active");
         if(active)setActiveAccountId(active.id);
       } else {
-        // Migration depuis l'ancien système : créer un compte depuis config
-        const cfg=parseObj(userData.config);
-        const migratedAcc={
-          id:Date.now(),
-          name:cfg.phaseName||cfg.strategyName||"Mon compte",
-          type:cfg.accountType||"perso",
-          capital:cfg.capital||"",
-          devise:cfg.devise||"€",
-          status:"active",
-          createdAt:cfg.phaseStartDate||new Date().toISOString().split("T")[0],
-          objPnl:cfg.objPnl||"",
-          objDrawdown:cfg.objDrawdown||""
-        };
-        setAccounts([migratedAcc]);
-        setActiveAccountId(migratedAcc.id);
-        // Sauvegarder la migration en Firestore
-        saveUserData(uid,{accounts:[migratedAcc]});
+        // Migration depuis ancien système phases[] → accounts[]
+        // phases[] = [{id, date}, ...] — chaque phase est un "compte"
+        // config contient les infos du dernier compte (phaseName, capital, devise, accountType)
+        const phasesData=parseSafe(userData.phases);
+        let migratedAccounts=[];
+        if(phasesData.length>0){
+          // Créer un compte par phase
+          migratedAccounts=phasesData.map((ph,i)=>({
+            id:ph.id,
+            name:i===phases.length-1?(cfg.phaseName||`Compte ${i+1}`):`Compte ${i+1}`,
+            type:i===phases.length-1?(cfg.accountType||"perso"):"perso",
+            capital:i===phases.length-1?(cfg.capital||""):"",
+            devise:i===phases.length-1?(cfg.devise||"€"):"€",
+            status:i===phases.length-1?"active":"inactive",
+            createdAt:ph.date||new Date().toISOString().split("T")[0],
+            objPnl:i===phases.length-1?(cfg.objPnl||""):"",
+            objDrawdown:i===phases.length-1?(cfg.objDrawdown||""):"",
+          }));
+        } else {
+          // Pas de phases non plus → 1 compte depuis config
+          migratedAccounts=[{
+            id:Date.now(),
+            name:cfg.phaseName||cfg.strategyName||"Mon compte",
+            type:cfg.accountType||"perso",
+            capital:cfg.capital||"",
+            devise:cfg.devise||"€",
+            status:"active",
+            createdAt:new Date().toISOString().split("T")[0],
+            objPnl:cfg.objPnl||"",
+            objDrawdown:cfg.objDrawdown||"",
+          }];
+        }
+        setAccounts(migratedAccounts);
+        const activeAcc=migratedAccounts.find(a=>a.status==="active");
+        if(activeAcc)setActiveAccountId(activeAcc.id);
+        // Sauvegarder la migration en Firestore (une seule fois)
+        saveUserData(uid,{accounts:migratedAccounts});
       }
       if(Object.keys(config).length) setConfig(c=>({...c,...config}));
       if(userData.lang) setLang(userData.lang);
