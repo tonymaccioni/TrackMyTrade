@@ -1913,6 +1913,11 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
 const NOTIF_PERMISSION_KEY = "tmt_notif_perm";
 
 function InAppBanner({notifs, onDismiss, neon}) {
+  useEffect(()=>{
+    if(!notifs||!notifs.length) return;
+    const id=setTimeout(()=>onDismiss(),3000);
+    return ()=>clearTimeout(id);
+  },[notifs]);
   if(!notifs||!notifs.length) return null;
   const n = notifs[0];
   const colors = {
@@ -2367,8 +2372,20 @@ export default function App() {
   useEffect(()=>{
     const isMonday=new Date().getDay()===1;
     if(phase==="app"&&view==="dashboard"&&!weeklyShownRef.current&&trades.length>=2&&isMonday){
-      const cutoff=new Date(Date.now()-7*86400000).toISOString().split("T")[0];
-      if(trades.some(x=>x.date>=cutoff)){weeklyShownRef.current=true;const id=setTimeout(()=>setShowWeeklyRecap(true),1000);return ()=>clearTimeout(id);}
+      const todayKey=today();
+      let alreadyShown=false;
+      try{alreadyShown=localStorage.getItem("tmt_weekly_shown")===todayKey;}catch(e){}
+      if(!alreadyShown){
+        const cutoff=new Date(Date.now()-7*86400000).toISOString().split("T")[0];
+        if(trades.some(x=>x.date>=cutoff)){
+          weeklyShownRef.current=true;
+          try{localStorage.setItem("tmt_weekly_shown",todayKey);}catch(e){}
+          const id=setTimeout(()=>setShowWeeklyRecap(true),1000);
+          return ()=>clearTimeout(id);
+        }
+      } else {
+        weeklyShownRef.current=true;
+      }
     }
   },[phase,view,trades]);
 
@@ -2559,8 +2576,21 @@ export default function App() {
         const trades_=parseSafe(userData.trades);
         if(trades_.length>=3){
           const last=trades_[0];
-          const days=last?Math.floor((Date.now()-new Date(last.date))/86400000):999;
-          if(days>=3) notifs_.push({type:"info",emoji:"📅",title:lang==="fr"?"Journal en pause":"Journal paused",body:lang==="fr"?`${days} jours sans trade. Pense à journaliser !`:`${days} days without a trade. Time to journal!`});
+          // Compter uniquement les jours ouvrés (lun-ven) depuis le dernier trade
+          const countWorkdays=(fromDate)=>{
+            let count=0;
+            const d=new Date(fromDate);
+            d.setDate(d.getDate()+1);
+            const now=new Date();
+            while(d<=now){
+              const dow=d.getDay();
+              if(dow>=1&&dow<=5) count++;
+              d.setDate(d.getDate()+1);
+            }
+            return count;
+          };
+          const workdaysMissed=last?countWorkdays(last.date):999;
+          if(workdaysMissed>=3) notifs_.push({type:"info",emoji:"📅",title:lang==="fr"?"Journal en pause":"Journal paused",body:lang==="fr"?`${workdaysMissed} jours ouvrés sans trade. Pense à journaliser !`:`${workdaysMissed} trading days without a log. Time to journal!`});
           const revStreak=trades_.slice(0,3).filter(x=>x.isRevenge).length;
           if(revStreak>=2) notifs_.push({type:"warn",emoji:"🔥",title:lang==="fr"?"Attention — Revenge":"Warning — Revenge",body:lang==="fr"?"Plusieurs revenge trades récents. Fais une pause.":"Multiple recent revenge trades. Take a break."});
         }
