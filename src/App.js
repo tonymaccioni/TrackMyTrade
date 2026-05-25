@@ -1880,10 +1880,6 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
           </div>;
         })}
         <button onClick={()=>setItems([...items,""])} style={{width:"100%",background:"transparent",border:`1px dashed ${neon}35`,color:"#ffffff44",borderRadius:8,padding:10,fontSize:12,cursor:"pointer",fontFamily:MONO,marginBottom:16}}>{t.addCriteria}</button>
-        <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
-          <Toggle label={t.calendarToggle} val={calendarOn} set={setCalendarOn}/>
-          <Toggle label={t.enableNotif} val={notifOn} set={setNotifOn}/>
-        </div>
         <SaveBtn/>
       </div>}
 
@@ -2977,79 +2973,7 @@ export default function App() {
                 <button key={v} className="btn" onClick={()=>setHistFilter(v)} style={{flex:1,background:histFilter===v?(v==="ALL"?`${neon}26`:`${rc(v,neon)}22`):"transparent",border:`1px solid ${histFilter===v?(v==="ALL"?neon:rc(v,neon)):`${neon}26`}`,color:histFilter===v?(v==="ALL"?neon:rc(v,neon)):"#ffffffaa",borderRadius:6,padding:"6px 0",fontSize:11,fontWeight:700,fontFamily:MONO}}>{l}</button>
               ))}
             </div>
-            {/* ── Gestion des comptes ── */}
-            {(()=>{
-              const fr2=lang==="fr";
-              const allPhases=[
-                {index:0,name:config.phaseName||(fr2?"Phase 1":"Phase 1"),date:config.phaseStartDate||null,isCurrent:phases.length===0},
-                ...phases.map((ph,i)=>({index:i+1,name:ph.name||`Phase ${i+2}`,date:ph.date,isCurrent:i===phases.length-1}))
-              ];
-              return (
-                <div style={{marginBottom:10}}>
-                  <div style={{fontSize:8,color:"#ffffff33",letterSpacing:2,marginBottom:6,fontFamily:MONO}}>{fr2?"COMPTES":"ACCOUNTS"} · {allPhases.length}</div>
-                  {allPhases.map(ph=>{
-                    const tradeCount=getPhaseTradeCount(ph.index);
-                    const isActive=ph.isCurrent;
-                    const isEditing=phaseEditIndex===ph.index;
-                    const isConfirm=phaseDeleteConfirmIdx===ph.index;
-                    return (
-                      <div key={ph.index} style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,padding:"8px 10px",
-                        background:isActive?`${neon}0d`:"rgba(255,255,255,0.02)",
-                        border:`1px solid ${isActive?neon+"30":"rgba(255,255,255,0.06)"}`,borderRadius:8}}>
-                        <div style={{flex:1,minWidth:0}}>
-                          {isEditing?(
-                            <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                              <input autoFocus value={phaseEditName} onChange={e=>setPhaseEditName(e.target.value)}
-                                onKeyDown={e=>{if(e.key==="Enter")handleRenamePhase(ph.index,phaseEditName);if(e.key==="Escape")setPhaseEditIndex(null);}}
-                                style={{flex:1,background:"#131318",border:`1px solid ${neon}55`,borderRadius:6,color:"#ffffff",padding:"4px 8px",fontSize:11,fontFamily:MONO,outline:"none"}}/>
-                              <button onClick={()=>handleRenamePhase(ph.index,phaseEditName)} className="btn"
-                                style={{background:`${neon}22`,border:`1px solid ${neon}`,color:neon,borderRadius:6,padding:"4px 8px",fontSize:10}}>✓</button>
-                              <button onClick={()=>setPhaseEditIndex(null)} className="btn"
-                                style={{background:"transparent",border:"1px solid rgba(255,255,255,0.1)",color:"#ffffffaa",borderRadius:6,padding:"4px 6px",fontSize:10}}>✕</button>
-                            </div>
-                          ):(
-                            <div>
-                              <div style={{display:"flex",alignItems:"center",gap:6}}>
-                                <span style={{fontSize:11,fontWeight:isActive?700:400,color:isActive?neon:"#ffffffcc",fontFamily:MONO}}>{ph.name}</span>
-                                {isActive&&<span style={{fontSize:8,color:neon,background:`${neon}15`,padding:"1px 5px",borderRadius:4}}>
-                                  {fr2?"EN COURS":"ACTIVE"}
-                                </span>}
-                              </div>
-                              <div style={{fontSize:9,color:"#ffffff33",fontFamily:MONO,marginTop:1}}>
-                                {(ph.index===0?config.phaseStartDate:ph.date)?`${fr2?"depuis":"since"} ${ph.index===0?config.phaseStartDate:ph.date} · `:""}
-                                {tradeCount} trade{tradeCount!==1?"s":""}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        {!isEditing&&!isConfirm&&(
-                          <div style={{display:"flex",gap:4}}>
-                            <button onClick={()=>{setPhaseEditIndex(ph.index);setPhaseEditName(ph.name);setPhaseDeleteConfirmIdx(null);}} className="btn"
-                              style={{background:"transparent",border:`1px solid ${neon}22`,color:`${neon}66`,borderRadius:6,padding:"4px 7px",fontSize:11}}>✏</button>
-                            {isActive
-                              ?<button disabled style={{background:"transparent",border:"1px solid rgba(255,255,255,0.05)",color:"rgba(255,255,255,0.15)",borderRadius:6,padding:"4px 7px",fontSize:11,cursor:"not-allowed"}}>⊘</button>
-                              :<button onClick={()=>{setPhaseDeleteConfirmIdx(ph.index);setPhaseEditIndex(null);}} className="btn"
-                                style={{background:"transparent",border:"1px solid rgba(255,77,77,0.22)",color:"#ff4d4d66",borderRadius:6,padding:"4px 7px",fontSize:11}}>⊘</button>
-                            }
-                          </div>
-                        )}
-                        {isConfirm&&(
-                          <div style={{display:"flex",gap:4,alignItems:"center"}}>
-                            <span style={{fontSize:9,color:"#ff4d4d",fontFamily:MONO}}>
-                              {tradeCount===0?(fr2?"Supprimer ?":"Delete?"):(fr2?`${tradeCount} trades → fusionner`:`${tradeCount} trades → merge`)}
-                            </span>
-                            <button onClick={()=>handleDeleteSpecificPhase(ph.index)} className="btn"
-                              style={{background:"rgba(255,77,77,0.2)",border:"1px solid #ff4d4d",color:"#ff4d4d",borderRadius:6,padding:"4px 8px",fontSize:10,fontWeight:700,fontFamily:MONO}}>✓</button>
-                            <button onClick={()=>setPhaseDeleteConfirmIdx(null)} className="btn"
-                              style={{background:"transparent",border:"1px solid rgba(255,255,255,0.1)",color:"#ffffffaa",borderRadius:6,padding:"4px 6px",fontSize:10}}>✕</button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
+
             {phases.length>0&&<div style={{display:"flex",gap:4,marginBottom:8,overflowX:"auto",paddingBottom:2}}>
               {[["ALL",lang==="fr"?"Toutes phases":"All phases"],["0",config.phaseName||(lang==="fr"?"Phase 1":"Phase 1")],...phases.map((ph,i)=>[String(i+1),ph.name||(lang==="fr"?`Phase ${i+2}`:`Phase ${i+2}`)])].filter(([v])=>v==="ALL"||(phases.length===0&&v==="0")||(phases.length>0&&v!=="ALL")).map(([v,l])=>(
                 <button key={v} className="btn" onClick={()=>setHistPhase(v)} style={{background:histPhase===v?`${neon}1a`:"transparent",border:`1px solid ${histPhase===v?neon:`${neon}1a`}`,color:histPhase===v?neon:"#ffffffaa",borderRadius:5,padding:"4px 10px",fontSize:9,fontWeight:700,fontFamily:MONO,whiteSpace:"nowrap"}}>{l}</button>
