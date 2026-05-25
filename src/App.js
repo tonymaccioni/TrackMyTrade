@@ -1684,6 +1684,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
   const [acctEditName,setAcctEditName]=useState("");
   const [acctEditDate,setAcctEditDate]=useState("");
   const [acctDelConfirm,setAcctDelConfirm]=useState(null);
+  const [expandedStratId,setExpandedStratId]=useState(activeStrategyId||null);
   const save=()=>{const savedObj={pnl:objPnl,wr:"",trades:"",drawdown:objDrawdown,editMode:false};
     onSave({items,threshold,strategyName:stratName,maxTrades,neonColor,calendarOn,notifOn,customAssets:assets,eliminatoires,objPnl,phaseName,phaseStartDate,capital,devise,accountType,objDrawdown,defaultTimeframe:defaultTf});
     onObjectifChange(savedObj);setSavedOk(true);setTimeout(()=>setSavedOk(false),2000);};
@@ -1780,7 +1781,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
                 </div>
                 <div style={{marginBottom:10}}>
                   <div style={{fontSize:8,color:"#ffffffbb",marginBottom:6}}>{fr?"COULEUR":"COLOR"}</div>
-                  <div style={{display:"flex",gap:6}}>{ACCOUNT_COLORS.map(c=><button key={c} onClick={()=>onAccountsChange(accounts.map(a=>a.id===acc.id?{...a,color:c}:a))} className="btn" style={{width:28,height:28,borderRadius:"50%",background:c,(acc.color||neonColor)===c?"border":"border":`2px solid ${(acc.color||neonColor)===c?c:"transparent"}`,boxShadow:(acc.color||neonColor)===c?`0 0 8px ${c}`:"none",padding:0}}/>)}</div>
+                  <div style={{display:"flex",gap:6}}>{ACCOUNT_COLORS.map(c=>{const sel=(acc.color||neonColor)===c;return<button key={c} onClick={()=>onAccountsChange(accounts.map(a=>a.id===acc.id?{...a,color:c}:a))} className="btn" style={{width:28,height:28,borderRadius:"50%",background:c,border:`2px solid ${sel?c:"transparent"}`,boxShadow:sel?`0 0 8px ${c}`:"none",padding:0,outline:sel?`2px solid ${c}`:"none",outlineOffset:2}}/>})}</div>
                 </div>
                 <button onClick={()=>{onSave({...config,phaseName:acc.name,capital:acc.capital,devise:acc.devise,accountType:acc.accountType,objPnl:acc.objPnl,objDrawdown:acc.objDrawdown});setSavedOk(true);setTimeout(()=>setSavedOk(false),2000);onAccountsChange(accounts);}} className="btn" style={{width:"100%",background:`${neonColor}26`,border:`1px solid ${neonColor}`,color:neonColor,borderRadius:10,padding:12,fontSize:12,fontWeight:700,fontFamily:MONO}}>{savedOk?"✓ Enregistré !":"✓ Enregistrer"}</button>
               </div>}
@@ -1796,7 +1797,8 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
         </div>
         {strategies.map((strat)=>{
           const isActive=strat.id===activeStrategyId;
-          const [expanded,setExpanded]=useState(isActive);
+          const expanded=expandedStratId===strat.id;
+          const setExpanded=(v)=>setExpandedStratId(typeof v==="function"?(v(expanded)?strat.id:null):(v?strat.id:null));
           return(
             <div key={strat.id} style={{background:isActive?`${neonColor}08`:"#131318",border:`1px solid ${isActive?neonColor+"30":"#ffffff0a"}`,borderRadius:12,padding:"12px 14px",marginBottom:8,borderLeft:`3px solid ${isActive?neonColor:"#ffffff18"}`}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:expanded?10:0}}>
