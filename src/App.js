@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell } from "recharts";
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail, onAuthStateChanged } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA6SLYL7Ep451nu6edynUeBbPROtgRucv8",
@@ -2344,34 +2344,29 @@ export default function App() {
   const neonGhost = neon+"14"; // backgrounds subtils
   const neonBg = neon+"0a";    // backgrounds très légers
 
-  // Session restore via Firebase Auth persistent session
+  // Session restore from localStorage on page load
   useEffect(()=>{
-    if(!auth) return;
-    const unsub = onAuthStateChanged(auth, async (user) => {
-      if(!user) return; // not logged in → stay on splash/login
-      const uid = user.uid;
-      const email = user.email;
-      currentUserRef.current = {email, uid};
-      try { localStorage.setItem("tmt_user", JSON.stringify({email, uid})); } catch(e){}
-      // Load data: try UID first (new), then encoded email (legacy)
-      let userData = await loadUserData(uid);
-      if(!userData) userData = await loadUserData(encEmail(email));
-      if(!userData) { setPhase("setup"); return; }
-      const parseSafe = v => { if(Array.isArray(v)) return v; if(typeof v==="string"){try{return JSON.parse(v);}catch(e){return [];}} return []; };
-      const parseObj  = v => { if(v&&typeof v==="object"&&!Array.isArray(v)) return v; if(typeof v==="string"){try{return JSON.parse(v);}catch(e){return {};}} return {}; };
-      if(userData.setupDone){
-        const tr=parseSafe(userData.trades); const nt=parseSafe(userData.noTrades); const ph=parseSafe(userData.phases); const cfg=parseObj(userData.config);
-        if(tr.length) setTrades(tr);
-        if(nt.length) setNoTrades(nt);
-        if(ph.length) setPhases(ph);
-        if(Object.keys(cfg).length) setConfig(c=>({...c,...cfg}));
-        if(userData.lang) setLang(userData.lang);
-        if(userData.objectif&&typeof userData.objectif==="object") setObjectif(o=>({...o,...userData.objectif}));
-        try{if(localStorage.getItem("tmt_weekly_shown")===new Date().toISOString().split("T")[0])weeklyShownRef.current=true;}catch(e){}
-        setPhase("app");
-      } else { setPhase("setup"); }
-    });
-    return () => unsub();
+    try {
+      const saved=localStorage.getItem("tmt_user");
+      if(saved){
+        const {email,pwd,uid}=JSON.parse(saved);
+        const p = pwd||"";
+        authLogin(email,p).then(userData=>{
+          if(userData){
+            const resolvedUid = userData._uid || uid || encEmail(email);
+            currentUserRef.current={email, uid:resolvedUid};
+            if(userData.setupDone){
+              if(Array.isArray(userData.trades))setTrades(userData.trades);
+              if(Array.isArray(userData.noTrades))setNoTrades(userData.noTrades);
+              if(Array.isArray(userData.phases))setPhases(userData.phases);
+              if(userData.config&&typeof userData.config==="object")setConfig(c=>({...c,...userData.config}));
+              if(userData.lang)setLang(userData.lang);
+              setPhase("app");
+            } else { setPhase("setup"); }
+          }
+        }).catch(()=>{});
+      }
+    } catch(e){}
   },[]);
 
   useEffect(()=>{
