@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell } from "recharts";
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail, onAuthStateChanged } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA6SLYL7Ep451nu6edynUeBbPROtgRucv8",
@@ -47,6 +47,8 @@ const authRegister = async (email, pwd, lang) => {
 };
 
 const PRESET_ASSETS = ["XAU/USD","EUR/USD","GBP/USD","NAS100","BTC/USD","ETH/USD","US30","SPX500","GBP/JPY","USD/JPY"];
+const ACCOUNT_COLORS=["#00ff9d","#00d4ff","#bf00ff","#ff00aa","#f0b429","#ff6b35","#4ecdc4","#a8e063"];
+const mkAccount=(id,name,opts={})=>({id,name,color:opts.color||ACCOUNT_COLORS[0],capital:opts.capital||"",devise:opts.devise||"€",accountType:opts.accountType||"perso",objPnl:opts.objPnl||"",objDrawdown:opts.objDrawdown||"",phases:opts.phases||[],phaseStartDate:opts.phaseStartDate||""});
 const DEFAULT_CRITERIA = ["HA M5 claire (pas de doji)","MM20 bien orientée","BB approche sur M1","Bougie de rejet propre","Fenêtre horaire respectée","Pas de distraction","Contexte macro neutre"];
 const MONO = "'Geist Mono','IBM Plex Mono',monospace";
 const PNL_PRESETS = ["-1","-0.5","0","+1","+2","+3","+4","+5"];
@@ -1657,7 +1659,7 @@ function GuidedSetup({onDone,lang}) {
   );
 }
 
-function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChange,neon,phases,onPhasesChange,onObjectifChange,onImport}) {
+function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChange,neon,accounts,activeAccountId,onAccountsChange,activePhases,onPhasesChange,onObjectifChange,onImport}) {
   const t=T[lang];const inSt=mkInput(neon);
   const [items,setItems]=useState([...config.items]);const [threshold,setThreshold]=useState(config.threshold);
   const [stratName,setStratName]=useState(config.strategyName||"");const [maxTrades,setMaxTrades]=useState(config.maxTrades||1);
@@ -1683,15 +1685,14 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
     onSave({items,threshold,strategyName:stratName,maxTrades,neonColor,calendarOn,notifOn,customAssets:assets,eliminatoires,objPnl,phaseName,phaseStartDate,capital,devise,accountType,objDrawdown,defaultTimeframe:defaultTf});
     onObjectifChange(savedObj);setSavedOk(true);setTimeout(()=>setSavedOk(false),2000);};
   const doSaveAcct=(idx)=>{
-    const name=acctEditName.trim()||"Phase";
-    const date=acctEditDate;
+    const name=acctEditName.trim()||"Phase";const date=acctEditDate;
     if(idx===0){setPhaseName(name);setPhaseStartDate(date);onSave({items,threshold,strategyName:stratName,maxTrades,neonColor,calendarOn,notifOn,customAssets:assets,eliminatoires,objPnl,phaseName:name,phaseStartDate:date,capital,devise,accountType,objDrawdown,defaultTimeframe:defaultTf});}
-    else{const np=phases.map((ph,i)=>i===idx-1?{...ph,name,date}:ph);onPhasesChange(np);}
+    else{const np=activePhases.map((ph,i)=>i===idx-1?{...ph,name,date}:ph);onPhasesChange(np);}
     setAcctEditIdx(null);
   };
   const doDelAcct=(idx)=>{
-    if(idx===0){const np=phases.slice(1);onPhasesChange(np);}
-    else{const np=phases.filter((_,i)=>i!==idx-1);onPhasesChange(np);}
+    if(idx===0){const np=activePhases.slice(1);onPhasesChange(np);}
+    else{const np=activePhases.filter((_,i)=>i!==idx-1);onPhasesChange(np);}
     setAcctDelConfirm(null);
   };
   const Toggle=({label,val,set})=>(
@@ -1728,105 +1729,96 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
 
       {/* ══ ONGLET COMPTE ══ */}
       {tab==="compte"&&<div>
-        {/* ── Liste de tous les comptes/phases ── */}
-        <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10,fontFamily:MONO}}>{fr?"MES COMPTES":"MY ACCOUNTS"} · {[{index:0},...phases.map((_,i)=>({index:i+1}))].length}</div>
-        {[
-          {index:0, name:phaseName||(fr?"Phase 1":"Phase 1"), startDate:phaseStartDate||"", isCurrent:phases.length===0},
-          ...phases.map((ph,i)=>({index:i+1, name:ph.name||(fr?`Phase ${i+2}`:`Phase ${i+2}`), startDate:ph.date||"", isCurrent:i===phases.length-1}))
-        ].map(acc=>{
-          const isE=acctEditIdx===acc.index;
-          const isD=acctDelConfirm===acc.index;
+        {/* ── Switcher comptes ── */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,fontFamily:MONO}}>{fr?"MES COMPTES":"MY ACCOUNTS"} · {accounts.length}</div>
+          <button onClick={()=>{const colors=ACCOUNT_COLORS;const nc={id:"acc_"+Date.now(),name:fr?`Compte ${accounts.length+1}`:`Account ${accounts.length+1}`,color:colors[accounts.length%colors.length],capital:"",devise:"€",accountType:"perso",objPnl:"",objDrawdown:"",phases:[],phaseStartDate:""};onAccountsChange([...accounts,nc],activeAccountId);}} className="btn" style={{background:`${neonColor}14`,border:`1px solid ${neonColor}30`,color:neonColor,borderRadius:8,padding:"6px 12px",fontSize:10,fontWeight:700,fontFamily:MONO}}>+ {fr?"Ajouter":"Add"}</button>
+        </div>
+        {/* Compte actif en premier */}
+        {[...accounts.filter(a=>a.id===activeAccountId),...accounts.filter(a=>a.id!==activeAccountId)].map(acc=>{
+          const isActive=acc.id===activeAccountId;
+          const ac=acc.color||neonColor;
+          const accTrades_=[];// placeholder for trade count display
+          const isDelConfirm=acctDelConfirm===acc.id;
           return(
-            <div key={acc.index} style={{background:acc.isCurrent?`${neonColor}08`:"#131318",border:`1px solid ${acc.isCurrent?neonColor+"30":"#ffffff0a"}`,borderRadius:12,padding:"12px 14px",marginBottom:8,borderLeft:`3px solid ${acc.isCurrent?neonColor:"#ffffff18"}`}}>
-              {isE?(
-                <div>
-                  <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6}}>{fr?"NOM":"NAME"}</div>
-                  <input autoFocus value={acctEditName} onChange={e=>setAcctEditName(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")doSaveAcct(acc.index);if(e.key==="Escape")setAcctEditIdx(null);}} style={{...inSt,marginBottom:10,fontSize:13}}/>
-                  <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:6}}>{fr?"DATE DE DÉBUT":"START DATE"}</div>
-                  <input type="date" value={acctEditDate} onChange={e=>setAcctEditDate(e.target.value)} style={{...inSt,marginBottom:12,colorScheme:"dark",color:"#ffffffcc"}}/>
-                  <div style={{display:"flex",gap:8}}>
-                    <button onClick={()=>doSaveAcct(acc.index)} className="btn" style={{flex:2,background:`${neonColor}22`,border:`1px solid ${neonColor}`,color:neonColor,borderRadius:8,padding:"10px 0",fontSize:12,fontWeight:700,fontFamily:MONO}}>✓ {fr?"Enregistrer":"Save"}</button>
-                    <button onClick={()=>setAcctEditIdx(null)} className="btn" style={{flex:1,background:"transparent",border:"1px solid #ffffff15",color:"#ffffffaa",borderRadius:8,padding:"10px 0",fontSize:11,fontFamily:MONO}}>{fr?"Annuler":"Cancel"}</button>
-                  </div>
+            <div key={acc.id} style={{background:isActive?`${ac}08`:"#131318",border:`1px solid ${isActive?ac+"35":"#ffffff0a"}`,borderRadius:12,padding:"12px 14px",marginBottom:8,borderLeft:`3px solid ${isActive?ac:"#ffffff18"}`}}>
+              {/* Header */}
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:isActive?12:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0}}>
+                  <div style={{width:9,height:9,borderRadius:"50%",background:ac,boxShadow:isActive?`0 0 7px ${ac}`:undefined,flexShrink:0}}/>
+                  <input value={acc.name} onChange={e=>onAccountsChange(accounts.map(a=>a.id===acc.id?{...a,name:e.target.value}:a),activeAccountId)}
+                    style={{background:"transparent",border:"none",color:"#ffffff",fontSize:13,fontWeight:isActive?700:500,fontFamily:MONO,outline:"none",flex:1,minWidth:0}}/>
+                  {isActive&&<span style={{fontSize:8,color:ac,background:`${ac}18`,border:`1px solid ${ac}30`,padding:"1px 6px",borderRadius:4,fontFamily:MONO,flexShrink:0}}>{fr?"EN COURS":"ACTIVE"}</span>}
                 </div>
-              ):isD?(
-                <div>
-                  <div style={{fontSize:12,color:"#ff4d4d",fontFamily:MONO,fontWeight:700,marginBottom:6}}>{fr?`Supprimer "${acc.name}" ?`:`Delete "${acc.name}"?`}</div>
-                  <div style={{fontSize:10,color:"#ffffffaa",marginBottom:12,lineHeight:1.5}}>{fr?"La frontière de phase sera supprimée. Les trades fusionneront avec la phase précédente.":"Phase boundary removed. Trades merge with previous phase."}</div>
-                  <div style={{display:"flex",gap:8}}>
-                    <button onClick={()=>doDelAcct(acc.index)} className="btn" style={{flex:2,background:"rgba(255,77,77,0.2)",border:"1px solid #ff4d4d",color:"#ff4d4d",borderRadius:8,padding:"10px 0",fontSize:12,fontWeight:700,fontFamily:MONO}}>✓ {fr?"Confirmer":"Confirm"}</button>
-                    <button onClick={()=>setAcctDelConfirm(null)} className="btn" style={{flex:1,background:"transparent",border:"1px solid #ffffff15",color:"#ffffffaa",borderRadius:8,padding:"10px 0",fontSize:11,fontFamily:MONO}}>{fr?"Annuler":"Cancel"}</button>
-                  </div>
+                <div style={{display:"flex",gap:4,flexShrink:0}}>
+                  {!isActive&&<button onClick={()=>onAccountsChange(accounts,acc.id)} className="btn" style={{background:`${ac}14`,border:`1px solid ${ac}30`,color:ac,borderRadius:6,padding:"4px 9px",fontSize:9,fontWeight:700,fontFamily:MONO}}>{fr?"ACTIVER":"SWITCH"}</button>}
+                  {accounts.length>1&&(isDelConfirm?(
+                    <><button onClick={()=>{onAccountsChange(accounts.filter(a=>a.id!==acc.id),isActive?accounts.find(a=>a.id!==acc.id)?.id:activeAccountId);setAcctDelConfirm(null);}} className="btn" style={{background:"rgba(255,77,77,0.2)",border:"1px solid #ff4d4d",color:"#ff4d4d",borderRadius:6,padding:"4px 8px",fontSize:9,fontWeight:700,fontFamily:MONO}}>✓</button>
+                    <button onClick={()=>setAcctDelConfirm(null)} className="btn" style={{background:"transparent",border:"1px solid #ffffff15",color:"#ffffff55",borderRadius:6,padding:"4px 7px",fontSize:11}}>✕</button></>
+                  ):(
+                    <button onClick={()=>setAcctDelConfirm(acc.id)} className="btn" style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d66",borderRadius:6,padding:"4px 8px",fontSize:11}}>⊘</button>
+                  ))}
                 </div>
-              ):(
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
-                      <span style={{fontSize:13,fontWeight:acc.isCurrent?700:500,color:acc.isCurrent?neonColor:"#ffffff",fontFamily:MONO}}>{acc.name}</span>
-                      {acc.isCurrent&&<span style={{fontSize:8,color:neonColor,background:`${neonColor}15`,padding:"1px 6px",borderRadius:4,fontFamily:MONO,fontWeight:700}}>{fr?"EN COURS":"ACTIVE"}</span>}
+              </div>
+              {/* Paramètres étendus — actif uniquement */}
+              {isActive&&<div>
+                {/* Couleur */}
+                <div style={{display:"flex",gap:5,marginBottom:12}}>
+                  {ACCOUNT_COLORS.map(c=>(
+                    <button key={c} onClick={()=>onAccountsChange(accounts.map(a=>a.id===acc.id?{...a,color:c}:a),activeAccountId)} style={{width:22,height:22,borderRadius:"50%",background:c,border:`2px solid ${(acc.color||neonColor)===c?c:"transparent"}`,outline:(acc.color||neonColor)===c?`2px solid ${c}`:"none",outlineOffset:2,cursor:"pointer",boxShadow:(acc.color||neonColor)===c?`0 0 6px ${c}`:undefined}}/>
+                  ))}
+                </div>
+                {/* Type */}
+                <div style={{display:"flex",gap:6,marginBottom:10}}>
+                  {[["prop","Prop Firm"],["perso","Perso"],["demo","Démo"]].map(([v,l])=>(
+                    <button key={v} onClick={()=>onAccountsChange(accounts.map(a=>a.id===acc.id?{...a,accountType:v}:a),activeAccountId)} className="btn" style={{flex:1,padding:"7px 0",background:(acc.accountType||"perso")===v?`${ac}18`:"#131318",border:`1px solid ${(acc.accountType||"perso")===v?ac:`${ac}18`}`,borderRadius:8,fontSize:9,fontWeight:700,color:(acc.accountType||"perso")===v?ac:"#ffffffaa",fontFamily:MONO}}>{l}</button>
+                  ))}
+                </div>
+                {/* Capital + Devise */}
+                <div style={{display:"flex",gap:8,marginBottom:10}}>
+                  <div style={{flex:2}}>
+                    <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>CAPITAL</div>
+                    <input type="number" value={acc.capital||""} onChange={e=>onAccountsChange(accounts.map(a=>a.id===acc.id?{...a,capital:e.target.value}:a),activeAccountId)} placeholder="10000" style={{...inSt,marginBottom:0}}/>
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>DEVISE</div>
+                    <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                      {["€","$","£"].map(d=>(
+                        <button key={d} onClick={()=>onAccountsChange(accounts.map(a=>a.id===acc.id?{...a,devise:d}:a),activeAccountId)} className="btn" style={{padding:"4px 0",background:(acc.devise||"€")===d?`${ac}18`:"#131318",border:`1px solid ${(acc.devise||"€")===d?ac:`${ac}18`}`,borderRadius:6,fontSize:11,fontWeight:800,color:(acc.devise||"€")===d?ac:"#ffffffaa",fontFamily:MONO}}>{d}</button>
+                      ))}
                     </div>
-                    <div style={{fontSize:9,color:"#ffffff44",fontFamily:MONO}}>
-                      {acc.startDate?`${fr?"depuis":"since"} ${acc.startDate}`:fr?"Date non définie":"No date set"}
-                    </div>
-                  </div>
-                  <div style={{display:"flex",gap:6}}>
-                    <button onClick={()=>{setAcctEditIdx(acc.index);setAcctEditName(acc.name);setAcctEditDate(acc.startDate);setAcctDelConfirm(null);}} className="btn" style={{background:"transparent",border:`1px solid ${neonColor}22`,color:`${neonColor}66`,borderRadius:6,padding:"5px 8px",fontSize:11}}>✏</button>
-                    {!acc.isCurrent?<button onClick={()=>{setAcctDelConfirm(acc.index);setAcctEditIdx(null);}} className="btn" style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d66",borderRadius:6,padding:"5px 8px",fontSize:11}}>⊘</button>:<div style={{width:30}}/>}
                   </div>
                 </div>
-              )}
+                {/* Drawdown + Objectif */}
+                <div style={{display:"flex",gap:8,marginBottom:12}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:8,color:"#ff4d4d88",marginBottom:4}}>DRAWDOWN MAX %</div>
+                    <input type="number" value={acc.objDrawdown||""} onChange={e=>onAccountsChange(accounts.map(a=>a.id===acc.id?{...a,objDrawdown:e.target.value}:a),activeAccountId)} placeholder="5" style={{...inSt,marginBottom:0,borderColor:"#ff4d4d33"}}/>
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>{fr?"OBJECTIF P&L %":"P&L TARGET %"}</div>
+                    <input type="number" value={acc.objPnl||""} onChange={e=>onAccountsChange(accounts.map(a=>a.id===acc.id?{...a,objPnl:e.target.value}:a),activeAccountId)} placeholder="+10" style={{...inSt,marginBottom:0}}/>
+                  </div>
+                </div>
+                <button onClick={()=>onAccountsChange(accounts,activeAccountId)} className="btn" style={{width:"100%",background:`${ac}22`,border:`1px solid ${ac}`,color:ac,borderRadius:10,padding:"11px 0",fontSize:12,fontWeight:700,fontFamily:MONO}}>✓ {fr?"Enregistrer":"Save"}</button>
+                {/* Phases du compte actif */}
+                {activePhases.length>0&&<div style={{marginTop:14}}>
+                  <div style={{fontSize:8,color:"#ffffff44",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>{fr?"PHASES DE CE COMPTE":"ACCOUNT PHASES"} · {activePhases.length+1}</div>
+                  {[{index:0,name:acc.name,date:acc.phaseStartDate||""},...activePhases.map((ph,i)=>({index:i+1,name:ph.name,date:ph.date,isCurrent:i===activePhases.length-1}))].map(ph=>(
+                    <div key={ph.index} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:ph.isCurrent?`${ac}08`:"#131318",border:`1px solid ${ph.isCurrent?ac+"20":"#ffffff08"}`,borderRadius:8,marginBottom:4}}>
+                      <div>
+                        <span style={{fontSize:11,color:ph.isCurrent?ac:"#ffffffaa",fontFamily:MONO,fontWeight:ph.isCurrent?700:400}}>{ph.name}</span>
+                        {ph.isCurrent&&<span style={{fontSize:8,color:ac,background:`${ac}15`,padding:"1px 5px",borderRadius:4,fontFamily:MONO,marginLeft:6}}>{fr?"EN COURS":"ACTIVE"}</span>}
+                        {ph.date&&<div style={{fontSize:8,color:"#ffffff33",marginTop:2}}>{fr?"depuis":"since"} {ph.date}</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>}
+                <button onClick={()=>{onNewPhase({});}} className="btn" style={{width:"100%",marginTop:10,background:`${ac}0a`,border:`1px dashed ${ac}30`,color:`${ac}77`,borderRadius:10,padding:10,fontSize:11,fontFamily:MONO}}>▶ {fr?"Nouvelle phase":"New phase"}</button>
+              </div>}
             </div>
           );
         })}
-        <div style={{height:1,background:`${neonColor}14`,margin:"10px 0 14px"}}/>
-        {/* ── Nouvelle phase ── */}
-        {!phaseConfirm?(
-          <button onClick={()=>setPhaseConfirm(true)} className="btn" style={{width:"100%",background:`${neonColor}0a`,border:`1px solid ${neonColor}28`,color:neonColor,borderRadius:10,padding:12,fontSize:12,fontFamily:MONO,marginBottom:14}}>{t.newPhaseBtn}</button>
-        ):(
-          <div style={{background:`${neonColor}08`,border:`1px solid ${neonColor}30`,borderRadius:10,padding:14,marginBottom:14}}>
-            <div style={{fontSize:12,fontWeight:700,color:neonColor,fontFamily:MONO,marginBottom:4}}>{t.newPhaseConfirmQ}</div>
-            <div style={{fontSize:11,color:"#ffffffaa",marginBottom:10,lineHeight:1.5}}>{t.newPhaseDesc}</div>
-            <input value={newPhaseName} onChange={e=>setNewPhaseName(e.target.value)}
-              placeholder={fr?"Nom de ce compte (ex: FTMO Step 1)…":"Account name (e.g. FTMO Step 1)…"}
-              style={{...inSt,marginBottom:10,fontSize:12}}/>
-            <div style={{display:"flex",gap:8}}>
-              <button onClick={()=>{onNewPhase(newPhaseName);setPhaseConfirm(false);setNewPhaseName("");}} className="btn" style={{flex:2,background:`${neonColor}22`,border:`1px solid ${neonColor}`,color:neonColor,borderRadius:8,padding:"10px 0",fontSize:12,fontWeight:700,fontFamily:MONO}}>{t.newPhaseConfirmBtn}</button>
-              <button onClick={()=>{setPhaseConfirm(false);setNewPhaseName("");}} className="btn" style={{flex:1,background:"transparent",border:`1px solid ${neonColor}26`,color:"#ffffffaa",borderRadius:8,padding:"10px 0",fontSize:11,fontFamily:MONO}}>{t.cancelBtn}</button>
-            </div>
-          </div>
-        )}
-        {/* ── Paramètres du compte actuel ── */}
-        <div style={{fontSize:8,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{fr?"TYPE DE COMPTE":"ACCOUNT TYPE"}</div>
-        <div style={{display:"flex",gap:6,marginBottom:14}}>
-          {[["prop","Prop Firm"],["perso","Perso"],["demo","Démo"]].map(([v,l])=>(
-            <button key={v} onClick={()=>setAccountType(v)} className="btn" style={{flex:1,padding:"9px 0",background:accountType===v?`${neonColor}18`:"#131318",border:`1px solid ${accountType===v?neonColor:`${neonColor}22`}`,borderRadius:8,fontSize:10,fontWeight:700,color:accountType===v?neonColor:"#ffffffaa",fontFamily:MONO}}>{l}</button>
-          ))}
-        </div>
-        <div style={{display:"flex",gap:8,marginBottom:14}}>
-          <div style={{flex:2}}>
-            <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>CAPITAL</div>
-            <input type="number" value={capital} onChange={e=>setCapital(e.target.value)} placeholder="10000" style={{...inSt,marginBottom:0}}/>
-          </div>
-          <div style={{flex:1}}>
-            <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>DEVISE</div>
-            <div style={{display:"flex",flexDirection:"column",gap:3}}>
-              {["€","$","£","CHF"].map(d=>(
-                <button key={d} onClick={()=>setDevise(d)} className="btn" style={{padding:"5px 0",background:devise===d?`${neonColor}18`:"#131318",border:`1px solid ${devise===d?neonColor:`${neonColor}22`}`,borderRadius:6,fontSize:11,fontWeight:800,color:devise===d?neonColor:"#ffffffaa",fontFamily:MONO}}>{d}</button>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div style={{display:"flex",gap:8,marginBottom:14}}>
-          <div style={{flex:1}}>
-            <div style={{fontSize:8,color:"#ff4d4d88",marginBottom:4}}>DRAWDOWN MAX %</div>
-            <input type="number" value={objDrawdown} onChange={e=>setObjDrawdown(e.target.value)} placeholder="5" style={{...inSt,marginBottom:0,borderColor:"#ff4d4d33"}}/>
-          </div>
-          <div style={{flex:1}}>
-            <div style={{fontSize:8,color:"#ffffffbb",marginBottom:4}}>{fr?"OBJECTIF P&L %":"P&L TARGET %"}</div>
-            <input type="number" value={objPnl} onChange={e=>setObjPnl(e.target.value)} placeholder="+10" style={{...inSt,marginBottom:0}}/>
-          </div>
-        </div>
-        <SaveBtn/>
       </div>}
 
       {/* ══ ONGLET STRATÉGIE ══ */}
@@ -2310,7 +2302,10 @@ export default function App() {
   const [notif,setNotif]=useState(null);
   const [showNoTrades,setShowNoTrades]=useState(true);
   const [statsMode,setStatsMode]=useState("phase");
-  const [phases,setPhases]=useState([]);
+  const [phases,setPhases]=useState([]); // kept for legacy migration only
+  const [accounts,setAccounts]=useState([mkAccount("default","Mon compte")]);
+  const [activeAccountId,setActiveAccountId]=useState("default");
+  const [showAccSwitcher,setShowAccSwitcher]=useState(false);
   const [showWeeklyRecap,setShowWeeklyRecap]=useState(false);
   const [showExport,setShowExport]=useState(false);
   const [showReset,setShowReset]=useState(false);
@@ -2344,29 +2339,44 @@ export default function App() {
   const neonGhost = neon+"14"; // backgrounds subtils
   const neonBg = neon+"0a";    // backgrounds très légers
 
-  // Session restore from localStorage on page load
+  // Session restore — migration automatique vers multi-comptes
   useEffect(()=>{
-    try {
-      const saved=localStorage.getItem("tmt_user");
-      if(saved){
-        const {email,pwd,uid}=JSON.parse(saved);
-        const p = pwd||"";
-        authLogin(email,p).then(userData=>{
-          if(userData){
-            const resolvedUid = userData._uid || uid || encEmail(email);
-            currentUserRef.current={email, uid:resolvedUid};
-            if(userData.setupDone){
-              if(Array.isArray(userData.trades))setTrades(userData.trades);
-              if(Array.isArray(userData.noTrades))setNoTrades(userData.noTrades);
-              if(Array.isArray(userData.phases))setPhases(userData.phases);
-              if(userData.config&&typeof userData.config==="object")setConfig(c=>({...c,...userData.config}));
-              if(userData.lang)setLang(userData.lang);
-              setPhase("app");
-            } else { setPhase("setup"); }
-          }
-        }).catch(()=>{});
+    if(!auth) return;
+    const parseSafe=v=>{if(Array.isArray(v))return v;if(typeof v==="string"){try{return JSON.parse(v);}catch(e){return[];}}return[];};
+    const parseObj=v=>{if(v&&typeof v==="object"&&!Array.isArray(v))return v;if(typeof v==="string"){try{return JSON.parse(v);}catch(e){return{};}}return{};};
+    const unsub=onAuthStateChanged(auth,async(user)=>{
+      if(!user)return;
+      const uid=user.uid;const email=user.email;
+      currentUserRef.current={email,uid};
+      try{localStorage.setItem("tmt_user",JSON.stringify({email,uid}));}catch(e){}
+      let ud=await loadUserData(uid);
+      if(!ud)ud=await loadUserData(encEmail(email));
+      if(!ud){setPhase("setup");return;}
+      const cfg=parseObj(ud.config);
+      const tr=parseSafe(ud.trades);const nt=parseSafe(ud.noTrades);
+      if(tr.length)setTrades(tr);
+      if(nt.length)setNoTrades(nt);
+      if(Object.keys(cfg).length)setConfig(c=>({...c,...cfg}));
+      if(ud.lang)setLang(ud.lang);
+      if(ud.objectif&&typeof ud.objectif==="object")setObjectif(o=>({...o,...ud.objectif}));
+      // Migration multi-comptes
+      if(Array.isArray(ud.accounts)&&ud.accounts.length){
+        setAccounts(ud.accounts);
+        setActiveAccountId(ud.activeAccountId||ud.accounts[0].id);
+      } else {
+        // Première migration : on emballe phases+config dans le compte par défaut
+        const legacyPhases=parseSafe(ud.phases);
+        const defAcc=mkAccount("default",cfg.phaseName||"Mon compte",{
+          color:cfg.neonColor||"#00ff9d",capital:cfg.capital||"",devise:cfg.devise||"€",
+          accountType:cfg.accountType||"perso",objPnl:"",objDrawdown:cfg.objDrawdown||"",
+          phases:legacyPhases,phaseStartDate:cfg.phaseStartDate||"",
+        });
+        setAccounts([defAcc]);setActiveAccountId("default");
       }
-    } catch(e){}
+      try{if(localStorage.getItem("tmt_weekly_shown")===new Date().toISOString().split("T")[0])weeklyShownRef.current=true;}catch(e){}
+      if(ud.setupDone){setPhase("app");}else{setPhase("setup");}
+    });
+    return()=>unsub();
   },[]);
 
   useEffect(()=>{
@@ -2390,71 +2400,63 @@ export default function App() {
   },[phase,view,trades]);
 
   const scrollToTop=()=>{if(pageRef.current)pageRef.current.scrollTo({top:0,behavior:"smooth"});};
-  // Phase uses trade.id (timestamp) not date — trades before phase creation excluded even if date is today
-  const currentPhaseTs=phases.length>0?phases[phases.length-1].id:0;
-  const currentPhaseName=phases.length>0?phases[phases.length-1].name:(config.phaseName||"PHASE");
-  const getPhaseKey=useCallback(tradeId=>{if(phases.length===0)return 0;for(let i=phases.length-1;i>=0;i--){if(tradeId>phases[i].id)return i+1;}return 0;},[phases]);
+  // saveData helper centralisé
+  const saveData=useCallback((extra={})=>{
+    if(!currentUserRef.current?.email)return;
+    const uid=currentUserRef.current.uid||encEmail(currentUserRef.current.email||"");
+    saveUserData(uid,extra);
+  },[]);
+  // Compte actif et ses phases
+  const activeAccount=accounts.find(a=>a.id===activeAccountId)||accounts[0]||mkAccount("default","Mon compte");
+  const activePhases=activeAccount.phases||[];
+  const currentPhaseTs=activePhases.length>0?activePhases[activePhases.length-1].id:0;
+  const currentPhaseName=activePhases.length>0?activePhases[activePhases.length-1].name:(activeAccount.name||"PHASE");
+  const getPhaseKey=useCallback(tradeId=>{if(activePhases.length===0)return 0;for(let i=activePhases.length-1;i>=0;i--){if(tradeId>activePhases[i].id)return i+1;}return 0;},[activePhases]);
   const handleNewPhase=(phaseData={})=>{
-    const num=phases.length+2;
+    const num=activePhases.length+2;
     const name=phaseData.name||`Phase ${num}`;
-    const newPhases=[...phases,{id:Date.now(),date:today(),name}];
-    setPhases(newPhases);setStatsMode("phase");
+    const newPhase={id:Date.now(),date:today(),name};
+    const newAccounts=accounts.map(a=>a.id===activeAccount.id?{...a,phases:[...a.phases,newPhase],capital:phaseData.capital||a.capital,devise:phaseData.devise||a.devise,accountType:phaseData.accountType||a.accountType,objPnl:phaseData.obj||a.objPnl||"",objDrawdown:phaseData.drawdown||a.objDrawdown||""}:a);
+    setAccounts(newAccounts);setStatsMode("phase");
     setObjectif({pnl:phaseData.obj||"",wr:"",trades:"",drawdown:phaseData.drawdown||"",editMode:false});
-    const newCfg={...config,capital:phaseData.capital||config.capital,devise:phaseData.devise||config.devise,accountType:phaseData.accountType||config.accountType};
-    setConfig(newCfg);
     setNotif({txt:lang==="fr"?`${name} démarrée.\nStats remises à zéro.`:`${name} started.\nStats reset.`,color:neon,icon:"ok",lang});
-    if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{phases:newPhases,config:newCfg});
+    saveData({accounts:newAccounts,activeAccountId,trades,noTrades});
   };
-
-  // ── Phase management ──
-  const getPhaseTradeCount = (phaseIndex) => {
-    if(phases.length===0) return trades.length;
-    if(phaseIndex===0) {
-      return trades.filter(x=>x.id<=phases[0].id).length;
-    }
-    const from = phases[phaseIndex-1].id;
-    const to   = phaseIndex < phases.length ? phases[phaseIndex].id : Infinity;
-    return trades.filter(x=>x.id>from&&x.id<=to).length;
+  const getPhaseTradeCount=(phaseIndex)=>{
+    const accTrades=trades.filter(x=>(x.accountId||"default")===activeAccount.id);
+    if(activePhases.length===0)return accTrades.length;
+    if(phaseIndex===0)return accTrades.filter(x=>x.id<=activePhases[0].id).length;
+    const from=activePhases[phaseIndex-1].id;
+    const to=phaseIndex<activePhases.length?activePhases[phaseIndex].id:Infinity;
+    return accTrades.filter(x=>x.id>from&&x.id<=to).length;
   };
-
-  const handleRenamePhase = (phaseIndex, newName) => {
-    if(!newName.trim()) return;
-    if(phaseIndex===0) {
-      // Rename the original phase = update config.phaseName
-      const newCfg={...config,phaseName:newName.trim()};
-      setConfig(newCfg);
-      if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:newCfg});
+  const handleRenamePhase=(phaseIndex,newName)=>{
+    if(!newName.trim())return;
+    let newAccounts;
+    if(phaseIndex===0){newAccounts=accounts.map(a=>a.id===activeAccount.id?{...a,name:newName.trim()}:a);}
+    else{newAccounts=accounts.map(a=>a.id===activeAccount.id?{...a,phases:a.phases.map((ph,i)=>i===phaseIndex-1?{...ph,name:newName.trim()}:ph)}:a);}
+    setAccounts(newAccounts);setPhaseEditIndex(null);
+    saveData({accounts:newAccounts,activeAccountId,trades,noTrades});
+  };
+  const handleDeleteSpecificPhase=(phaseIndex)=>{
+    if(phaseIndex===0){
+      const boundary=activePhases.length>0?activePhases[0].id:Infinity;
+      const newTrades=trades.filter(x=>(x.accountId||"default")!==activeAccount.id||x.id>boundary);
+      const newNoTrades=noTrades.filter(x=>(x.accountId||"default")!==activeAccount.id||x.id>boundary);
+      const newAccounts=accounts.map(a=>a.id===activeAccount.id?{...a,phases:a.phases.slice(1)}:a);
+      setTrades(newTrades);setNoTrades(newNoTrades);setAccounts(newAccounts);setStatsMode("phase");
+      saveData({accounts:newAccounts,activeAccountId,trades:newTrades,noTrades:newNoTrades});
     } else {
-      // Rename a created phase = update name in phases array
-      const newPhases=phases.map((ph,i)=>i===phaseIndex-1?{...ph,name:newName.trim()}:ph);
-      setPhases(newPhases);
-      if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{phases:newPhases});
-    }
-    setPhaseEditIndex(null);
-  };
-
-  const handleDeleteSpecificPhase = (phaseIndex) => {
-    if(phaseIndex===0) {
-      // Delete original phase: remove trades before phases[0], keep phases[1..]
-      const boundary=phases.length>0?phases[0].id:Infinity;
-      const newTrades=trades.filter(x=>x.id>boundary);
-      const newNoTrades=noTrades.filter(x=>x.id>boundary);
-      const newPhases=phases.slice(1);
-      setTrades(newTrades);setNoTrades(newNoTrades);setPhases(newPhases);setStatsMode("phase");
-      const uid=currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||"");
-      if(currentUserRef.current?.email) saveUserData(uid,{trades:newTrades,noTrades:newNoTrades,phases:newPhases});
-    } else {
-      // Delete phase N: remove boundary entry, trades of this phase merge into previous
-      const newPhases=phases.filter((_,i)=>i!==phaseIndex-1);
-      setPhases(newPhases);setStatsMode("phase");
-      const uid=currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||"");
-      if(currentUserRef.current?.email) saveUserData(uid,{phases:newPhases});
+      const newAccounts=accounts.map(a=>a.id===activeAccount.id?{...a,phases:a.phases.filter((_,i)=>i!==phaseIndex-1)}:a);
+      setAccounts(newAccounts);setStatsMode("phase");
+      saveData({accounts:newAccounts,activeAccountId,trades,noTrades});
     }
     setPhaseDeleteConfirmIdx(null);
-    setNotif({txt:lang==="fr"?`Compte supprimé.`:`Account deleted.`,color:"#f0b429",icon:"warn",lang});
+    setNotif({txt:lang==="fr"?"Phase supprimée.":"Phase deleted.",color:"#f0b429",icon:"warn",lang});
   };
-
-  const pf=statsMode==="phase"?trades.filter(x=>x.id>currentPhaseTs):trades;
+  // Trades filtrés par compte actif
+  const accountTrades=trades.filter(x=>(x.accountId||"default")===activeAccount.id);
+  const pf=statsMode==="phase"?accountTrades.filter(x=>x.id>currentPhaseTs):accountTrades;
   const total=pf.length,wins=pf.filter(x=>x.result==="WIN").length,losses=pf.filter(x=>x.result==="LOSS").length;
   const winRate=total?Math.round(wins/total*100):0;
   const totalPnl=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
@@ -2462,7 +2464,7 @@ export default function App() {
   const scoreColor=discScore===null?"#ffffffbb":discScore>=8?neon:discScore>=5?"#f0b429":"#ff4d4d";
   const usedAssets=[...new Set(trades.map(x=>x.asset))];
 
-  const checkRevenge=fd=>{if(!config.maxTrades||config.maxTrades===0)return false;return trades.filter(x=>x.date===fd&&x.id!==editingId).length>=config.maxTrades;};
+  const checkRevenge=fd=>{if(!config.maxTrades||config.maxTrades===0)return false;return trades.filter(x=>x.date===fd&&x.id!==editingId&&(x.accountId||"default")===activeAccount.id).length>=config.maxTrades;};
   const isRevengeNow=editingId===null&&checkRevenge(form.date);
   const pnlVal=form.pnlManual!==""?form.pnlManual:form.pnlPreset;
   const pnlIncoherent=pnlVal!==""&&((form.result==="WIN"&&parseFloat(pnlVal)<0)||(form.result==="LOSS"&&parseFloat(pnlVal)>0));
@@ -2475,9 +2477,9 @@ export default function App() {
       const conforming=isRevenge?false:elimFail?false:score>=config.threshold;
     let updated,ut=null;
     if(editingId!==null){updated=trades.map(x=>x.id===editingId?{...x,...form,pnlPct:pnl,setupScore:score,conforming,isRevenge,checklistMax:config.items.length}:x);}
-    else{const trade={...form,pnlPct:pnl,id:Date.now(),setupScore:score,conforming,isRevenge,checklistMax:config.items.length};ut=trade;updated=[trade,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);}
+    else{const trade={...form,pnlPct:pnl,id:Date.now(),setupScore:score,conforming,isRevenge,checklistMax:config.items.length,accountId:activeAccount.id};ut=trade;updated=[trade,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);}
     setTrades(updated);
-    if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{trades:updated});
+    saveData({trades:updated,accounts,activeAccountId});
     const newCfgAfterSave={...config,lastPnlMode:form.pnlMode||"eur"};setConfig(newCfgAfterSave);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:newCfgAfterSave});
     setForm(emptyForm(config.defaultAsset||"XAU/USD",config.defaultTimeframe||config.lastTimeframe||"M5",config.lastPnlMode||"eur"));setEditingId(null);setCheckinOpen(false);
     // Conseil biais/direction incohérents
@@ -2511,16 +2513,21 @@ export default function App() {
   };
   const handleReset=()=>{
     setObjectif({pnl:"",wr:"",trades:"",editMode:false});
-    setTrades([]);setNoTrades([]);setPhases([]);setShowReset(false);
-    if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{trades:[],noTrades:[],phases:[]});
+    const newTrades=trades.filter(x=>(x.accountId||"default")!==activeAccount.id);
+    const newNoTrades=noTrades.filter(x=>(x.accountId||"default")!==activeAccount.id);
+    const newAccounts=accounts.map(a=>a.id===activeAccount.id?{...a,phases:[]}:a);
+    setTrades(newTrades);setNoTrades(newNoTrades);setAccounts(newAccounts);setShowReset(false);
+    saveData({trades:newTrades,noTrades:newNoTrades,accounts:newAccounts,activeAccountId});
   };
 
   const [histPhase,setHistPhase]=useState("ALL");
+  const [histAccount,setHistAccount]=useState("ALL");
   const histFiltered=trades.filter(x=>{
     const matchResult=histFilter==="ALL"||x.result===histFilter;
     const matchAsset=histAsset==="ALL"||x.asset===histAsset;
+    const matchAccount=histAccount==="ALL"||(x.accountId||"default")===histAccount;
     const matchPhase=histPhase==="ALL"||(()=>{
-      if(phases.length===0)return histPhase==="0";
+      if(activePhases.length===0)return histPhase==="0";
       const pk=getPhaseKey(x.id);
       return String(pk)===histPhase;
     })();
@@ -2532,7 +2539,7 @@ export default function App() {
       (x.notes||"").toLowerCase().includes(q)||
       (x.date||"").includes(q)||
       (x.checkin?.humeur||"").toLowerCase().includes(q);
-    return matchResult&&matchAsset&&matchSearch&&matchPhase;
+    return matchResult&&matchAsset&&matchSearch&&matchPhase&&matchAccount;
   });
   const mergedHistory=[...histFiltered.map(x=>({...x,_type:"trade"})),...(showNoTrades?noTrades.map(x=>({...x,_type:"notrade"})):[])].sort((a,b)=>new Date(b.date)-new Date(a.date)||b.id-a.id);
   const editingTrade=editingId!==null?trades.find(x=>x.id===editingId):null;
@@ -2540,7 +2547,6 @@ export default function App() {
   const humeurPills=HUMEUR_PILLS[lang]||HUMEUR_PILLS.fr;
   const biaisPills=BIAIS_PILLS[lang]||BIAIS_PILLS.fr;
 
-  // handleLogin must be defined before conditional returns (Rules of Hooks)
   const handleLogin=u=>{
     if(!u) return;
     const uid = u._uid || encEmail(u.email);
@@ -2548,59 +2554,31 @@ export default function App() {
     try { localStorage.setItem("tmt_user",JSON.stringify({email:u.email, uid})); } catch(e){}
     const userData=u.userData;
     if(userData&&userData.setupDone){
-      // Parser les strings JSON si nécessaire (ancien format Firestore)
-      const parseSafe = (v) => {
-        if(Array.isArray(v)) return v;
-        if(typeof v === "string") { try { return JSON.parse(v); } catch(e) { return []; } }
-        return [];
-      };
-      const parseObj = (v) => {
-        if(v && typeof v === "object" && !Array.isArray(v)) return v;
-        if(typeof v === "string") { try { return JSON.parse(v); } catch(e) { return {}; } }
-        return {};
-      };
-      const trades = parseSafe(userData.trades);
-      const noTrades = parseSafe(userData.noTrades);
-      const phases = parseSafe(userData.phases);
-      const config = parseObj(userData.config);
-      if(trades.length) setTrades(trades);
-      if(noTrades.length) setNoTrades(noTrades);
-      if(phases.length) setPhases(phases);
-      if(Object.keys(config).length) setConfig(c=>({...c,...config}));
-      if(userData.lang) setLang(userData.lang);
-      if(userData.objectif&&typeof userData.objectif==="object") setObjectif(o=>({...o,...userData.objectif}));
+      const parseSafe=(v)=>{if(Array.isArray(v))return v;if(typeof v==="string"){try{return JSON.parse(v);}catch(e){return[];}}return[];};
+      const parseObj=(v)=>{if(v&&typeof v==="object"&&!Array.isArray(v))return v;if(typeof v==="string"){try{return JSON.parse(v);}catch(e){return{};}}return{};};
+      const tr=parseSafe(userData.trades);const nt=parseSafe(userData.noTrades);const cfg=parseObj(userData.config);
+      if(tr.length)setTrades(tr);
+      if(nt.length)setNoTrades(nt);
+      if(Object.keys(cfg).length)setConfig(c=>({...c,...cfg}));
+      if(userData.lang)setLang(userData.lang);
+      if(userData.objectif&&typeof userData.objectif==="object")setObjectif(o=>({...o,...userData.objectif}));
+      // Migration multi-comptes
+      if(Array.isArray(userData.accounts)&&userData.accounts.length){
+        setAccounts(userData.accounts);
+        setActiveAccountId(userData.activeAccountId||userData.accounts[0].id);
+      } else {
+        const legacyPhases=parseSafe(userData.phases);
+        const defAcc=mkAccount("default",cfg.phaseName||"Mon compte",{
+          color:cfg.neonColor||"#00ff9d",capital:cfg.capital||"",devise:cfg.devise||"€",
+          accountType:cfg.accountType||"perso",objPnl:"",objDrawdown:cfg.objDrawdown||"",
+          phases:legacyPhases,phaseStartDate:cfg.phaseStartDate||"",
+        });
+        setAccounts([defAcc]);setActiveAccountId("default");
+      }
       setPhase("app");
-      // Vérifications bannières in-app
-      setTimeout(()=>{
-        const notifs_=[];
-        const config_=parseObj(userData.config);
-        const trades_=parseSafe(userData.trades);
-        if(trades_.length>=3){
-          const last=trades_[0];
-          // Compter uniquement les jours ouvrés (lun-ven) depuis le dernier trade
-          const countWorkdays=(fromDate)=>{
-            let count=0;
-            const d=new Date(fromDate);
-            d.setDate(d.getDate()+1);
-            const now=new Date();
-            while(d<=now){
-              const dow=d.getDay();
-              if(dow>=1&&dow<=5) count++;
-              d.setDate(d.getDate()+1);
-            }
-            return count;
-          };
-          const workdaysMissed=last?countWorkdays(last.date):999;
-          if(workdaysMissed>=3) notifs_.push({type:"info",emoji:"📅",title:lang==="fr"?"Journal en pause":"Journal paused",body:lang==="fr"?`${workdaysMissed} jours ouvrés sans trade. Pense à journaliser !`:`${workdaysMissed} trading days without a log. Time to journal!`});
-          const revStreak=trades_.slice(0,3).filter(x=>x.isRevenge).length;
-          if(revStreak>=2) notifs_.push({type:"warn",emoji:"🔥",title:lang==="fr"?"Attention — Revenge":"Warning — Revenge",body:lang==="fr"?"Plusieurs revenge trades récents. Fais une pause.":"Multiple recent revenge trades. Take a break."});
-        }
-        if(notifs_.length) setInAppNotifs(notifs_);
-      },2000);
     } else {
-      if(u.lang) setLang(u.lang);
-      // Nouveau compte → onboarding si isNew, sinon setup direct
-      if(u.isNew) setPhase("onboarding");
+      if(u.lang)setLang(u.lang);
+      if(u.isNew)setPhase("onboarding");
       else setPhase("setup");
     }
   };
@@ -2630,15 +2608,16 @@ export default function App() {
             <div style={{marginBottom:6}}><SplashLogo neon={neon}/></div>
             <div style={{fontSize:10,color:"#ffffff33",letterSpacing:1}}>{config.strategyName}</div>
           </div>
-          {(objectif.pnl||config.capital)&&(()=>{
+          {(activeAccount.objPnl||activeAccount.capital)&&(()=>{
             const cur=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
-            const pct=objectif.pnl?Math.min(100,Math.max(0,cur/(parseFloat(objectif.pnl)||1)*100)):0;
+            const objP=activeAccount.objPnl||"";
+            const pct=objP?Math.min(100,Math.max(0,cur/(parseFloat(objP)||1)*100)):0;
             return <div style={{padding:"10px 18px",borderBottom:"1px solid #ffffff08"}}>
-              <div style={{fontSize:9,color:neon,fontWeight:700,marginBottom:4}}>{currentPhaseName}{config.capital?` · ${parseInt(config.capital).toLocaleString()}${config.devise||"€"}`:""}</div>
-              {objectif.pnl&&<div style={{height:3,background:"#ffffff10",borderRadius:3,marginBottom:4}}><div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${neon}66,${neon})`,borderRadius:3,boxShadow:`0 0 6px ${neon}55`}}/></div>}
+              <div style={{fontSize:9,color:neon,fontWeight:700,marginBottom:4}}>{currentPhaseName}{activeAccount.capital?` · ${parseInt(activeAccount.capital).toLocaleString()}${activeAccount.devise||"€"}`:""}</div>
+              {objP&&<div style={{height:3,background:"#ffffff10",borderRadius:3,marginBottom:4}}><div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${neon}66,${neon})`,borderRadius:3,boxShadow:`0 0 6px ${neon}55`}}/></div>}
               <div style={{display:"flex",justifyContent:"space-between"}}>
                 <span style={{fontSize:8,color:"#ffffff44"}}>{lang==="fr"?"Phase en cours":"Current phase"}</span>
-                <span style={{fontSize:10,fontWeight:700,color:cur>=0?neon:"#ff4d4d"}}>{cur>=0?"+":""}{cur.toFixed(1)}%{objectif.pnl?<span style={{fontSize:8,color:"#ffffff44",fontWeight:400}}> / +{objectif.pnl}%</span>:null}</span>
+                <span style={{fontSize:10,fontWeight:700,color:cur>=0?neon:"#ff4d4d"}}>{cur>=0?"+":""}{cur.toFixed(1)}%{objP?<span style={{fontSize:8,color:"#ffffff44",fontWeight:400}}> / +{objP}%</span>:null}</span>
               </div>
             </div>;
           })()}
@@ -2668,30 +2647,65 @@ export default function App() {
       <div ref={pageRef} className={isDesktop?"":"grid-bg"} style={{flex:1,overflowY:"auto",height:"100vh",maxWidth:isDesktop?"none":480,margin:isDesktop?0:"0 auto",paddingBottom:isDesktop?0:80,minWidth:0}}>
         <div style={{maxWidth:isDesktop?960:480,margin:"0 auto"}}>
 
-      {!isDesktop&&<div style={{padding:"16px 20px 10px",borderBottom:`1px solid ${neon}1a`,background:"linear-gradient(180deg,#111118 0%,#0c0c12 100%)",backdropFilter:"blur(8px)"}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <div><SplashLogo neon={neon}/><div style={{fontSize:10,color:"#ffffff44",marginTop:4}}>{config.strategyName}</div></div>
-          <button onClick={()=>setShowExport(true)} className="btn" style={{background:`${neon}0f`,border:`1px solid ${neon}26`,borderRadius:8,padding:"7px 11px",color:`${neon}99`,fontSize:13}}>↓</button>
-        </div>
-      </div>}
-
-      {!isDesktop&&(objectif.pnl||config.capital)&&(()=>{
+      {!isDesktop&&(()=>{
         const cur=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
-        const target=parseFloat(objectif.pnl)||1;
-        const pct=objectif.pnl?Math.min(100,Math.max(0,cur/target*100)):0;
-        return <div style={{background:"rgba(9,9,16,0.6)",borderBottom:`1px solid #ffffff06`,padding:"7px 18px 6px"}}>
-          {objectif.pnl&&<div style={{height:3,background:"#ffffff10",borderRadius:3,marginBottom:6}}>
-            <div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${neon}66,${neon})`,borderRadius:3,transition:"width 0.6s ease",boxShadow:`0 0 8px ${neon}55`}}/>
-          </div>}
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span style={{fontSize:10,color:neon,fontFamily:MONO,fontWeight:700,letterSpacing:0.5}}>
-              {currentPhaseName}{config.capital?` · ${parseInt(config.capital).toLocaleString()}${config.devise||"€"}`:""}
-            </span>
-            <span style={{fontSize:11,fontWeight:800,color:cur>=0?neon:"#ff4d4d",fontFamily:MONO}}>
-              {cur>=0?"+":""}{cur.toFixed(1)}%{objectif.pnl?<span style={{fontSize:9,color:"#ffffff44",fontWeight:400}}> / +{objectif.pnl}%</span>:null}
-            </span>
+        const objPnlAcc=activeAccount.objPnl||objectif.pnl||"";
+        const target=parseFloat(objPnlAcc)||0;
+        const pct=target?Math.min(100,Math.max(0,cur/target*100)):0;
+        const pnlColor=cur>=0?neon:"#ff4d4d";
+        return (
+          <div style={{background:"linear-gradient(180deg,#111118 0%,#0c0c12 100%)",borderBottom:`1px solid ${neon}1a`,backdropFilter:"blur(8px)"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px 8px"}}>
+              <Logo size="sm" neon={neon}/>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                {/* ── Account Switcher Dropdown ── */}
+                <div style={{position:"relative"}}>
+                  <button onClick={()=>setShowAccSwitcher(v=>!v)} style={{display:"flex",alignItems:"center",gap:7,background:`${activeAccount.color||neon}0d`,border:`1px solid ${activeAccount.color||neon}35`,borderRadius:10,padding:"7px 11px",cursor:"pointer"}}>
+                    <div style={{width:7,height:7,borderRadius:"50%",background:activeAccount.color||neon,boxShadow:`0 0 6px ${activeAccount.color||neon}`,flexShrink:0}}/>
+                    <span style={{fontSize:11,fontWeight:700,color:"#ffffff",fontFamily:MONO,maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{currentPhaseName}</span>
+                    <span style={{fontSize:11,fontWeight:800,color:pnlColor,fontFamily:MONO}}>{cur>=0?"+":""}{cur.toFixed(1)}%</span>
+                    <span style={{fontSize:9,color:`${activeAccount.color||neon}66`}}>▾</span>
+                  </button>
+                  {showAccSwitcher&&(
+                    <div style={{position:"absolute",top:"calc(100% + 6px)",right:0,zIndex:200,background:"#0f0f18",border:`1px solid ${neon}20`,borderRadius:12,padding:6,minWidth:220,boxShadow:"0 16px 48px rgba(0,0,0,0.9)"}} onClick={e=>e.stopPropagation()}>
+                      {accounts.map(acc=>{
+                        const isA=acc.id===activeAccountId;
+                        const ac=acc.color||neon;
+                        const accTr=trades.filter(x=>(x.accountId||"default")===acc.id);
+                        const accPnl=accTr.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
+                        const accWR=accTr.length?Math.round(accTr.filter(x=>x.result==="WIN").length/accTr.length*100):0;
+                        return(
+                          <button key={acc.id} onClick={()=>{setActiveAccountId(acc.id);setShowAccSwitcher(false);saveData({accounts,activeAccountId:acc.id,trades,noTrades});}}
+                            style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 10px",background:isA?`${ac}12`:"transparent",border:`1px solid ${isA?ac+"30":"transparent"}`,borderRadius:8,cursor:"pointer",marginBottom:3}}>
+                            <div style={{display:"flex",alignItems:"center",gap:7}}>
+                              <div style={{width:7,height:7,borderRadius:"50%",background:ac,flexShrink:0}}/>
+                              <span style={{fontSize:11,fontWeight:isA?700:400,color:isA?"#ffffff":"#ffffffcc",fontFamily:MONO}}>{acc.name}</span>
+                              {isA&&<span style={{fontSize:8,color:ac,background:`${ac}15`,padding:"1px 5px",borderRadius:4,fontFamily:MONO}}>EN COURS</span>}
+                            </div>
+                            <div style={{textAlign:"right"}}>
+                              <div style={{fontSize:11,fontWeight:700,color:accPnl>=0?ac:"#ff4d4d",fontFamily:MONO}}>{accPnl>=0?"+":""}{Math.round(accPnl*10)/10}%</div>
+                              {accTr.length>0&&<div style={{fontSize:9,color:"#ffffff44",fontFamily:MONO}}>{accWR}% · {accTr.length}t</div>}
+                            </div>
+                          </button>
+                        );
+                      })}
+                      <div style={{borderTop:`1px solid ${neon}12`,marginTop:4,paddingTop:6}}>
+                        <button onClick={()=>{setShowAccSwitcher(false);setView("settings");scrollToTop();}}
+                          style={{width:"100%",background:"transparent",border:`1px dashed ${neon}25`,borderRadius:8,padding:"8px 0",color:`${neon}55`,fontSize:10,fontWeight:700,fontFamily:MONO,cursor:"pointer"}}>
+                          ⚙ {lang==="fr"?"Gérer les comptes":"Manage accounts"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <button onClick={()=>setShowExport(true)} className="btn" style={{background:`${neon}0f`,border:`1px solid ${neon}26`,borderRadius:8,padding:"7px 11px",color:`${neon}99`,fontSize:13}}>↓</button>
+              </div>
+            </div>
+            {target>0&&<div style={{height:2,background:"#ffffff08",margin:"0 14px 8px"}}>
+              <div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${neon}66,${neon})`,borderRadius:2,transition:"width 0.6s ease",boxShadow:`0 0 8px ${neon}55`}}/>
+            </div>}
           </div>
-        </div>;
+        );
       })()}
       {!isDesktop&&<div id="tut-nav" style={{display:"flex",gap:6,padding:"10px 20px",borderBottom:`1px solid ${neon}14`}}>
         {[["dashboard",t.stats],["log",editingId?t.editLabel:`+ ${t.addTrade.replace("+ ","")}`],["history",t.history],["settings",t.settings]].map(([v,l])=>(
@@ -3005,8 +3019,15 @@ export default function App() {
               ))}
             </div>
 
-            {phases.length>0&&<div style={{display:"flex",gap:4,marginBottom:8,overflowX:"auto",paddingBottom:2}}>
-              {[["ALL",lang==="fr"?"Toutes phases":"All phases"],["0",config.phaseName||(lang==="fr"?"Phase 1":"Phase 1")],...phases.map((ph,i)=>[String(i+1),ph.name||(lang==="fr"?`Phase ${i+2}`:`Phase ${i+2}`)])].filter(([v])=>v==="ALL"||(phases.length===0&&v==="0")||(phases.length>0&&v!=="ALL")).map(([v,l])=>(
+            {accounts.length>1&&<div style={{display:"flex",gap:4,marginBottom:8,overflowX:"auto",paddingBottom:2}}>
+              {[["ALL",lang==="fr"?"Tous comptes":"All"],...accounts.map(a=>[a.id,a.name])].map(([v,l])=>(
+                <button key={v} className="btn" onClick={()=>setHistAccount(v)} style={{background:histAccount===v?`${(accounts.find(a=>a.id===v)?.color||neon)}22`:"transparent",border:`1px solid ${histAccount===v?(accounts.find(a=>a.id===v)?.color||neon):`${neon}1a`}`,color:histAccount===v?(accounts.find(a=>a.id===v)?.color||neon):"#ffffffaa",borderRadius:5,padding:"4px 10px",fontSize:9,fontWeight:700,fontFamily:MONO,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:4}}>
+                  {v!=="ALL"&&<div style={{width:5,height:5,borderRadius:"50%",background:accounts.find(a=>a.id===v)?.color||neon}}/>}{l}
+                </button>
+              ))}
+            </div>}
+            {activePhases.length>0&&<div style={{display:"flex",gap:4,marginBottom:8,overflowX:"auto",paddingBottom:2}}>
+              {[["ALL",lang==="fr"?"Toutes phases":"All phases"],["0",activeAccount.name||(lang==="fr"?"Phase 1":"Phase 1")],...activePhases.map((ph,i)=>[String(i+1),ph.name||(lang==="fr"?`Phase ${i+2}`:`Phase ${i+2}`)])].filter(([v])=>v==="ALL"||(activePhases.length===0&&v==="0")||(activePhases.length>0&&v!=="ALL")).map(([v,l])=>(
                 <button key={v} className="btn" onClick={()=>setHistPhase(v)} style={{background:histPhase===v?`${neon}1a`:"transparent",border:`1px solid ${histPhase===v?neon:`${neon}1a`}`,color:histPhase===v?neon:"#ffffffaa",borderRadius:5,padding:"4px 10px",fontSize:9,fontWeight:700,fontFamily:MONO,whiteSpace:"nowrap"}}>{l}</button>
               ))}
             </div>}
@@ -3018,15 +3039,15 @@ export default function App() {
           {(()=>{
             const els=[];let lastPk=null;
             for(const x of mergedHistory){
-              if(x._type==="trade"&&phases.length>0){
+              if(x._type==="trade"&&activePhases.length>0){
                 const pk=getPhaseKey(x.id);
                 if(lastPk!==null&&pk!==lastPk){
-                  const phStart=lastPk>0?phases[lastPk-1].date:"0000-00-00";
-                  const phEnd=lastPk<phases.length?phases[lastPk].date:"9999-99-99";
-                  const phTr=trades.filter(z=>z.date>=phStart&&z.date<phEnd);
+                  const phStart=lastPk>0?activePhases[lastPk-1].date:"0000-00-00";
+                  const phEnd=lastPk<activePhases.length?activePhases[lastPk].date:"9999-99-99";
+                  const phTr=trades.filter(z=>(z.accountId||"default")===activeAccount.id&&z.date>=phStart&&z.date<phEnd);
                   const phWR=phTr.length?Math.round(phTr.filter(z=>z.result==="WIN").length/phTr.length*100):0;
                   const phPnl=phTr.reduce((s,z)=>s+(parseFloat(z.pnlPct)||0),0);
-                  els.push(<div key={`sep-${lastPk}`} style={{display:"flex",alignItems:"center",gap:8,margin:"4px 0 14px"}}><div style={{flex:1,height:1,background:`${neon}18`}}/><div style={{background:`${neon}08`,border:`1px solid ${neon}20`,borderRadius:8,padding:"5px 12px",textAlign:"center",flexShrink:0}}><span style={{fontSize:9,color:neon,fontFamily:MONO,fontWeight:700,letterSpacing:1}}>{lastPk===0?(config.phaseName||(lang==="fr"?"Phase 1":"Phase 1")):(phases[lastPk-1]?.name||("Phase "+(lastPk+1)))}</span><span style={{fontSize:9,color:"#ffffff44",fontFamily:MONO}}> · {t.phaseSince} {phStart}</span><span style={{fontSize:9,color:"#ffffffaa",fontFamily:MONO}}> · {phTr.length}t · {phWR}% · {fmtPct(phPnl)}</span></div><div style={{flex:1,height:1,background:`${neon}18`}}/></div>);
+                  els.push(<div key={`sep-${lastPk}`} style={{display:"flex",alignItems:"center",gap:8,margin:"4px 0 14px"}}><div style={{flex:1,height:1,background:`${neon}18`}}/><div style={{background:`${neon}08`,border:`1px solid ${neon}20`,borderRadius:8,padding:"5px 12px",textAlign:"center",flexShrink:0}}><span style={{fontSize:9,color:neon,fontFamily:MONO,fontWeight:700,letterSpacing:1}}>{lastPk===0?(activeAccount.name||(lang==="fr"?"Phase 1":"Phase 1")):(activePhases[lastPk-1]?.name||("Phase "+(lastPk+1)))}</span><span style={{fontSize:9,color:"#ffffff44",fontFamily:MONO}}> · {t.phaseSince} {phStart}</span><span style={{fontSize:9,color:"#ffffffaa",fontFamily:MONO}}> · {phTr.length}t · {phWR}% · {fmtPct(phPnl)}</span></div><div style={{flex:1,height:1,background:`${neon}18`}}/></div>);
                 }
                 lastPk=pk;
               }
@@ -3094,11 +3115,25 @@ export default function App() {
         currentUserRef.current=null;
         try{localStorage.removeItem("tmt_user");}catch(e){}
         if(auth) try{ await signOut(auth); }catch(e){}
-        setTrades([]);setNoTrades([]);setPhases([]);setPhase("onboarding");
+        setTrades([]);setNoTrades([]);setAccounts([mkAccount("default","Mon compte")]);setActiveAccountId("default");setPhase("onboarding");
       }} onReset={()=>setShowReset(true)} onNewPhase={handleNewPhase} lang={lang} onLangChange={l=>{
         setLang(l);
-        if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{lang:l});
-      }} neon={neon} phases={phases} onPhasesChange={np=>{setPhases(np);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{phases:np});}} onObjectifChange={obj=>{setObjectif(obj);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{objectif:obj});}} onImport={()=>setShowImport(true)}/>}
+        saveData({lang:l,accounts,activeAccountId,trades,noTrades,config});
+      }} neon={neon}
+      accounts={accounts} activeAccountId={activeAccountId}
+      onAccountsChange={(newAccs,newActiveId)=>{
+        setAccounts(newAccs);
+        if(newActiveId)setActiveAccountId(newActiveId);
+        saveData({accounts:newAccs,activeAccountId:newActiveId||activeAccountId,trades,noTrades});
+      }}
+      activePhases={activePhases}
+      onPhasesChange={np=>{
+        const newAccounts=accounts.map(a=>a.id===activeAccountId?{...a,phases:np}:a);
+        setAccounts(newAccounts);
+        saveData({accounts:newAccounts,activeAccountId,trades,noTrades});
+      }}
+      onObjectifChange={obj=>{setObjectif(obj);saveData({objectif:obj});}}
+      onImport={()=>setShowImport(true)}/>}
 
       {!isDesktop&&<div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(9,9,16,0.97)",backdropFilter:"blur(12px)",borderTop:`1px solid ${neon}18`,padding:"10px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div style={{fontSize:9,color:`${neon}22`,fontFamily:"'Geist Mono','IBM Plex Mono',monospace"}}>◈ TrackMyTrade</div>
@@ -3109,7 +3144,7 @@ export default function App() {
       {showStats&&<StatsInsightsModal trades={trades} lang={lang} neon={neon} onClose={()=>setShowStats(false)}/>}
       {showShare&&<ShareModal trade={shareTarget} trades={trades} lang={lang} neon={neon} config={config} onClose={()=>{setShowShare(false);setShareTarget(null);}}/> }
       {showReset&&<ResetModal trades={trades} onReset={handleReset} onClose={()=>setShowReset(false)} lang={lang} neon={neon}/>}
-      {showNewPhase&&<NewPhaseModal onConfirm={data=>{handleNewPhase(data);setShowNewPhase(false);}} onClose={()=>setShowNewPhase(false)} lang={lang} neon={neon} phases={phases} config={config}/>}
+      {showNewPhase&&<NewPhaseModal onConfirm={data=>{handleNewPhase(data);setShowNewPhase(false);}} onClose={()=>setShowNewPhase(false)} lang={lang} neon={neon} phases={activePhases} config={config}/>}
       </div>
       </div>
     </div>
