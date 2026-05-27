@@ -58,6 +58,13 @@ const today = () => new Date().toISOString().split("T")[0];
 const rc = (r, neon="#00ff9d") => r==="WIN"?neon:r==="LOSS"?"#ff4d4d":"#f0b429";
 const fmtPct = v => { if(v===""||v===null||v===undefined) return "—"; const n=Number(v),abs=Math.abs(n); const s=abs%1===0?abs.toFixed(0):abs*10%1===0?abs.toFixed(1):abs*100%1===0?abs.toFixed(2):abs.toFixed(3); return `${n>=0?"+":""}${n<0?"-":""}${s}%`; };
 const calcDisc = list => { if(!list||!list.length) return null; return Math.round((list.filter(x=>x.conforming).length/list.length*0.6+list.filter(x=>!x.isRevenge).length/list.length*0.4)*10); };
+// ── MODULES & TIMEFRAMES ──
+const ALL_TIMEFRAMES = ["M1","M5","M15","M30","H1","H4","D1"];
+const DEFAULT_TIMEFRAMES = ["M1","M5","M15","M30","H1","H4","D1"];
+// Un module est actif sauf s'il est explicitement mis à false → users existants = tout activé
+const modOn = (config, key) => (config && config.modules) ? config.modules[key] !== false : true;
+// Liste des timeframes configurés (repli sur défaut si absent/vide)
+const getTimeframes = (config) => (config && Array.isArray(config.timeframes) && config.timeframes.length) ? config.timeframes : DEFAULT_TIMEFRAMES;
 // ── COMPTES ──
 const ACCOUNT_COLORS = ["#00ff9d","#00d4ff","#bf00ff","#ff00aa","#f0b429","#ff6b35","#4ecdc4","#a8e063"];
 const mkAccount = (id, name, color, opts={}) => ({id, name, color: color||ACCOUNT_COLORS[0], capital: opts.capital||"", devise: opts.devise||"€", accountType: opts.accountType||"perso", objPnl: opts.objPnl||"", objDrawdown: opts.objDrawdown||"", archived: opts.archived||false});
@@ -373,6 +380,11 @@ function AdvancedStats({trades,neon,lang}) {
   trades.forEach(x=>{if(!aMap[x.asset])aMap[x.asset]={w:0,t:0};aMap[x.asset].t++;if(x.result==="WIN")aMap[x.asset].w++;});
   const best=Object.entries(aMap).filter(([,v])=>v.t>=2).sort((a,b)=>(b[1].w/b[1].t)-(a[1].w/a[1].t))[0];
   const revs=trades.filter(x=>x.isRevenge);
+  const grossWin=wins.reduce((s,x)=>s+Math.abs(parseFloat(x.pnlPct)||0),0);
+  const grossLoss=losses.reduce((s,x)=>s+Math.abs(parseFloat(x.pnlPct)||0),0);
+  const pf=grossLoss>0?grossWin/grossLoss:(grossWin>0?Infinity:0);
+  const pfStr=pf===Infinity?"∞":pf.toFixed(2);
+  const pfColor=pf>=1.5?neon:pf>=1?"#f0b429":"#ff4d4d";
   return (
     <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:16,marginBottom:12}}>
       <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>{t.statsTitle}</div>
@@ -381,7 +393,8 @@ function AdvancedStats({trades,neon,lang}) {
         {best&&<div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{t.bestAsset}</div><div style={{fontSize:14,fontWeight:700,color:neon,fontFamily:MONO}}>{best[0]}</div><div style={{fontSize:10,color:"#ffffffaa"}}>{Math.round(best[1].w/best[1].t*100)}% WR</div></div>}
         <div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{t.avgWin}</div><div style={{fontSize:16,fontWeight:700,color:neon,fontFamily:MONO,textShadow:`0 0 14px ${neon}99`}}>{fmtPct(avgWin)}</div></div>
         <div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{t.avgLoss}</div><div style={{fontSize:16,fontWeight:700,color:"#ff4d4d",fontFamily:MONO,textShadow:"0 0 14px #ff4d4d99"}}>-{avgLoss%1===0?avgLoss.toFixed(0):avgLoss.toFixed(1)}%</div></div>
-        {wins.length>0&&losses.length>0&&(()=>{const r=avgWin/avgLoss;return<div style={{background:`${neon}08`,borderRadius:8,padding:10,gridColumn:"1/-1"}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{t.ratio}</div><div style={{fontSize:16,fontWeight:700,color:r>=1?neon:"#f0b429",fontFamily:MONO}}>{r.toFixed(2)}</div></div>;})()}
+        {wins.length>0&&losses.length>0&&(()=>{const r=avgWin/avgLoss;return<div style={{background:`${neon}08`,borderRadius:8,padding:10}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{t.ratio}</div><div style={{fontSize:16,fontWeight:700,color:r>=1?neon:"#f0b429",fontFamily:MONO}}>{r.toFixed(2)}</div></div>;})()}
+        {(grossWin>0||grossLoss>0)&&<div style={{background:`${neon}08`,borderRadius:8,padding:10}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{lang==="fr"?"Profit Factor":"Profit Factor"}</div><div style={{fontSize:16,fontWeight:700,color:pfColor,fontFamily:MONO,textShadow:`0 0 14px ${pfColor}99`}}>{pfStr}</div></div>}
         {revs.length>0&&<div style={{background:"rgba(255,77,77,0.06)",border:"1px solid rgba(255,77,77,0.15)",borderRadius:8,padding:10,gridColumn:"1/-1"}}><div style={{fontSize:9,color:"#ff4d4d",marginBottom:4}}>REVENGE TRADES</div><div style={{fontSize:14,fontWeight:700,color:"#ff4d4d",fontFamily:MONO}}>{revs.length} · {Math.round(revs.filter(x=>x.result==="LOSS").length/revs.length*100)}% LOSS</div></div>}
       </div>
     </div>
@@ -560,8 +573,8 @@ function TradeDetailModal({trade,config,onClose,onEdit,onShare,lang,neon,account
             })}
           </div>
         </div>}
-        {trade.isRevenge&&<div style={{background:"rgba(255,77,77,0.1)",border:"1px solid rgba(255,77,77,0.3)",borderRadius:8,padding:"8px 12px",marginBottom:14,fontSize:11,color:"#ff4d4d",fontFamily:MONO}}>REVENGE TRADE</div>}
-        {hasCI&&<div style={{background:`${neon}05`,border:`1px solid ${neon}18`,borderRadius:8,padding:"10px 12px",marginBottom:14}}>
+        {modOn(config,"revenge")&&trade.isRevenge&&<div style={{background:"rgba(255,77,77,0.1)",border:"1px solid rgba(255,77,77,0.3)",borderRadius:8,padding:"8px 12px",marginBottom:14,fontSize:11,color:"#ff4d4d",fontFamily:MONO}}>REVENGE TRADE</div>}
+        {modOn(config,"checkin")&&hasCI&&<div style={{background:`${neon}05`,border:`1px solid ${neon}18`,borderRadius:8,padding:"10px 12px",marginBottom:14}}>
           <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>CHECK-IN</div>
           <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
             {ci.humeur&&<span style={{fontSize:11,padding:"4px 10px",background:`${neon}12`,border:`1px solid ${neon}26`,borderRadius:6,color:"#ffffff",fontFamily:MONO}}>{ci.humeur}</span>}
@@ -573,7 +586,7 @@ function TradeDetailModal({trade,config,onClose,onEdit,onShare,lang,neon,account
             <div>
               <div style={{fontSize:18,fontWeight:700,color:"#ffffff",fontFamily:MONO}}>{trade.asset} · {trade.direction}</div>
               <div style={{fontSize:11,color:"#ffffffaa",marginTop:4}}>{trade.date}{trade.time?" · "+trade.time:""}</div>
-              {trade.slDirection&&<div style={{fontSize:10,marginTop:4,color:trade.slDirection==="with"?neon:"#ff4d4d"}}>{trade.slDirection==="with"?`✓ ${lang==="fr"?"Dans mon sens":"My way"}`:`✗ ${lang==="fr"?"Contre moi":"Against me"}`}</div>}
+              {modOn(config,"postSl")&&trade.slDirection&&<div style={{fontSize:10,marginTop:4,color:trade.slDirection==="with"?neon:"#ff4d4d"}}>{trade.slDirection==="with"?`✓ ${lang==="fr"?"Dans mon sens":"My way"}`:`✗ ${lang==="fr"?"Contre moi":"Against me"}`}</div>}
             </div>
             <div style={{textAlign:"right"}}>
               <div style={{fontSize:22,fontWeight:800,color:rc(trade.result,neon),fontFamily:MONO,textShadow:`0 0 20px ${rc(trade.result,neon)}cc, 0 2px 6px rgba(0,0,0,0.6)`,display:"flex",alignItems:"center",gap:6}}>{trade.result==="WIN"&&<IcoWin neon={neon} size={22}/>}{trade.result==="LOSS"&&<IcoLoss size={22}/>}{trade.result==="BE"&&<IcoBE size={22}/>}{trade.result}</div>
@@ -589,7 +602,7 @@ function TradeDetailModal({trade,config,onClose,onEdit,onShare,lang,neon,account
               <div style={{fontSize:12,color:trade.conforming?neon:"#ff4d4d",fontWeight:700,marginTop:3}}>{trade.conforming?t.conformLabel:t.nonConformLabel}</div>
             </div>
           </div>
-          {trade.rejetScore>0&&<div style={{flex:1,background:`${neon}0a`,border:`1px solid ${neon}1a`,borderRadius:8,padding:12,display:"flex",alignItems:"center",gap:10}}>
+          {modOn(config,"rejet")&&trade.rejetScore>0&&<div style={{flex:1,background:`${neon}0a`,border:`1px solid ${neon}1a`,borderRadius:8,padding:12,display:"flex",alignItems:"center",gap:10}}>
             <div style={{fontSize:28,fontWeight:800,color:trade.rejetScore>=8?neon:trade.rejetScore>=5?"#f0b429":"#ff4d4d",fontFamily:MONO}}>{trade.rejetScore}</div>
             <div>
               <div style={{fontSize:10,color:"#ffffffbb",letterSpacing:1}}>{t.rejectLabel}</div>
@@ -1222,6 +1235,11 @@ function StatsInsightsModal({trades,lang,neon,onClose}) {
   const avgWin=wins.length?wins.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0)/wins.length:0;
   const avgLoss=losses.length?Math.abs(losses.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0)/losses.length):0;
   const ratio=avgLoss>0?(avgWin/avgLoss):0;
+  const grossWin=wins.reduce((s,x)=>s+Math.abs(parseFloat(x.pnlPct)||0),0);
+  const grossLoss=losses.reduce((s,x)=>s+Math.abs(parseFloat(x.pnlPct)||0),0);
+  const pf=grossLoss>0?grossWin/grossLoss:(grossWin>0?Infinity:0);
+  const pfStr=pf===Infinity?"∞":pf.toFixed(2);
+  const pfColor=pf>=1.5?neon:pf>=1?"#f0b429":"#ff4d4d";
   const totalPnl=trades.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
   const fmtP=v=>{const n=Number(v),a=Math.abs(n);return`${n>=0?"+":""}${a%1===0?a.toFixed(0):a.toFixed(1)}%`;};
 
@@ -1266,7 +1284,7 @@ function StatsInsightsModal({trades,lang,neon,onClose}) {
   // Insights texte
   const insights=[];
   if(fr){
-    insights.push({type:"global",icon:"diamond",txt:`Sur ${trades.length} trades, tu affiches ${wr}% WR pour ${fmtP(totalPnl)} de P&L total. ${wr>=55?"Ton edge est réel.":wr>=45?"Proche de l'équilibre.":"Travaille la sélection des setups."} Ratio G/P : ${ratio.toFixed(2)}${ratio>=1.5?" — excellent.":" — à améliorer."} Discipline : ${disc}/10.`});
+    insights.push({type:"global",icon:"diamond",txt:`Sur ${trades.length} trades, tu affiches ${wr}% WR pour ${fmtP(totalPnl)} de P&L total. ${wr>=55?"Ton edge est réel.":wr>=45?"Proche de l'équilibre.":"Travaille la sélection des setups."} Ratio G/P : ${ratio.toFixed(2)} · Profit Factor : ${pfStr}${pf>=1.5?" — excellent.":pf>=1?" — correct.":" — à améliorer."} Discipline : ${disc}/10.`});
     if(conf.length>=2&&nconf.length>=2) insights.push({type:confWR-nconfWR>10?"good":"warn",icon:confWR-nconfWR>10?"check":"warn",txt:`Conformes : ${confWR}% WR vs ${nconfWR}% non-conformes.${confWR-nconfWR>10?` +${confWR-nconfWR}% quand tu respectes tes règles.`:""}`});
     if(assetStats.length>=2) insights.push({type:"asset",icon:"actif",txt:`${assetStats[0].a} est ton meilleur actif (${assetStats[0].wr}% WR, ${fmtP(assetStats[0].pnl)}).${assetStats[assetStats.length-1].wr<40?` Évite ${assetStats[assetStats.length-1].a} — seulement ${assetStats[assetStats.length-1].wr}% WR.`:""}`});
     if(dayStats.length>=2) insights.push({type:dayStats[dayStats.length-1].wr<40?"warn":"day",icon:"clock",txt:`Tu trades mieux le ${dayStats[0].day} (${dayStats[0].wr}% WR).${dayStats[dayStats.length-1].wr<40?` Le ${dayStats[dayStats.length-1].day} est ta pire journée (${dayStats[dayStats.length-1].wr}% WR).`:""}`});
@@ -1275,7 +1293,7 @@ function StatsInsightsModal({trades,lang,neon,onClose}) {
     if(highRWR!==null&&lowRWR!==null) insights.push({type:highRWR>lowRWR?"good":"neutral",icon:"star",txt:`Rejet ≥8 : ${highRWR}% WR vs ${lowRWR}% avec rejet <8.${highRWR-lowRWR>15?" La qualité du rejet change tout.":""}`});
     if(revs.length>0) insights.push({type:"danger",icon:"flame",txt:`${revs.length} revenge trade${revs.length>1?"s":""} — ${Math.round(revs.filter(x=>x.result==="LOSS").length/revs.length*100)}% de pertes. Stop.`});
   } else {
-    insights.push({type:"global",icon:"diamond",txt:`Over ${trades.length} trades, ${wr}% WR for ${fmtP(totalPnl)} P&L. ${wr>=55?"Your edge is real.":wr>=45?"Near breakeven.":"Work on setup selection."} R/R: ${ratio.toFixed(2)}. Discipline: ${disc}/10.`});
+    insights.push({type:"global",icon:"diamond",txt:`Over ${trades.length} trades, ${wr}% WR for ${fmtP(totalPnl)} P&L. ${wr>=55?"Your edge is real.":wr>=45?"Near breakeven.":"Work on setup selection."} R/R: ${ratio.toFixed(2)} · Profit Factor: ${pfStr}. Discipline: ${disc}/10.`});
     if(conf.length>=2&&nconf.length>=2) insights.push({type:confWR-nconfWR>10?"good":"warn",icon:confWR-nconfWR>10?"check":"warn",txt:`Compliant: ${confWR}% WR vs ${nconfWR}% non-compliant.${confWR-nconfWR>10?` +${confWR-nconfWR}% when following rules.`:""}`});
     if(assetStats.length>=2) insights.push({type:"asset",icon:"actif",txt:`${assetStats[0].a} is your best asset (${assetStats[0].wr}% WR, ${fmtP(assetStats[0].pnl)}).${assetStats[assetStats.length-1].wr<40?` Avoid ${assetStats[assetStats.length-1].a} — only ${assetStats[assetStats.length-1].wr}% WR.`:""}`});
     if(dayStats.length>=2) insights.push({type:dayStats[dayStats.length-1].wr<40?"warn":"day",icon:"clock",txt:`Best day: ${dayStats[0].day} (${dayStats[0].wr}% WR).${dayStats[dayStats.length-1].wr<40?` Worst: ${dayStats[dayStats.length-1].day} (${dayStats[dayStats.length-1].wr}% WR).`:""}`});
@@ -1329,6 +1347,19 @@ function StatsInsightsModal({trades,lang,neon,onClose}) {
             </div>
           ))}
         </div>
+
+        {/* KPI ligne 2 : Ratio G/P + Profit Factor */}
+        {(wins.length>0||losses.length>0)&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,padding:"0 20px 8px"}}>
+          {[
+            {l:fr?"RATIO G/P":"WIN/LOSS",v:ratio>0?ratio.toFixed(2):"—",c:ratio>=1?neon:"#f0b429",delay:"0.24s"},
+            {l:"PROFIT FACTOR",v:pfStr,c:pfColor,delay:"0.3s"},
+          ].map(({l,v,c,delay})=>(
+            <div key={l} style={{background:`${c}0c`,border:`1px solid ${c}22`,borderRadius:10,padding:"10px 0",textAlign:"center",animation:`kpiPop 0.5s cubic-bezier(0.34,1.56,0.64,1) ${delay} both`}}>
+              <div style={{fontSize:8,color:`${neon}44`,fontFamily:MONO2,letterSpacing:1,marginBottom:4}}>{l}</div>
+              <div style={{fontSize:20,fontWeight:800,color:c,fontFamily:MONO2,lineHeight:1}}>{v}</div>
+            </div>
+          ))}
+        </div>}
 
         {/* Discipline */}
         <div style={{margin:"0 20px 14px",background:`${discC}08`,border:`1px solid ${discC}18`,borderRadius:10,padding:"12px 14px"}}>
@@ -1403,6 +1434,11 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
   const discC = disc>=8?neon:disc>=5?"#f0b429":"#ff4d4d";
   const confPct = week.length?Math.round(wConf/week.length*100):0;
   const noRevPct = week.length?Math.round((1-wRev/week.length)*100):100;
+  const wGrossWin = week.filter(x=>x.result==="WIN").reduce((s,x)=>s+Math.abs(parseFloat(x.pnlPct)||0),0);
+  const wGrossLoss = week.filter(x=>x.result==="LOSS").reduce((s,x)=>s+Math.abs(parseFloat(x.pnlPct)||0),0);
+  const wPf = wGrossLoss>0?wGrossWin/wGrossLoss:(wGrossWin>0?Infinity:0);
+  const wPfStr = wPf===Infinity?"∞":wPf.toFixed(2);
+  const wPfColor = wPf>=1.5?neon:wPf>=1?"#f0b429":"#ff4d4d";
 
   // Insights semaine
   const insights = [];
@@ -1514,6 +1550,12 @@ function ShareModal({trade, trades, lang, neon, config, onClose}) {
                 <span style={{fontSize:9,color:`${neon}44`,fontFamily:M,letterSpacing:2}}>DISCIPLINE</span>
                 <span style={{fontSize:24,fontWeight:800,color:discC,fontFamily:M}}>{disc}<span style={{fontSize:12,color:`${neon}33`}}>/10</span></span>
               </div>
+              {(wGrossWin>0||wGrossLoss>0)&&<div style={{display:"flex",gap:8,marginBottom:10}}>
+                <div style={{flex:1,background:`${neon}06`,border:`1px solid ${neon}12`,borderRadius:8,padding:"7px 0",textAlign:"center"}}>
+                  <div style={{fontSize:7,color:`${neon}44`,fontFamily:M,letterSpacing:1,marginBottom:3}}>PROFIT FACTOR</div>
+                  <div style={{fontSize:15,fontWeight:800,color:wPfColor,fontFamily:M,lineHeight:1}}>{wPfStr}</div>
+                </div>
+              </div>}
               {[{l:fr?"Conformité":"Compliance",v:confPct,c:neon},{l:fr?"Sans revenge":"No revenge",v:noRevPct,c:wRev===0?neon:"#f0b429"}].map(({l,v,c})=>(
                 <div key={l} style={{marginBottom:8}}>
                   <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
@@ -1747,8 +1789,13 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
   const [acctEditName,setAcctEditName]=useState("");
   const [acctEditDate,setAcctEditDate]=useState("");
   const [acctDelConfirm,setAcctDelConfirm]=useState(null);
+  const [archOpen,setArchOpen]=useState(false);
+  const [modules,setModules]=useState({rejet:modOn(config,"rejet"),checkin:modOn(config,"checkin"),postSl:modOn(config,"postSl"),revenge:modOn(config,"revenge"),timeframe:modOn(config,"timeframe")});
+  const [timeframes,setTimeframes]=useState(getTimeframes(config));
+  const toggleTf=(tf)=>setTimeframes(prev=>{const has=prev.includes(tf);if(has&&prev.length<=1)return prev;const next=has?prev.filter(x=>x!==tf):[...prev,tf];return ALL_TIMEFRAMES.filter(x=>next.includes(x));});
   const save=()=>{
-    onSave({items,threshold,strategyName:stratName,maxTrades,neonColor,calendarOn,notifOn,customAssets:assets,eliminatoires,defaultTimeframe:defaultTf});
+    const dft=timeframes.includes(defaultTf)?defaultTf:timeframes[0];
+    onSave({items,threshold,strategyName:stratName,maxTrades,neonColor,calendarOn,notifOn,customAssets:assets,eliminatoires,defaultTimeframe:dft,modules,timeframes});
     setSavedOk(true);setTimeout(()=>setSavedOk(false),2000);};
   const doSaveAcct=(idx)=>{
     const name=acctEditName.trim()||"Phase";
@@ -1802,7 +1849,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
             <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,fontFamily:MONO}}>{fr?"MES COMPTES":"MY ACCOUNTS"} · {(accounts||[]).length}</div>
             <button onClick={()=>onCreateAccount&&onCreateAccount()} className="btn" style={{background:`${neonColor}14`,border:`1px solid ${neonColor}30`,color:neonColor,borderRadius:8,padding:"6px 12px",fontSize:10,fontWeight:700,fontFamily:MONO}}>+ {fr?"Ajouter":"Add"}</button>
           </div>
-          {(accounts||[]).map(acc=>{
+          {(accounts||[]).filter(a=>!a.archived).concat(archOpen?(accounts||[]).filter(a=>a.archived):[]).map(acc=>{
             const isActive=acc.id===activeAccountId;
             const c=acc.color||neonColor;
             const isDelC=acctDelConfirm===acc.id;
@@ -1873,6 +1920,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
               </div>
             );
           })}
+          {(accounts||[]).some(a=>a.archived)&&<button onClick={()=>setArchOpen(o=>!o)} className="btn" style={{width:"100%",background:"transparent",border:`1px solid ${neonColor}14`,color:"#ffffff77",borderRadius:10,padding:"10px 0",fontSize:10,fontWeight:700,fontFamily:MONO,marginTop:4}}>⊘ {fr?"Comptes archivés":"Archived accounts"} ({(accounts||[]).filter(a=>a.archived).length}) {archOpen?"▲":"▼"}</button>}
         </div>;
       })()}
 
@@ -1898,13 +1946,35 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
           <input value={customAsset} onChange={e=>setCustomAsset(e.target.value)} placeholder={t.customAsset} onKeyDown={e=>{if(e.key==="Enter"&&customAsset.trim()){setAssets([...assets,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} style={{...inSt,marginBottom:0,flex:1}}/>
           <button onClick={()=>{if(customAsset.trim()){setAssets([...assets,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} className="btn" style={{background:`${neonColor}1a`,border:`1px solid ${neonColor}55`,color:neonColor,borderRadius:8,padding:"0 14px",fontSize:18}}>+</button>
         </div>
-        {/* ── Timeframe par défaut ── */}
+        {/* ── Modules activables ── */}
         <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
-          <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>TIMEFRAME</div>
-          <div style={{display:"flex",gap:4}}>
-            {["M1","M5","M15","H1","H4","D1"].map(tf=>(
+          <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:4}}>{fr?"MODULES DU FORMULAIRE":"FORM MODULES"}</div>
+          <div style={{fontSize:9,color:"#ffffff44",marginBottom:8,lineHeight:1.5}}>{fr?"Active ou masque des champs à la saisie. Les données déjà enregistrées sont conservées.":"Show or hide fields when logging. Existing data is kept."}</div>
+          {[["rejet",fr?"Qualité du rejet (1-10)":"Rejection quality (1-10)"],["checkin",fr?"Check-in (humeur / biais)":"Check-in (mood / bias)"],["postSl",fr?"Direction post-SL":"Post-SL direction"],["revenge",fr?"Revenge trade":"Revenge trade"],["timeframe",fr?"Timeframe":"Timeframe"]].map(([key,label])=>(()=>{
+            const val=modules[key]!==false;
+            return <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${neonColor}0d`}}>
+              <span style={{fontSize:12,color:"#ffffff",fontFamily:MONO}}>{label}</span>
+              <button onClick={()=>setModules(m=>({...m,[key]:!val}))} className="btn" style={{width:44,height:24,borderRadius:12,background:val?`${neonColor}33`:"#ffffff12",border:`1px solid ${val?neonColor:`${neonColor}30`}`,position:"relative",transition:"all 0.2s"}}>
+                <div style={{width:16,height:16,borderRadius:"50%",background:val?neonColor:"#ffffffaa",position:"absolute",top:3,left:val?24:4,transition:"all 0.2s"}}/>
+              </button>
+            </div>;
+          })())}
+        </div>
+        {/* ── Timeframes visibles + défaut ── */}
+        {modules.timeframe!==false&&<div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
+          <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:4}}>{fr?"TIMEFRAMES AFFICHÉS":"VISIBLE TIMEFRAMES"}</div>
+          <div style={{fontSize:9,color:"#ffffff44",marginBottom:8}}>{fr?"Coche ceux que tu utilises (min. 1).":"Tick the ones you use (min. 1)."}</div>
+          <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:14}}>
+            {ALL_TIMEFRAMES.map(tf=>{
+              const on=timeframes.includes(tf);
+              return <button key={tf} onClick={()=>toggleTf(tf)} className="btn" style={{flex:"1 0 13%",minWidth:42,padding:"9px 0",borderRadius:8,fontSize:10,fontWeight:700,fontFamily:MONO,background:on?`${neonColor}26`:"#131318",border:`1px solid ${on?neonColor:"#ffffff0d"}`,color:on?neonColor:"#ffffff55"}}>{tf}</button>;
+            })}
+          </div>
+          <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:8}}>{fr?"TIMEFRAME PAR DÉFAUT":"DEFAULT TIMEFRAME"}</div>
+          <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+            {timeframes.map(tf=>(
               <button key={tf} onClick={()=>setDefaultTf(tf)} className="btn"
-                style={{flex:1,padding:"9px 0",borderRadius:8,fontSize:9,fontWeight:700,fontFamily:MONO,
+                style={{flex:"1 0 13%",minWidth:42,padding:"9px 0",borderRadius:8,fontSize:9,fontWeight:700,fontFamily:MONO,
                   background:defaultTf===tf?`${neonColor}18`:"#131318",
                   border:`1px solid ${defaultTf===tf?neonColor:"#ffffff0d"}`,
                   color:defaultTf===tf?neonColor:"#ffffffbb"}}>
@@ -1912,7 +1982,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
               </button>
             ))}
           </div>
-        </div>
+        </div>}
         <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.thresholdLabel}</div>
         <div style={{display:"flex",gap:6,marginBottom:16}}>
           {[4,5,6,7,8].map(n=><button key={n} onClick={()=>setThreshold(n)} className="btn" style={{flex:1,padding:8,borderRadius:8,fontSize:13,fontWeight:700,fontFamily:MONO,background:threshold===n?`${neonColor}33`:"#131318",border:`1px solid ${threshold===n?neonColor:`${neonColor}22`}`,color:threshold===n?neonColor:"#ffffffbb"}}>{n}</button>)}
@@ -2376,6 +2446,8 @@ export default function App() {
   const [phaseEditName,setPhaseEditName]=useState("");       // rename input value
   const [phaseDeleteConfirmIdx,setPhaseDeleteConfirmIdx]=useState(null); // which phase has delete confirm open
   const [view,setView]=useState("dashboard");
+  const [accSwitchOpen,setAccSwitchOpen]=useState(false);
+  const [histArchOpen,setHistArchOpen]=useState(false);
   const [form,setForm]=useState(emptyForm("XAU/USD","M5"));
   const [editingId,setEditingId]=useState(null);
   const [checkinOpen,setCheckinOpen]=useState(false);
@@ -2384,7 +2456,7 @@ export default function App() {
   const [histAsset,setHistAsset]=useState("ALL");
   const [confirmDeleteId,setConfirmDeleteId]=useState(null);
   const [detailTrade,setDetailTrade]=useState(null);
-  const [config,setConfig]=useState({items:DEFAULT_CRITERIA,threshold:6,strategyName:"Ma Stratégie",defaultAsset:"XAU/USD",maxTrades:1,neonColor:"#00ff9d",calendarOn:true,notifOn:true,customAssets:[...PRESET_ASSETS],capital:"",devise:"€",accountType:"perso",phaseStartDate:""});
+  const [config,setConfig]=useState({items:DEFAULT_CRITERIA,threshold:6,strategyName:"Ma Stratégie",defaultAsset:"XAU/USD",maxTrades:1,neonColor:"#00ff9d",calendarOn:true,notifOn:true,customAssets:[...PRESET_ASSETS],capital:"",devise:"€",accountType:"perso",phaseStartDate:"",modules:{rejet:true,checkin:true,postSl:true,revenge:true,timeframe:true},timeframes:[...DEFAULT_TIMEFRAMES]});
   const fileRef=useRef();const pageRef=useRef();const weeklyShownRef=useRef(false);const currentUserRef=useRef(null);
   const neon=config.neonColor||"#00ff9d";const t=T[lang];const inSt=mkInput(neon);
   // Couleurs dérivées du neon pour une cohérence visuelle complète
@@ -2718,7 +2790,7 @@ export default function App() {
             <div style={{marginBottom:6}}><SplashLogo neon={neon}/></div>
             <div style={{fontSize:10,color:"#ffffff33",letterSpacing:1}}>{config.strategyName}</div>
           </div>
-          {(objectif.pnl||config.capital)&&(()=>{
+          {statsMode!=="all"&&(objectif.pnl||config.capital)&&(()=>{
             const cur=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
             const pct=objectif.pnl?Math.min(100,Math.max(0,cur/(parseFloat(objectif.pnl)||1)*100)):0;
             return <div style={{padding:"10px 18px",borderBottom:"1px solid #ffffff08"}}>
@@ -2761,21 +2833,33 @@ export default function App() {
           <Logo size="sm" neon={neon}/>
           <button onClick={()=>setShowExport(true)} className="btn" style={{background:`${neon}0f`,border:`1px solid ${neon}26`,borderRadius:8,padding:"6px 10px",color:`${neon}99`,fontSize:13}}>↓</button>
         </div>
-        {activeAccounts.length>1&&<div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:2}}>
-          {activeAccounts.map(acc=>{
-            const isA=acc.id===activeAccountId;const c=acc.color||neon;
-            const accPnl=trades.filter(x=>(x.accountId||"ph_0")===acc.id).reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
-            return <button key={acc.id} onClick={()=>switchAccount(acc.id)} className="btn"
-              style={{display:"flex",alignItems:"center",gap:5,background:isA?`${c}18`:"#131318",border:`1px solid ${isA?c:`${c}22`}`,borderRadius:8,padding:"6px 10px",flexShrink:0}}>
-              <div style={{width:7,height:7,borderRadius:"50%",background:c,boxShadow:isA?`0 0 6px ${c}`:undefined,flexShrink:0}}/>
-              <span style={{fontSize:10,fontWeight:isA?700:400,color:isA?"#ffffff":"#ffffffaa",fontFamily:MONO,whiteSpace:"nowrap"}}>{acc.name}</span>
-              <span style={{fontSize:10,fontWeight:700,color:accPnl>=0?c:"#ff4d4d",fontFamily:MONO}}>{accPnl>=0?"+":""}{Math.round(accPnl*10)/10}%</span>
-            </button>;
-          })}
-        </div>}
+        {activeAccounts.length>1&&activeAccount&&(()=>{
+          const c=activeAccount.color||neon;
+          const accPnl=trades.filter(x=>(x.accountId||"ph_0")===activeAccount.id).reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
+          return <div style={{position:"relative"}}>
+            <button onClick={()=>setAccSwitchOpen(o=>!o)} className="btn"
+              style={{width:"100%",display:"flex",alignItems:"center",gap:8,background:`${c}14`,border:`1px solid ${accSwitchOpen?c:`${c}28`}`,borderRadius:accSwitchOpen?"10px 10px 0 0":10,padding:"9px 12px"}}>
+              <div style={{width:9,height:9,borderRadius:"50%",background:c,boxShadow:`0 0 6px ${c}`,flexShrink:0}}/>
+              <span style={{fontSize:12,fontWeight:700,color:"#ffffff",fontFamily:MONO,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",flex:1,textAlign:"left"}}>{activeAccount.name}</span>
+              <span style={{fontSize:11,fontWeight:700,color:accPnl>=0?c:"#ff4d4d",fontFamily:MONO,flexShrink:0}}>{accPnl>=0?"+":""}{Math.round(accPnl*10)/10}%</span>
+              <span style={{fontSize:10,color:`${c}99`,flexShrink:0,transition:"transform 0.2s",transform:accSwitchOpen?"rotate(180deg)":"none"}}>▼</span>
+            </button>
+            {accSwitchOpen&&<>
+              <div onClick={()=>setAccSwitchOpen(false)} style={{position:"fixed",inset:0,zIndex:40}}/>
+              <div className="slide-up" style={{position:"absolute",top:"100%",left:0,right:0,zIndex:41,background:"#0f0f16",border:`1px solid ${c}28`,borderTop:"none",borderRadius:"0 0 10px 10px",overflow:"hidden",boxShadow:"0 12px 32px rgba(0,0,0,0.6)"}}>
+                {activeAccounts.filter(a=>a.id!==activeAccountId).map(acc=>(
+                  <button key={acc.id} onClick={()=>{switchAccount(acc.id);setAccSwitchOpen(false);}} className="row"
+                    style={{width:"100%",display:"flex",alignItems:"center",background:"transparent",border:"none",borderTop:`1px solid ${neon}0a`,padding:"11px 14px",cursor:"pointer"}}>
+                    <span style={{fontSize:12,fontWeight:500,color:"#ffffffcc",fontFamily:MONO,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",flex:1,textAlign:"left"}}>{acc.name}</span>
+                  </button>
+                ))}
+              </div>
+            </>}
+          </div>;
+        })()}
       </div>}
 
-      {!isDesktop&&(objectif.pnl||config.capital)&&(()=>{
+      {!isDesktop&&statsMode!=="all"&&(objectif.pnl||config.capital)&&(()=>{
         const cur=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
         const target=parseFloat(objectif.pnl)||1;
         const pct=objectif.pnl?Math.min(100,Math.max(0,cur/target*100)):0;
@@ -2886,7 +2970,7 @@ export default function App() {
                         {gain!==null&&<span style={{fontSize:10,color:c,opacity:0.75,fontFamily:MONO}}>{gain>=0?"+":""}{gain.toLocaleString()}{dv}</span>}
                       </span>;
                     })()}
-                    {trades[0].isRevenge&&<span style={{fontSize:10,padding:"2px 7px",borderRadius:4,background:"rgba(255,77,77,0.15)",color:"#ff4d4d",border:"1px solid rgba(255,77,77,0.3)"}}>REVENGE</span>}
+                    {modOn(config,"revenge")&&trades[0].isRevenge&&<span style={{fontSize:10,padding:"2px 7px",borderRadius:4,background:"rgba(255,77,77,0.15)",color:"#ff4d4d",border:"1px solid rgba(255,77,77,0.3)"}}>REVENGE</span>}
                     <span style={{fontSize:10,padding:"2px 7px",borderRadius:4,background:trades[0].conforming?`${neon}1a`:"rgba(255,77,77,0.1)",color:trades[0].conforming?neon:"#ff4d4d",border:`1px solid ${trades[0].conforming?`${neon}35`:"rgba(255,77,77,0.2)"}`}}>{trades[0].conforming?t.conformLabel:t.nonConformLabel}</span>
                   </div>
                 </div>
@@ -2922,7 +3006,7 @@ export default function App() {
           {editingId!==null&&editingTrade&&<div style={{background:"rgba(240,180,41,0.08)",border:"1px solid rgba(240,180,41,0.3)",borderRadius:10,padding:"12px 14px",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style={{fontSize:11,color:"#f0b429",fontWeight:700,marginBottom:2}}>{t.modifyTrade}</div><div style={{fontSize:10,color:"#ffffffaa"}}>{editingTrade.asset} · {editingTrade.date}</div></div><button onClick={cancelEdit} className="btn" style={{background:"transparent",border:"1px solid rgba(240,180,41,0.4)",color:"#f0b429",borderRadius:6,padding:"5px 10px",fontSize:10,fontFamily:MONO,fontWeight:700}}>{t.cancelEdit}</button></div>}
           {editingId===null&&<div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:16,textTransform:"uppercase"}}>{t.newTrade}</div>}
 
-          <div style={{marginBottom:14}}>
+          {modOn(config,"checkin")&&<div style={{marginBottom:14}}>
             <button onClick={()=>setCheckinOpen(!checkinOpen)} className="btn" style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",background:checkinOpen?`${neon}0d`:"transparent",border:`1px solid ${checkinOpen?neon:`${neon}26`}`,borderRadius:checkinOpen?"10px 10px 0 0":10,color:checkinOpen?neon:"#ffffffbb",fontFamily:MONO,fontSize:12}}>
               <span>{checkinOpen?"▼":"▶"} {t.checkinToggle}{(form.checkin.humeur||form.checkin.biais)?" ✓":""}</span>
               <span style={{fontSize:9,color:"#ffffff44"}}>{t.optional}</span>
@@ -2949,7 +3033,7 @@ export default function App() {
                 </div>
               </div>
             )}
-          </div>
+          </div>}
 
           {activeAccounts.length>1&&<div style={{marginBottom:12}}>
             <div style={{fontSize:8,color:"#ffffff33",letterSpacing:2,marginBottom:6}}>{lang==="fr"?"COMPTE":"ACCOUNT"}</div>
@@ -2972,23 +3056,23 @@ export default function App() {
             {["BUY","SELL"].map(d=><button key={d} onClick={()=>setForm({...form,direction:d})} className="btn" style={{flex:1,padding:10,background:form.direction===d?(d==="BUY"?`${neon}33`:"rgba(255,77,77,0.2)"):"#131318",border:`1px solid ${form.direction===d?(d==="BUY"?neon:"#ff4d4d"):`${neon}35`}`,color:form.direction===d?(d==="BUY"?neon:"#ff4d4d"):"#ffffff44",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO}}>{d}</button>)}
           </div>
           {/* Timeframe */}
-          <div style={{marginBottom:10}}>
+          {modOn(config,"timeframe")&&<div style={{marginBottom:10}}>
             <div style={{fontSize:8,color:"#ffffff33",letterSpacing:2,marginBottom:6}}>TIMEFRAME</div>
             <div style={{display:"flex",gap:4}}>
-              {["M1","M5","M15","H1","H4","D1"].map(tf=>(
+              {getTimeframes(config).map(tf=>(
                 <button key={tf} onClick={()=>{setForm({...form,timeframe:tf});const nc={...config,lastTimeframe:tf};setConfig(nc);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:nc});}} className="btn"
                   style={{flex:1,padding:"7px 0",background:form.timeframe===tf?`${neon}18`:"#131318",border:`1px solid ${form.timeframe===tf?neon:"#ffffff0d"}`,borderRadius:7,fontSize:9,fontWeight:700,color:form.timeframe===tf?neon:"#ffffffbb",fontFamily:MONO}}>
                   {tf}
                 </button>
               ))}
             </div>
-          </div>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",background:"rgba(255,77,77,0.06)",border:"1px solid rgba(255,77,77,0.15)",borderRadius:8,marginBottom:10}}>
+          </div>}
+          {modOn(config,"revenge")&&<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",background:"rgba(255,77,77,0.06)",border:"1px solid rgba(255,77,77,0.15)",borderRadius:8,marginBottom:10}}>
             <span style={{fontSize:12,color:form.isRevenge||isRevengeNow?"#ff4d4d":"#ffffffbb",fontFamily:MONO}}>{t.revengeLabel} {(form.isRevenge||isRevengeNow)?"⚠️":""}</span>
             <button onClick={()=>setForm({...form,isRevenge:!form.isRevenge})} className="btn" style={{width:44,height:24,borderRadius:12,background:(form.isRevenge||isRevengeNow)?"rgba(255,77,77,0.3)":"#ffffff12",border:`1px solid ${(form.isRevenge||isRevengeNow)?"#ff4d4d":"rgba(255,77,77,0.2)"}`,position:"relative",transition:"all 0.2s"}}>
               <div style={{width:16,height:16,borderRadius:"50%",background:(form.isRevenge||isRevengeNow)?"#ff4d4d":"#ffffffaa",position:"absolute",top:3,left:(form.isRevenge||isRevengeNow)?24:4,transition:"all 0.2s"}}/>
             </button>
-          </div>
+          </div>}
           <div style={{background:"#131318",border:`1px solid ${neon}26`,borderRadius:10,padding:14,marginBottom:10}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
               <div><div style={{fontSize:9,color:"#ffffff44",letterSpacing:2}}>{t.checklistSetup}</div><div style={{fontSize:10,marginTop:4,color:form.checklist.length>=config.threshold?neon:"#ff4d4d"}}>{form.checklist.length>=config.threshold?t.conform:`⚠ ${config.threshold-form.checklist.length} ${t.missing}`}</div></div>
@@ -3001,7 +3085,7 @@ export default function App() {
               </label>
             ))}
           </div>
-          <div style={{background:"#131318",border:`1px solid ${neon}1a`,borderRadius:10,padding:"12px 14px",marginBottom:10}}>
+          {modOn(config,"rejet")&&<div style={{background:"#131318",border:`1px solid ${neon}1a`,borderRadius:10,padding:"12px 14px",marginBottom:10}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
               <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2}}>{t.rejectQuality} <span style={{color:"#ffffffaa"}}>{t.optional}</span></div>
               {form.rejetScore>0&&<span style={{fontSize:15,fontWeight:800,color:form.rejetScore>=8?neon:form.rejetScore>=5?"#f0b429":"#ff4d4d",fontFamily:MONO}}>{form.rejetScore}/10</span>}
@@ -3011,9 +3095,9 @@ export default function App() {
                 <button key={n} onClick={()=>setForm({...form,rejetScore:form.rejetScore===n?0:n})} className="btn" style={{flex:1,padding:"6px 0",borderRadius:5,fontSize:11,fontWeight:700,fontFamily:MONO,background:form.rejetScore>=n?(n>=8?`${neon}33`:n>=5?"rgba(240,180,41,0.2)":"rgba(255,77,77,0.2)"):"#131318",border:`1px solid ${form.rejetScore>=n?(n>=8?neon:n>=5?"#f0b429":"#ff4d4d"):"#ffffff12"}`,color:form.rejetScore>=n?(n>=8?neon:n>=5?"#f0b429":"#ff4d4d"):"#ffffffbb"}}>{n}</button>
               ))}
             </div>
-          </div>
+          </div>}
           <div style={{display:"flex",gap:8,marginBottom:10}}>{["WIN","LOSS","BE"].map(r=><button key={r} onClick={()=>setForm({...form,result:r,slDirection:r!=="LOSS"?"":form.slDirection})} className="btn" style={{flex:1,background:form.result===r?`${rc(r,neon)}22`:"#131318",border:`1px solid ${form.result===r?rc(r,neon):`${neon}26`}`,color:form.result===r?rc(r,neon):"#ffffffbb",borderRadius:8,padding:10,fontSize:12,fontWeight:700,fontFamily:MONO}}>{r}</button>)}</div>
-          {form.result==="LOSS"&&(
+          {modOn(config,"postSl")&&form.result==="LOSS"&&(
             <div style={{background:"rgba(255,77,77,0.06)",border:"1px solid rgba(255,77,77,0.15)",borderRadius:8,padding:"10px 12px",marginBottom:10}}>
               <div style={{fontSize:9,color:"#ff4d4d",letterSpacing:2,marginBottom:8}}>{t.slDirectionLabel} <span style={{color:"#ffffffaa"}}>{t.optional}</span></div>
               <div style={{display:"flex",gap:8}}>
@@ -3117,14 +3201,25 @@ export default function App() {
               ))}
             </div>
 
-            {accounts.length>1&&<div style={{display:"flex",gap:4,marginBottom:8,overflowX:"auto",paddingBottom:2}}>
-              {[["ALL",lang==="fr"?"Tous":"All"],...accounts.map(a=>[a.id,`${a.archived?"⊘ ":""}${a.name}`])].map(([v,l])=>{
-                const ac=accounts.find(a=>a.id===v);const c=ac?.color||neon;
-                return <button key={v} className="btn" onClick={()=>setHistAccount(v)} style={{background:histAccount===v?(v==="ALL"?`${neon}1a`:`${c}22`):"transparent",border:`1px solid ${histAccount===v?(v==="ALL"?neon:c):`${neon}1a`}`,color:histAccount===v?(v==="ALL"?neon:c):"#ffffffaa",borderRadius:5,padding:"4px 10px",fontSize:9,fontWeight:700,fontFamily:MONO,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:4}}>
+            {accounts.length>1&&(()=>{
+              const liveAccs=accounts.filter(a=>!a.archived);
+              const archAccs=accounts.filter(a=>a.archived);
+              const pill=(v,l,c)=>(
+                <button key={v} className="btn" onClick={()=>setHistAccount(v)} style={{background:histAccount===v?(v==="ALL"?`${neon}1a`:`${c}22`):"transparent",border:`1px solid ${histAccount===v?(v==="ALL"?neon:c):`${neon}1a`}`,color:histAccount===v?(v==="ALL"?neon:c):"#ffffffaa",borderRadius:5,padding:"4px 10px",fontSize:9,fontWeight:700,fontFamily:MONO,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:4}}>
                   {v!=="ALL"&&<div style={{width:5,height:5,borderRadius:"50%",background:c}}/>}{l}
-                </button>;
-              })}
-            </div>}
+                </button>
+              );
+              return <div style={{marginBottom:8}}>
+                <div style={{display:"flex",gap:4,overflowX:"auto",paddingBottom:2,alignItems:"center"}}>
+                  {pill("ALL",lang==="fr"?"Tous":"All",neon)}
+                  {liveAccs.map(a=>pill(a.id,a.name,a.color||neon))}
+                  {archAccs.length>0&&<button className="btn" onClick={()=>setHistArchOpen(o=>!o)} style={{background:histArchOpen?`${neon}10`:"transparent",border:`1px solid ${neon}1a`,color:"#ffffff88",borderRadius:5,padding:"4px 10px",fontSize:9,fontWeight:700,fontFamily:MONO,whiteSpace:"nowrap",flexShrink:0}}>⊘ {lang==="fr"?"Archivés":"Archived"} ({archAccs.length}) {histArchOpen?"▲":"▼"}</button>}
+                </div>
+                {histArchOpen&&archAccs.length>0&&<div style={{display:"flex",gap:4,overflowX:"auto",paddingTop:6,paddingBottom:2}}>
+                  {archAccs.map(a=>pill(a.id,`⊘ ${a.name}`,a.color||neon))}
+                </div>}
+              </div>;
+            })()}
             {usedAssets.length>1&&<div style={{display:"flex",gap:4,marginBottom:14,overflowX:"auto",paddingBottom:4}}>
               {["ALL",...usedAssets].map(a=><button key={a} className="btn" onClick={()=>setHistAsset(a)} style={{background:histAsset===a?`${neon}1a`:"transparent",border:`1px solid ${histAsset===a?`${neon}55`:`${neon}1a`}`,color:histAsset===a?neon:"#ffffffaa",borderRadius:5,padding:"4px 8px",fontSize:9,fontWeight:700,fontFamily:MONO,whiteSpace:"nowrap"}}>{a}</button>)}
             </div>}
@@ -3151,7 +3246,7 @@ export default function App() {
                 els.push(
                   <div key={x.id} className="row" onClick={()=>setDetailTrade(x)} style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0a",borderRadius:14,padding:14,marginBottom:10,borderLeft:`3px solid ${rc(x.result,neon)}`}}>
                     <div style={{display:"flex",justifyContent:"space-between"}}>
-                      <div><div style={{fontSize:13,fontWeight:700,color:"#ffffff"}}>{x.asset} · {x.direction}{x.timeframe&&<span style={{fontSize:9,color:"#ffffff44",marginLeft:6,background:"#ffffff08",padding:"2px 6px",borderRadius:4,fontWeight:400}}>{x.timeframe}</span>}</div><div style={{fontSize:10,color:"#ffffff66",marginTop:3}}>{x.date}{x.time?" · "+x.time:""}</div></div>
+                      <div><div style={{fontSize:13,fontWeight:700,color:"#ffffff"}}>{x.asset} · {x.direction}{modOn(config,"timeframe")&&x.timeframe&&<span style={{fontSize:9,color:"#ffffff44",marginLeft:6,background:"#ffffff08",padding:"2px 6px",borderRadius:4,fontWeight:400}}>{x.timeframe}</span>}</div><div style={{fontSize:10,color:"#ffffff66",marginTop:3}}>{x.date}{x.time?" · "+x.time:""}</div></div>
                       <div style={{display:"flex",gap:8,alignItems:"center"}}>
                         <ScoreRing score={x.setupScore} max={x.checklistMax||config.items.length} size={42} threshold={config.threshold} neon={neon}/>
                         <div style={{textAlign:"right"}}>
@@ -3173,11 +3268,11 @@ export default function App() {
                     <div style={{marginTop:8,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}>
                       <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                         <span style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:x.conforming?`${neon}1a`:"rgba(255,77,77,0.1)",color:x.conforming?neon:"#ff4d4d",border:`1px solid ${x.conforming?`${neon}35`:"rgba(255,77,77,0.2)"}`}}>{x.conforming?t.conformLabel:t.nonConformLabel}</span>
-                        {x.isRevenge&&<span style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:"rgba(255,77,77,0.15)",color:"#ff4d4d",border:"1px solid rgba(255,77,77,0.3)"}}>REVENGE</span>}
-                        {x.checkin?.humeur&&<span style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:`${neon}0d`,color:"#ffffffaa",border:`1px solid ${neon}18`}}>{x.checkin.humeur}</span>}
-                        {x.slDirection&&<span style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:x.slDirection==="with"?`${neon}15`:"rgba(255,77,77,0.1)",color:x.slDirection==="with"?neon:"#ff4d4d",border:`1px solid ${x.slDirection==="with"?`${neon}35`:"rgba(255,77,77,0.2)"}`}}>{x.slDirection==="with"?t.slWith:t.slAgainst}</span>}
+                        {modOn(config,"revenge")&&x.isRevenge&&<span style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:"rgba(255,77,77,0.15)",color:"#ff4d4d",border:"1px solid rgba(255,77,77,0.3)"}}>REVENGE</span>}
+                        {modOn(config,"checkin")&&x.checkin?.humeur&&<span style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:`${neon}0d`,color:"#ffffffaa",border:`1px solid ${neon}18`}}>{x.checkin.humeur}</span>}
+                        {modOn(config,"postSl")&&x.slDirection&&<span style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:x.slDirection==="with"?`${neon}15`:"rgba(255,77,77,0.1)",color:x.slDirection==="with"?neon:"#ff4d4d",border:`1px solid ${x.slDirection==="with"?`${neon}35`:"rgba(255,77,77,0.2)"}`}}>{x.slDirection==="with"?t.slWith:t.slAgainst}</span>}
                       </div>
-                      {x.rejetScore>0&&<span style={{fontSize:10,color:"#ffffff44"}}>{t.rejectStat} <b style={{color:x.rejetScore>=8?neon:x.rejetScore>=5?"#f0b429":"#ff4d4d"}}>{x.rejetScore}/10</b></span>}
+                      {modOn(config,"rejet")&&x.rejetScore>0&&<span style={{fontSize:10,color:"#ffffff44"}}>{t.rejectStat} <b style={{color:x.rejetScore>=8?neon:x.rejetScore>=5?"#f0b429":"#ff4d4d"}}>{x.rejetScore}/10</b></span>}
                     </div>
                     {x.notes&&<div style={{fontSize:11,color:"#ffffffaa",marginTop:6,fontStyle:"italic",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>"{x.notes}"</div>}
                     <div style={{marginTop:10,display:"flex",gap:8}} onClick={e=>e.stopPropagation()}>
