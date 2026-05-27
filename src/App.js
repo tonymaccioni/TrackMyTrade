@@ -537,10 +537,12 @@ function WeeklyRecapModal({trades,lang,neon,onClose,onShareWeek}) {
 
 function TradeDetailModal({trade,config,onClose,onEdit,onShare,lang,neon,accounts,onReassign}) {
   const t=T[lang];
+  const [reassignOpen,setReassignOpen]=useState(false);
   if(!trade) return null;
   const ci=trade.checkin;
   const hasCI=ci&&(ci.humeur||ci.biais);
   const fr=lang==="fr";
+  const currentAcc=(accounts||[]).find(a=>a.id===(trade.accountId||"ph_0"))||(accounts||[])[0];
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={onClose}>
       <div className="slide-up" style={{background:"#131318",border:`1px solid ${neon}35`,borderRadius:16,width:"100%",maxWidth:480,maxHeight:"88vh",overflow:"auto",padding:20}} onClick={e=>e.stopPropagation()}>
@@ -554,19 +556,34 @@ function TradeDetailModal({trade,config,onClose,onEdit,onShare,lang,neon,account
             <button onClick={onClose} style={{background:"transparent",border:"none",color:"#ffffffaa",fontSize:18,cursor:"pointer"}}>{t.closeBtn}</button>
           </div>
         </div>
-        {/* Réaffectation de compte */}
-        {accounts&&accounts.length>1&&onReassign&&<div style={{background:`${neon}05`,border:`1px solid ${neon}18`,borderRadius:8,padding:"10px 12px",marginBottom:14}}>
-          <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>{fr?"COMPTE":"ACCOUNT"}</div>
-          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-            {accounts.map(acc=>{
-              const sel=(trade.accountId||"ph_0")===acc.id;const c=acc.color||neon;
-              return <button key={acc.id} onClick={()=>onReassign(trade.id,acc.id)} className="btn"
-                style={{display:"flex",alignItems:"center",gap:5,padding:"6px 11px",background:sel?`${c}1e`:"#0f0f14",border:`1px solid ${sel?c:`${c}26`}`,borderRadius:8,fontSize:11,fontWeight:sel?700:400,color:sel?c:"#ffffffaa",fontFamily:MONO}}>
-                <div style={{width:6,height:6,borderRadius:"50%",background:c}}/>{acc.name}{acc.archived?" ⊘":""}
-              </button>;
-            })}
-          </div>
-        </div>}
+        {/* Réaffectation de compte (sélecteur déroulant) */}
+        {accounts&&accounts.length>1&&onReassign&&currentAcc&&(()=>{
+          const c=currentAcc.color||neon;
+          return <div style={{marginBottom:14}}>
+            <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:6,fontFamily:MONO}}>{fr?"COMPTE":"ACCOUNT"}</div>
+            <div style={{position:"relative"}}>
+              <button onClick={()=>setReassignOpen(o=>!o)} className="btn"
+                style={{width:"100%",display:"flex",alignItems:"center",gap:7,background:`${c}10`,border:`1px solid ${reassignOpen?c:`${c}28`}`,borderRadius:reassignOpen?"8px 8px 0 0":8,padding:"9px 12px",cursor:"pointer",textAlign:"left"}}>
+                <div style={{width:7,height:7,borderRadius:"50%",background:c,boxShadow:`0 0 4px ${c}`,flexShrink:0}}/>
+                <span style={{fontSize:12,fontWeight:700,color:"#ffffff",fontFamily:MONO,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",flex:1}}>{currentAcc.name}{currentAcc.archived?" ⊘":""}</span>
+                <span style={{fontSize:9,color:`${c}99`,flexShrink:0,transition:"transform 0.2s",transform:reassignOpen?"rotate(180deg)":"none"}}>▼</span>
+              </button>
+              {reassignOpen&&<>
+                <div onClick={()=>setReassignOpen(false)} style={{position:"fixed",inset:0,zIndex:310}}/>
+                <div className="slide-up" style={{position:"absolute",top:"100%",left:0,right:0,zIndex:311,background:"#0f0f16",border:`1px solid ${c}28`,borderTop:"none",borderRadius:"0 0 8px 8px",overflow:"hidden",boxShadow:"0 12px 32px rgba(0,0,0,0.6)"}}>
+                  {accounts.filter(a=>a.id!==currentAcc.id).map(acc=>{
+                    const ac=acc.color||neon;
+                    return <button key={acc.id} onClick={()=>{onReassign(trade.id,acc.id);setReassignOpen(false);}} className="row"
+                      style={{width:"100%",display:"flex",alignItems:"center",gap:7,background:"transparent",border:"none",borderTop:`1px solid ${neon}0a`,padding:"10px 12px",cursor:"pointer"}}>
+                      <div style={{width:6,height:6,borderRadius:"50%",background:ac,flexShrink:0}}/>
+                      <span style={{fontSize:11,fontWeight:500,color:"#ffffffcc",fontFamily:MONO,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",flex:1,textAlign:"left"}}>{acc.name}{acc.archived?" ⊘":""}</span>
+                    </button>;
+                  })}
+                </div>
+              </>}
+            </div>
+          </div>;
+        })()}
         {modOn(config,"revenge")&&trade.isRevenge&&<div style={{background:"rgba(255,77,77,0.1)",border:"1px solid rgba(255,77,77,0.3)",borderRadius:8,padding:"8px 12px",marginBottom:14,fontSize:11,color:"#ff4d4d",fontFamily:MONO}}>REVENGE TRADE</div>}
         {modOn(config,"checkin")&&hasCI&&<div style={{background:`${neon}05`,border:`1px solid ${neon}18`,borderRadius:8,padding:"10px 12px",marginBottom:14}}>
           <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>CHECK-IN</div>
@@ -2408,6 +2425,124 @@ function Tutorial({neon="#00ff9d", onEnd}) {
   );
 }
 
+// ── INSIGHTS : calcul des 4 conseils ──
+function computeInsights(trades, lang){
+  const fr = lang==="fr";
+  const insights = [];
+  if(!trades || trades.length < 10) return insights;
+  const wins = trades.filter(x=>x.result==="WIN");
+  const losses = trades.filter(x=>x.result==="LOSS");
+
+  // 1. CONFORMITÉ (priorité haute, edge actionnable)
+  const conf = trades.filter(x=>x.conforming);
+  const nconf = trades.filter(x=>!x.conforming);
+  if(conf.length>=3 && nconf.length>=3){
+    const cWR = Math.round(conf.filter(x=>x.result==="WIN").length/conf.length*100);
+    const nWR = Math.round(nconf.filter(x=>x.result==="WIN").length/nconf.length*100);
+    if(cWR - nWR >= 10){
+      insights.push({
+        type:"edge", emoji:"📊", color:"NEON",
+        title: fr?"La checklist paie":"Checklist pays off",
+        body: fr?`Conformes : ${cWR}% WR vs ${nWR}% sans checklist. Tu gagnes +${cWR-nWR}% en suivant tes règles.`
+             :`Compliant: ${cWR}% WR vs ${nWR}% without checklist. You gain +${cWR-nWR}% by sticking to rules.`
+      });
+    }
+  }
+
+  // 2. JOUR FORT / JOUR FAIBLE
+  const byDay = {};
+  trades.forEach(x=>{ const d=new Date(x.date).getDay(); if(!byDay[d]) byDay[d]={w:0,t:0}; byDay[d].t++; if(x.result==="WIN") byDay[d].w++; });
+  const daysFr=["Dim","Lun","Mar","Mer","Jeu","Ven","Sam"];
+  const daysEn=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const dayNames = fr?daysFr:daysEn;
+  const dayStats = Object.entries(byDay).filter(([,v])=>v.t>=2).map(([d,v])=>({day:dayNames[d], wr:Math.round(v.w/v.t*100), t:v.t})).sort((a,b)=>b.wr-a.wr);
+  if(dayStats.length>=2 && (dayStats[0].wr - dayStats[dayStats.length-1].wr) >= 15){
+    const best = dayStats[0];
+    const worst = dayStats[dayStats.length-1];
+    insights.push({
+      type:"pattern", emoji:"📅", color:"#00d4ff",
+      title: fr?"Pattern par jour":"Day pattern",
+      body: fr?`${best.day} : ${best.wr}% WR sur ${best.t} trades. ${worst.day} : ${worst.wr}% sur ${worst.t}. ${worst.wr<40?`Évite le ${worst.day}.`:`Concentre-toi sur tes meilleurs jours.`}`
+           :`${best.day}: ${best.wr}% WR over ${best.t} trades. ${worst.day}: ${worst.wr}% over ${worst.t}. ${worst.wr<40?`Avoid ${worst.day}.`:`Focus on your best days.`}`
+    });
+  }
+
+  // 3. STREAK DISCIPLINE OU ALERTE REVENGE
+  const now = new Date();
+  const cutoff14 = new Date(now.getTime() - 14*86400000).toISOString().split("T")[0];
+  const cutoff7 = new Date(now.getTime() - 7*86400000).toISOString().split("T")[0];
+  const last14 = trades.filter(x=>x.date>=cutoff14);
+  const last7 = trades.filter(x=>x.date>=cutoff7);
+  const rev14 = last14.filter(x=>x.isRevenge);
+  const rev7 = last7.filter(x=>x.isRevenge);
+  if(rev7.length >= 2){
+    const revWins = rev7.filter(x=>x.result==="WIN").length;
+    const revWR = Math.round(revWins/rev7.length*100);
+    insights.push({
+      type:"alert", emoji:"⚠", color:"#ff4d4d",
+      title: fr?"Revenge trades":"Revenge trades",
+      body: fr?`${rev7.length} revenge trades cette semaine. Win rate : ${revWR}%. La pause obligatoire serait moins chère.`
+           :`${rev7.length} revenge trades this week. Win rate: ${revWR}%. A mandatory pause would cost less.`
+    });
+  } else if(last14.length >= 5 && rev14.length === 0){
+    insights.push({
+      type:"reinforce", emoji:"✓", color:"NEON",
+      title: fr?"Discipline qui tient":"Discipline holds",
+      body: fr?`14 jours sans revenge trade sur ${last14.length} trades. Ne casse pas la série.`
+           :`14 days without a revenge trade over ${last14.length} trades. Keep the streak going.`
+    });
+  }
+
+  // 4. ASYMÉTRIE WIN/LOSS
+  if(wins.length>=5 && losses.length>=5){
+    const avgWin = wins.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0)/wins.length;
+    const avgLoss = Math.abs(losses.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0)/losses.length);
+    const ratio = avgLoss>0?avgWin/avgLoss:Infinity;
+    if(ratio < 1 && avgWin>0 && avgLoss>0){
+      insights.push({
+        type:"lever", emoji:"🎯", color:"#f0b429",
+        title: fr?"Asymétrie à corriger":"Asymmetry to fix",
+        body: fr?`Tes WIN font +${avgWin.toFixed(1)}% en moyenne, tes LOSS -${avgLoss.toFixed(1)}%. Tu coupes tes gains trop tôt, ou tu laisses traîner les pertes.`
+             :`Your WINs average +${avgWin.toFixed(1)}%, your LOSSes -${avgLoss.toFixed(1)}%. You cut winners too early, or let losers run.`
+      });
+    }
+  }
+
+  // Priorité : alert > edge > pattern > reinforce > lever, max 4
+  const order = {alert:0, edge:1, pattern:2, reinforce:3, lever:4};
+  return insights.sort((a,b)=>order[a.type]-order[b.type]).slice(0,4);
+}
+
+// ── Bloc Insights replié par défaut ──
+function InsightsBlock({trades, lang, neon}){
+  const fr = lang==="fr";
+  const [open, setOpen] = useState(false);
+  const insights = computeInsights(trades, lang);
+  if(insights.length === 0) return null;
+  return (<div style={{marginBottom:12}}>
+    <button onClick={()=>setOpen(o=>!o)} className="btn"
+      style={{width:"100%",display:"flex",alignItems:"center",gap:8,background:`${neon}08`,border:`1px solid ${open?neon:`${neon}26`}`,borderRadius:open?"10px 10px 0 0":10,padding:"10px 14px",cursor:"pointer",textAlign:"left"}}>
+      <span style={{fontSize:14}}>◈</span>
+      <span style={{fontSize:11,fontWeight:700,color:neon,fontFamily:MONO,letterSpacing:1.5,flex:1}}>
+        {fr?"INSIGHTS":"INSIGHTS"} · {insights.length} {fr?(insights.length>1?"actions pour progresser":"action pour progresser"):(insights.length>1?"actions to improve":"action to improve")}
+      </span>
+      <span style={{fontSize:10,color:`${neon}99`,transition:"transform 0.2s",transform:open?"rotate(180deg)":"none"}}>▼</span>
+    </button>
+    {open&&<div className="slide-up" style={{background:"#0f0f16",border:`1px solid ${neon}26`,borderTop:"none",borderRadius:"0 0 10px 10px",padding:"10px 12px"}}>
+      {insights.map((ins,i)=>{
+        const c = ins.color==="NEON"?neon:ins.color;
+        return <div key={i} style={{display:"flex",gap:10,padding:"10px 0",borderTop:i>0?`1px solid ${neon}0a`:"none"}}>
+          <div style={{fontSize:18,flexShrink:0,lineHeight:1,marginTop:1}}>{ins.emoji}</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:11,fontWeight:700,color:c,fontFamily:MONO,marginBottom:3,letterSpacing:0.5}}>{ins.title}</div>
+            <div style={{fontSize:11,color:"#ffffffbb",fontFamily:MONO,lineHeight:1.55}}>{ins.body}</div>
+          </div>
+        </div>;
+      })}
+    </div>}
+  </div>);
+}
+
 export default function App() {
   const [winW,setWinW]=useState(typeof window!=="undefined"?window.innerWidth:375);
   useEffect(()=>{const h=()=>setWinW(window.innerWidth);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
@@ -2780,7 +2915,7 @@ export default function App() {
 
       {/* ── SIDEBAR PC ── */}
       {isDesktop&&(
-        <div style={{width:240,minWidth:240,background:"#09090f",borderRight:"1px solid #ffffff0a",display:"flex",flexDirection:"column",height:"100vh",position:"sticky",top:0,flexShrink:0}}>
+        <div style={{width:200,minWidth:200,background:"#09090f",borderRight:"1px solid #ffffff0a",display:"flex",flexDirection:"column",height:"100vh",position:"sticky",top:0,flexShrink:0}}>
           <div style={{padding:"24px 18px 20px",borderBottom:"1px solid #ffffff08"}}>
             <div style={{marginBottom:6}}><SplashLogo neon={neon}/></div>
             <div style={{fontSize:10,color:"#ffffff33",letterSpacing:1}}>{config.strategyName}</div>
@@ -2928,7 +3063,7 @@ export default function App() {
             const dv=config.devise||"€";
             const gain=config.capital?Math.round(parseFloat(config.capital)*totalPnl/100):null;
             const cap_total=config.capital?Math.round(parseFloat(config.capital))+(gain||0):null;
-            const wrColor=winRate>=50?neon:"#ff4d4d";
+            const wrColor=winRate>=30?neon:"#ff4d4d";
             const pnlColor=totalPnl>=0?neon:"#ff4d4d";
             const pnlRound=Math.round(totalPnl*10)/10;
             return <div id="tut-kpi" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
@@ -3028,6 +3163,8 @@ export default function App() {
               </div>
             </div>
           )}
+          {/* Bloc Insights : 4 conseils, replié par défaut, à partir de 10 trades */}
+          <InsightsBlock trades={pf} lang={lang} neon={neon}/>
           {total>=3&&<button onClick={()=>setShowStats(true)} className="btn" style={{width:"100%",background:`${neon}0d`,border:`1px solid ${neon}28`,borderRadius:10,padding:"12px 0",color:neon,fontSize:11,fontWeight:700,fontFamily:MONO,letterSpacing:2,marginBottom:12}}>
             {lang==="fr"?"◈ RÉSUMÉ & INSIGHTS":"◈ SUMMARY & INSIGHTS"}
           </button>}
