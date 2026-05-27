@@ -380,11 +380,6 @@ function AdvancedStats({trades,neon,lang}) {
   trades.forEach(x=>{if(!aMap[x.asset])aMap[x.asset]={w:0,t:0};aMap[x.asset].t++;if(x.result==="WIN")aMap[x.asset].w++;});
   const best=Object.entries(aMap).filter(([,v])=>v.t>=2).sort((a,b)=>(b[1].w/b[1].t)-(a[1].w/a[1].t))[0];
   const revs=trades.filter(x=>x.isRevenge);
-  const grossWin=wins.reduce((s,x)=>s+Math.abs(parseFloat(x.pnlPct)||0),0);
-  const grossLoss=losses.reduce((s,x)=>s+Math.abs(parseFloat(x.pnlPct)||0),0);
-  const pf=grossLoss>0?grossWin/grossLoss:(grossWin>0?Infinity:0);
-  const pfStr=pf===Infinity?"∞":pf.toFixed(2);
-  const pfColor=pf>=1.5?neon:pf>=1?"#f0b429":"#ff4d4d";
   return (
     <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:16,marginBottom:12}}>
       <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>{t.statsTitle}</div>
@@ -393,8 +388,7 @@ function AdvancedStats({trades,neon,lang}) {
         {best&&<div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{t.bestAsset}</div><div style={{fontSize:14,fontWeight:700,color:neon,fontFamily:MONO}}>{best[0]}</div><div style={{fontSize:10,color:"#ffffffaa"}}>{Math.round(best[1].w/best[1].t*100)}% WR</div></div>}
         <div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{t.avgWin}</div><div style={{fontSize:16,fontWeight:700,color:neon,fontFamily:MONO,textShadow:`0 0 14px ${neon}99`}}>{fmtPct(avgWin)}</div></div>
         <div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{t.avgLoss}</div><div style={{fontSize:16,fontWeight:700,color:"#ff4d4d",fontFamily:MONO,textShadow:"0 0 14px #ff4d4d99"}}>-{avgLoss%1===0?avgLoss.toFixed(0):avgLoss.toFixed(1)}%</div></div>
-        {wins.length>0&&losses.length>0&&(()=>{const r=avgWin/avgLoss;return<div style={{background:`${neon}08`,borderRadius:8,padding:10}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{t.ratio}</div><div style={{fontSize:16,fontWeight:700,color:r>=1?neon:"#f0b429",fontFamily:MONO}}>{r.toFixed(2)}</div></div>;})()}
-        {(grossWin>0||grossLoss>0)&&<div style={{background:`${neon}08`,borderRadius:8,padding:10}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{lang==="fr"?"Profit Factor":"Profit Factor"}</div><div style={{fontSize:16,fontWeight:700,color:pfColor,fontFamily:MONO,textShadow:`0 0 14px ${pfColor}99`}}>{pfStr}</div></div>}
+        {wins.length>0&&losses.length>0&&(()=>{const r=avgWin/avgLoss;return<div style={{background:`${neon}08`,borderRadius:8,padding:10,gridColumn:"1/-1"}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{t.ratio}</div><div style={{fontSize:16,fontWeight:700,color:r>=1?neon:"#f0b429",fontFamily:MONO}}>{r.toFixed(2)}</div></div>;})()}
         {revs.length>0&&<div style={{background:"rgba(255,77,77,0.06)",border:"1px solid rgba(255,77,77,0.15)",borderRadius:8,padding:10,gridColumn:"1/-1"}}><div style={{fontSize:9,color:"#ff4d4d",marginBottom:4}}>REVENGE TRADES</div><div style={{fontSize:14,fontWeight:700,color:"#ff4d4d",fontFamily:MONO}}>{revs.length} · {Math.round(revs.filter(x=>x.result==="LOSS").length/revs.length*100)}% LOSS</div></div>}
       </div>
     </div>
@@ -2829,22 +2823,41 @@ export default function App() {
         <div style={{maxWidth:isDesktop?960:480,margin:"0 auto"}}>
 
       {!isDesktop&&<div style={{padding:"14px 16px 8px",borderBottom:`1px solid ${neon}1a`,background:"linear-gradient(180deg,#111118 0%,#0c0c12 100%)",backdropFilter:"blur(8px)"}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:activeAccounts.length>1?10:0}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:(activeAccounts.length>1||statsMode!=="all"&&(objectif.pnl||config.capital))?10:0}}>
           <Logo size="sm" neon={neon}/>
           <button onClick={()=>setShowExport(true)} className="btn" style={{background:`${neon}0f`,border:`1px solid ${neon}26`,borderRadius:8,padding:"6px 10px",color:`${neon}99`,fontSize:13}}>↓</button>
         </div>
-        {activeAccounts.length>1&&activeAccount&&(()=>{
+        {activeAccount&&(()=>{
           const c=activeAccount.color||neon;
           const accPnl=trades.filter(x=>(x.accountId||"ph_0")===activeAccount.id).reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
+          const hasObj=statsMode!=="all"&&(objectif.pnl||config.capital);
+          const target=parseFloat(objectif.pnl)||1;
+          const objPct=objectif.pnl?Math.min(100,Math.max(0,accPnl/target*100)):0;
+          const canSwitch=activeAccounts.length>1;
           return <div style={{position:"relative"}}>
-            <button onClick={()=>setAccSwitchOpen(o=>!o)} className="btn"
-              style={{width:"100%",display:"flex",alignItems:"center",gap:8,background:`${c}14`,border:`1px solid ${accSwitchOpen?c:`${c}28`}`,borderRadius:accSwitchOpen?"10px 10px 0 0":10,padding:"9px 12px"}}>
-              <div style={{width:9,height:9,borderRadius:"50%",background:c,boxShadow:`0 0 6px ${c}`,flexShrink:0}}/>
-              <span style={{fontSize:12,fontWeight:700,color:"#ffffff",fontFamily:MONO,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",flex:1,textAlign:"left"}}>{activeAccount.name}</span>
-              <span style={{fontSize:11,fontWeight:700,color:accPnl>=0?c:"#ff4d4d",fontFamily:MONO,flexShrink:0}}>{accPnl>=0?"+":""}{Math.round(accPnl*10)/10}%</span>
-              <span style={{fontSize:10,color:`${c}99`,flexShrink:0,transition:"transform 0.2s",transform:accSwitchOpen?"rotate(180deg)":"none"}}>▼</span>
+            <button onClick={()=>canSwitch&&setAccSwitchOpen(o=>!o)} className="btn" disabled={!canSwitch}
+              style={{width:"100%",background:`${c}14`,border:`1px solid ${accSwitchOpen?c:`${c}28`}`,borderRadius:accSwitchOpen?"10px 10px 0 0":10,padding:"10px 12px",cursor:canSwitch?"pointer":"default",textAlign:"left"}}>
+              {/* Ligne 1 : pastille + nom + P&L + flèche */}
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:hasObj?7:0}}>
+                <div style={{width:9,height:9,borderRadius:"50%",background:c,boxShadow:`0 0 6px ${c}`,flexShrink:0}}/>
+                <span style={{fontSize:12,fontWeight:700,color:"#ffffff",fontFamily:MONO,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",flex:1}}>{activeAccount.name}</span>
+                <span style={{fontSize:11,fontWeight:700,color:accPnl>=0?c:"#ff4d4d",fontFamily:MONO,flexShrink:0}}>{accPnl>=0?"+":""}{Math.round(accPnl*10)/10}%</span>
+                {canSwitch&&<span style={{fontSize:10,color:`${c}99`,flexShrink:0,transition:"transform 0.2s",transform:accSwitchOpen?"rotate(180deg)":"none"}}>▼</span>}
+              </div>
+              {/* Ligne 2 : capital + barre + objectif */}
+              {hasObj&&<>
+                {objectif.pnl&&<div style={{height:3,background:"#ffffff10",borderRadius:3,marginBottom:5}}>
+                  <div style={{width:`${objPct}%`,height:"100%",background:`linear-gradient(90deg,${c}66,${c})`,borderRadius:3,transition:"width 0.6s ease",boxShadow:`0 0 6px ${c}55`}}/>
+                </div>}
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontSize:9,color:`${c}aa`,fontFamily:MONO,fontWeight:500}}>
+                    {config.capital?`${parseInt(config.capital).toLocaleString()}${config.devise||"€"}`:""}
+                  </span>
+                  {objectif.pnl&&<span style={{fontSize:9,color:"#ffffff44",fontFamily:MONO}}>objectif +{objectif.pnl}%</span>}
+                </div>
+              </>}
             </button>
-            {accSwitchOpen&&<>
+            {accSwitchOpen&&canSwitch&&<>
               <div onClick={()=>setAccSwitchOpen(false)} style={{position:"fixed",inset:0,zIndex:40}}/>
               <div className="slide-up" style={{position:"absolute",top:"100%",left:0,right:0,zIndex:41,background:"#0f0f16",border:`1px solid ${c}28`,borderTop:"none",borderRadius:"0 0 10px 10px",overflow:"hidden",boxShadow:"0 12px 32px rgba(0,0,0,0.6)"}}>
                 {activeAccounts.filter(a=>a.id!==activeAccountId).map(acc=>(
@@ -2858,25 +2871,6 @@ export default function App() {
           </div>;
         })()}
       </div>}
-
-      {!isDesktop&&statsMode!=="all"&&(objectif.pnl||config.capital)&&(()=>{
-        const cur=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
-        const target=parseFloat(objectif.pnl)||1;
-        const pct=objectif.pnl?Math.min(100,Math.max(0,cur/target*100)):0;
-        return <div style={{background:"rgba(9,9,16,0.6)",borderBottom:`1px solid #ffffff06`,padding:"7px 18px 6px"}}>
-          {objectif.pnl&&<div style={{height:3,background:"#ffffff10",borderRadius:3,marginBottom:6}}>
-            <div style={{width:`${pct}%`,height:"100%",background:`linear-gradient(90deg,${neon}66,${neon})`,borderRadius:3,transition:"width 0.6s ease",boxShadow:`0 0 8px ${neon}55`}}/>
-          </div>}
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span style={{fontSize:10,color:neon,fontFamily:MONO,fontWeight:700,letterSpacing:0.5}}>
-              {currentPhaseName}{config.capital?` · ${parseInt(config.capital).toLocaleString()}${config.devise||"€"}`:""}
-            </span>
-            <span style={{fontSize:11,fontWeight:800,color:cur>=0?neon:"#ff4d4d",fontFamily:MONO}}>
-              {cur>=0?"+":""}{cur.toFixed(1)}%{objectif.pnl?<span style={{fontSize:9,color:"#ffffff44",fontWeight:400}}> / +{objectif.pnl}%</span>:null}
-            </span>
-          </div>
-        </div>;
-      })()}
       {!isDesktop&&<div id="tut-nav" style={{display:"flex",gap:6,padding:"10px 20px",borderBottom:`1px solid ${neon}14`}}>
         {[["dashboard",t.stats],["log",editingId?t.editLabel:`+ ${t.addTrade.replace("+ ","")}`],["history",t.history],["settings",t.settings]].map(([v,l])=>(
           <button id={v==="log"?"tut-addtrade":undefined} key={v} className="btn" onClick={()=>{if(editingId&&v!=="log")cancelEdit();else{setView(v);scrollToTop();}}}
@@ -2907,50 +2901,67 @@ export default function App() {
               <button onClick={()=>setShowNewPhase(true)} className="btn" style={{padding:"7px 10px",background:`${neon}10`,border:`1px solid ${neon}30`,borderRadius:8,fontSize:9,fontWeight:700,color:neon,whiteSpace:"nowrap",flexShrink:0}}>▶ Phase</button>
             </div>
           )}
-          {total>0&&(
-            <div id="tut-kpi" style={{display:isDesktop?"grid":"flex",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:12}}>
-              <div style={{flex:1,background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:14,padding:"14px 16px",boxShadow:`0 4px 24px ${winRate>=50?neon+"18":"#ff4d4d18"}, inset 0 1px 0 ${neon}15`}}>
-                <div style={{fontSize:9,color:"#ffffffbb",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>{t.winRate}</div>
-                <div style={{fontSize:32,fontWeight:900,fontFamily:MONO,lineHeight:1,textShadow:`0 0 32px ${winRate>=50?neon+"aa":"#ff4d4daa"}`,color:"#ffffff"}}>{winRate}%</div>
-                <div style={{fontSize:10,color:"#ffffff44",marginTop:6}}>{wins}W · {losses}L · {total} {t.trades}</div>
+          {/* === NIVEAU 1 : Profit Factor + Discipline (KPI majeurs) === */}
+          {total>0&&(()=>{
+            const wins_=pf.filter(x=>x.result==="WIN");
+            const losses_=pf.filter(x=>x.result==="LOSS");
+            const grossWin=wins_.reduce((s,x)=>s+Math.abs(parseFloat(x.pnlPct)||0),0);
+            const grossLoss=losses_.reduce((s,x)=>s+Math.abs(parseFloat(x.pnlPct)||0),0);
+            const pfVal=grossLoss>0?grossWin/grossLoss:(grossWin>0?Infinity:0);
+            const pfStr=pfVal===Infinity?"∞":pfVal.toFixed(2);
+            const pfColor=pfVal>=1.5?neon:pfVal>=1?"#f0b429":"#ff4d4d";
+            const pfLabel=pfVal>=1.5?(lang==="fr"?"Edge solide":"Strong edge"):pfVal>=1?(lang==="fr"?"Rentable":"Profitable"):pfVal>0?(lang==="fr"?"Perdant":"Losing"):"—";
+            return <div id="tut-kpi" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+              {/* Profit Factor */}
+              <div style={{background:`linear-gradient(145deg,${pfColor}12,${pfColor}05)`,border:`1px solid ${pfColor}30`,borderRadius:14,padding:"14px 16px",boxShadow:`0 8px 32px ${pfColor}12,inset 0 1px 0 ${pfColor}18`}}>
+                <div style={{fontSize:9,color:"#ffffffaa",letterSpacing:2,fontFamily:MONO,marginBottom:4}}>PROFIT FACTOR</div>
+                <div style={{fontSize:38,fontWeight:900,fontFamily:MONO,lineHeight:1,color:"#ffffff",textShadow:`0 0 32px ${pfColor}cc, 0 0 8px ${pfColor}88, 0 2px 10px rgba(0,0,0,0.7)`}}>{pfStr}</div>
+                {(grossWin>0||grossLoss>0)&&<div style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:6,background:`${pfColor}15`,borderRadius:20,padding:"3px 10px",border:`1px solid ${pfColor}30`}}>
+                  <div style={{width:5,height:5,borderRadius:"50%",background:pfColor,boxShadow:`0 0 6px ${pfColor}`}}/>
+                  <span style={{fontSize:8,color:pfColor,fontWeight:700,letterSpacing:1}}>{pfLabel}</span>
+                </div>}
               </div>
-              <div style={{flex:1,background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:14,padding:"14px 16px",boxShadow:`0 4px 24px ${totalPnl>=0?neon+"18":"#ff4d4d18"}, inset 0 1px 0 ${neon}15`}}>
-                <div style={{fontSize:9,color:"#ffffffbb",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>{t.totalPnl}</div>
-                <div style={{fontSize:32,fontWeight:900,fontFamily:MONO,lineHeight:1,textShadow:`0 0 32px ${totalPnl>=0?neon+"aa":"#ff4d4daa"}`,color:"#ffffff"}}>{(()=>{const n=Math.round(totalPnl*10)/10;return `${n>=0?"+":""}${n}%`;})()} </div>
-                {config.capital?(()=>{
-                  const gain=Math.round(parseFloat(config.capital)*totalPnl/100);
-                  const cap_total=Math.round(parseFloat(config.capital))+gain;
-                  const dv=config.devise||"€";
-                  return <div style={{fontSize:10,marginTop:5,display:"flex",alignItems:"baseline",gap:5,flexWrap:"wrap"}}>
-                    <span style={{fontSize:13,fontWeight:700,color:totalPnl>=0?neon:"#ff4d4d",fontFamily:MONO}}>{totalPnl>=0?"+":""}{gain.toLocaleString()}{dv}</span>
-                    <span style={{color:"#ffffff33",fontSize:10}}>→ {cap_total.toLocaleString()}{dv}</span>
-                  </div>;
-                })():<div style={{fontSize:10,color:"#ffffff44",marginTop:6}}>{total} {t.trades}</div>}
-              </div>
-            </div>
-          )}
-          {total>=2&&discScore!==null&&(
-            <div id="tut-discipline" style={{background:`linear-gradient(145deg,${scoreColor}12,${scoreColor}05)`,border:`1px solid ${scoreColor}30`,borderRadius:14,padding:"14px 16px",marginBottom:12,boxShadow:`0 8px 32px ${scoreColor}12,inset 0 1px 0 ${scoreColor}18`}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div>
-                  <div style={{fontSize:9,color:"#ffffffaa",letterSpacing:2,fontFamily:MONO,marginBottom:4}}>{t.disciplineLabel}</div>
-                  <div style={{fontSize:42,fontWeight:900,fontFamily:MONO,lineHeight:1,textShadow:`0 0 40px ${scoreColor}cc, 0 0 8px ${scoreColor}88, 0 2px 10px rgba(0,0,0,0.7)`,color:"#ffffff"}}>{discScore}<span style={{fontSize:15,color:"#ffffff44",textShadow:"none"}}>/10</span></div>
-                  <div style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:6,background:`${scoreColor}15`,borderRadius:20,padding:"3px 10px",border:`1px solid ${scoreColor}30`}}>
-                    <div style={{width:5,height:5,borderRadius:"50%",background:scoreColor,boxShadow:`0 0 6px ${scoreColor}`}}/>
-                    <span style={{fontSize:8,color:scoreColor,fontWeight:700,letterSpacing:1}}>{discScore>=8?t.disciplineExcellent:discScore>=6?t.disciplineGood:discScore>=4?t.disciplineWork:t.disciplinePoor}</span>
-                  </div>
+              {/* Discipline */}
+              {discScore!==null?<div id="tut-discipline" style={{background:`linear-gradient(145deg,${scoreColor}12,${scoreColor}05)`,border:`1px solid ${scoreColor}30`,borderRadius:14,padding:"14px 16px",boxShadow:`0 8px 32px ${scoreColor}12,inset 0 1px 0 ${scoreColor}18`}}>
+                <div style={{fontSize:9,color:"#ffffffaa",letterSpacing:2,fontFamily:MONO,marginBottom:4}}>{t.disciplineLabel}</div>
+                <div style={{fontSize:38,fontWeight:900,fontFamily:MONO,lineHeight:1,color:"#ffffff",textShadow:`0 0 32px ${scoreColor}cc, 0 0 8px ${scoreColor}88, 0 2px 10px rgba(0,0,0,0.7)`}}>{discScore}<span style={{fontSize:15,color:"#ffffff44",textShadow:"none"}}>/10</span></div>
+                <div style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:6,background:`${scoreColor}15`,borderRadius:20,padding:"3px 10px",border:`1px solid ${scoreColor}30`}}>
+                  <div style={{width:5,height:5,borderRadius:"50%",background:scoreColor,boxShadow:`0 0 6px ${scoreColor}`}}/>
+                  <span style={{fontSize:8,color:scoreColor,fontWeight:700,letterSpacing:1}}>{discScore>=8?t.disciplineExcellent:discScore>=6?t.disciplineGood:discScore>=4?t.disciplineWork:t.disciplinePoor}</span>
                 </div>
-                <div style={{display:"flex",flexDirection:"column",gap:8,minWidth:130}}>
-                  {[{l:t.conformiteLabel,v:Math.round(pf.filter(x=>x.conforming).length/total*100),c:neon},{l:t.sansRevengeLabel,v:Math.round(pf.filter(x=>!x.isRevenge).length/total*100),c:pf.filter(x=>x.isRevenge).length===0?neon:"#f0b429"}].map(({l,v,c})=>(
-                    <div key={l}>
-                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:8,color:"#ffffffaa",fontFamily:MONO}}>{l}</span><span style={{fontSize:9,fontWeight:700,color:"#ffffff",fontFamily:MONO}}>{v}%</span></div>
-                      <div style={{height:3,background:"#ffffff10",borderRadius:2}}><div style={{width:`${v}%`,height:"100%",background:`linear-gradient(90deg,${c}99,${c})`,borderRadius:2,transition:"width 0.5s",boxShadow:`0 0 8px ${c}55`}}/></div>
-                    </div>
-                  ))}
+              </div>:<div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,fontFamily:MONO,marginBottom:4}}>{t.disciplineLabel}</div>
+                  <div style={{fontSize:11,color:"#ffffff44",fontFamily:MONO}}>{lang==="fr"?"≥2 trades":"≥2 trades"}</div>
                 </div>
+              </div>}
+            </div>;
+          })()}
+          {/* === NIVEAU 2 : Win Rate + P&L + Trades (compacts) === */}
+          {total>0&&(()=>{
+            const dv=config.devise||"€";
+            const gain=config.capital?Math.round(parseFloat(config.capital)*totalPnl/100):null;
+            const wrColor=winRate>=50?neon:"#ff4d4d";
+            const pnlColor=totalPnl>=0?neon:"#ff4d4d";
+            const pnlRound=Math.round(totalPnl*10)/10;
+            return <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
+              <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:10,padding:"10px 12px"}}>
+                <div style={{fontSize:8,color:"#ffffffaa",letterSpacing:1,fontFamily:MONO,marginBottom:4}}>{t.winRate.toUpperCase()}</div>
+                <div style={{fontSize:18,fontWeight:800,fontFamily:MONO,lineHeight:1,color:wrColor,textShadow:`0 0 14px ${wrColor}88`}}>{winRate}%</div>
+                <div style={{fontSize:8,color:"#ffffff44",marginTop:3,fontFamily:MONO}}>{wins}W · {losses}L</div>
               </div>
-            </div>
-          )}
+              <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:10,padding:"10px 12px"}}>
+                <div style={{fontSize:8,color:"#ffffffaa",letterSpacing:1,fontFamily:MONO,marginBottom:4}}>{t.totalPnl}</div>
+                <div style={{fontSize:18,fontWeight:800,fontFamily:MONO,lineHeight:1,color:pnlColor,textShadow:`0 0 14px ${pnlColor}88`}}>{pnlRound>=0?"+":""}{pnlRound}%</div>
+                {gain!==null?<div style={{fontSize:9,color:pnlColor,opacity:0.75,marginTop:3,fontFamily:MONO}}>{gain>=0?"+":""}{gain.toLocaleString()}{dv}</div>:<div style={{fontSize:8,color:"#ffffff44",marginTop:3,fontFamily:MONO}}>—</div>}
+              </div>
+              <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:10,padding:"10px 12px"}}>
+                <div style={{fontSize:8,color:"#ffffffaa",letterSpacing:1,fontFamily:MONO,marginBottom:4}}>{t.trades.toUpperCase()}</div>
+                <div style={{fontSize:18,fontWeight:800,fontFamily:MONO,lineHeight:1,color:"#ffffff"}}>{total}</div>
+                <div style={{fontSize:8,color:"#ffffff44",marginTop:3,fontFamily:MONO}}>{lang==="fr"?"enregistrés":"logged"}</div>
+              </div>
+            </div>;
+          })()}
           {trades.length>0&&(
             <div id="tut-lasttrade" className="row" onClick={()=>setDetailTrade(trades[0])} style={{background:`${rc(trades[0].result,neon)}0a`,border:`1px solid ${rc(trades[0].result,neon)}35`,borderRadius:12,padding:14,marginBottom:12,borderLeft:`3px solid ${rc(trades[0].result,neon)}`,boxShadow:`0 4px 20px ${rc(trades[0].result,neon)}14`}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
