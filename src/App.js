@@ -679,7 +679,7 @@ function PerformanceChart({trades, neon, lang}) {
     return {pnl: parseFloat(t.pnlPct)||0, cum: parseFloat(cum.toFixed(2)), result: t.result, date: t.date};
   });
 
-  const W = 320, H = 130, PAD = {t:18, r:12, b:20, l:36};
+  const W = 320, H = 96, PAD = {t:14, r:12, b:16, l:34};
   const chartW = W - PAD.l - PAD.r;
   const chartH = H - PAD.t - PAD.b;
 
@@ -2329,8 +2329,7 @@ function Tutorial({neon="#00ff9d", onEnd}) {
     {elId:"tut-coach",      icon:"◆",  title:"Résumé & performance",   body:"Une lecture de tes stats en une phrase. Bascule entre Résumé (analyse écrite) et Courbe (équité). Clique sur le résumé pour le détail complet, filtrable par compte. Dès 5 trades.",  pos:"below"},
     {elId:"tut-lasttrade",  icon:"⚡", title:"Dernier Trade",          body:"Ton dernier trade enregistré. Clique pour voir le détail complet, le modifier, le partager ou le réassigner à un autre compte.",  pos:"below"},
     {elId:"tut-addtrade",   icon:"✚",  title:"Enregistrer un Trade",   body:"Après chaque trade : actif, checklist, résultat et P&L en % ou en devise. Active ou masque des champs (rejet, check-in, timeframe…) dans Paramètres › Stratégie.",  pos:"above"},
-    {elId:"tut-nav",        icon:"🧭", title:"Navigation",             body:"Stats = Dashboard · + Trade = Saisir un trade · Historique = Tous tes trades filtrables · ⚙ = Paramètres, modules, actifs, seuil de conformité.",   pos:"above"},
-    {elId:"tut-nav",        icon:"📋", title:"Phases & comptes",       body:"Une phase ou un compte = une période ou un capital séparé. Crée-en de nouveaux dans ⚙ pour repartir à zéro tout en gardant l'historique. Idéal pour les prop firms.",  pos:"above", last:true},
+    {elId:"tut-nav",        icon:"🧭", title:"Navigation",             body:"Stats = Dashboard · + Trade = Saisir un trade · Historique = Tous tes trades filtrables · ⚙ = Paramètres, modules, actifs, seuil de conformité.",   pos:"above", last:true},
   ];
   const [step, setStep] = useState(0);
   const [spotRect, setSpotRect] = useState(null);
@@ -2795,7 +2794,6 @@ export default function App() {
   const [view,setView]=useState("dashboard");
   const [accSwitchOpen,setAccSwitchOpen]=useState(false);
   const [accSwitchOpenPC,setAccSwitchOpenPC]=useState(false);
-  const [homeTestView,setHomeTestView]=useState("resume");
   const [statsAccountFilter,setStatsAccountFilter]=useState(null);
   const [histArchOpen,setHistArchOpen]=useState(false);
   const [form,setForm]=useState(emptyForm("XAU/USD","M5"));
@@ -3220,8 +3218,8 @@ export default function App() {
         const objPct=hasObj?Math.min(100,Math.max(0,accPnl/target*100)):0;
         const canSwitch=activeAccounts.length>1;
         return <div id="tut-account" style={{position:"relative",background:"rgba(9,9,16,0.6)",borderBottom:`1px solid #ffffff06`}}>
-          {hasObj&&<div style={{height:2,background:"#ffffff08"}}>
-            <div style={{width:`${objPct}%`,height:"100%",background:`linear-gradient(90deg,${c}66,${c})`,transition:"width 0.6s ease",boxShadow:`0 0 4px ${c}55`}}/>
+          {hasObj&&<div style={{height:3,background:"#ffffff08",borderRadius:3,margin:"6px 16px 0"}}>
+            <div style={{width:`${objPct}%`,height:"100%",background:`linear-gradient(90deg,${c}66,${c})`,borderRadius:3,transition:"width 0.6s ease",boxShadow:`0 0 4px ${c}55`}}/>
           </div>}
           <button onClick={()=>canSwitch&&setAccSwitchOpen(o=>!o)} className="btn" disabled={!canSwitch}
             style={{width:"100%",display:"flex",alignItems:"center",gap:7,background:"transparent",border:"none",padding:"6px 18px",cursor:canSwitch?"pointer":"default",textAlign:"left"}}>
@@ -3304,24 +3302,8 @@ export default function App() {
               </div>
             </div>;
           })()}
-          {/* === Profit Factor discret (sous les KPI) === */}
-          {total>0&&(()=>{
-            const wins_=pf.filter(x=>x.result==="WIN");
-            const losses_=pf.filter(x=>x.result==="LOSS");
-            const grossWin=wins_.reduce((s,x)=>s+Math.abs(parseFloat(x.pnlPct)||0),0);
-            const grossLoss=losses_.reduce((s,x)=>s+Math.abs(parseFloat(x.pnlPct)||0),0);
-            const pfVal=grossLoss>0?grossWin/grossLoss:(grossWin>0?Infinity:0);
-            if(grossWin===0&&grossLoss===0) return null;
-            const pfStr=pfVal===Infinity?"∞":pfVal.toFixed(2);
-            const pfColor=pfVal>=1.5?neon:pfVal>=1?"#f0b429":"#ff4d4d";
-            const pfLabel=pfVal>=1.5?(lang==="fr"?"Edge solide":"Strong edge"):pfVal>=1?(lang==="fr"?"Rentable":"Profitable"):pfVal>0?(lang==="fr"?"Perdant":"Losing"):"—";
-            return <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:7,marginBottom:12,padding:"6px 0"}}>
-              <span style={{fontSize:9,color:"#ffffff66",letterSpacing:1.5,fontFamily:MONO,textTransform:"uppercase"}}>Profit Factor</span>
-              <span style={{fontSize:13,fontWeight:800,color:pfColor,fontFamily:MONO,textShadow:`0 0 10px ${pfColor}66`}}>{pfStr}</span>
-              <span style={{width:3,height:3,borderRadius:"50%",background:"#ffffff22"}}/>
-              <span style={{fontSize:9,color:`${pfColor}cc`,fontFamily:MONO,fontWeight:700}}>{pfLabel}</span>
-            </div>;
-          })()}
+          {/* === Profit Factor : case pleine largeur sous la Discipline === */}
+          {/* (rendu plus bas, après la Discipline) */}
           {/* === Discipline pleine largeur (gros) === */}
           {total>=2&&discScore!==null&&(
             <div id="tut-discipline" style={{background:`linear-gradient(145deg,${scoreColor}12,${scoreColor}05)`,border:`1px solid ${scoreColor}30`,borderRadius:14,padding:"16px 18px",marginBottom:12,boxShadow:`0 8px 32px ${scoreColor}12,inset 0 1px 0 ${scoreColor}18`}}>
@@ -3345,16 +3327,32 @@ export default function App() {
               </div>
             </div>
           )}
-          {/* === ZONE TEST : Résumé texte OU Courbe (toggle temporaire) === */}
-          {total>=5&&<div id="tut-coach" style={{marginBottom:12}}>
-            <div style={{display:"flex",gap:4,marginBottom:8,background:"#0f0f14",borderRadius:8,padding:3}}>
-              {[["resume",lang==="fr"?"Résumé":"Summary"],["courbe",lang==="fr"?"Courbe":"Curve"]].map(([m,l])=>(
-                <button key={m} onClick={()=>setHomeTestView(m)} className="btn" style={{flex:1,padding:"6px 0",borderRadius:6,fontSize:10,fontWeight:700,fontFamily:MONO,background:homeTestView===m?neon:"transparent",color:homeTestView===m?"#131318":"#ffffffaa",border:"none"}}>{l}</button>
-              ))}
-            </div>
-            {homeTestView==="resume"
-              ? <CoachSummaryCard trades={pf} lang={lang} neon={neon} onOpen={()=>setShowStats(true)}/>
-              : <PerformanceChart trades={pf} neon={neon} lang={lang}/>}
+          {/* === Case Profit Factor pleine largeur === */}
+          {total>0&&(()=>{
+            const wins_=pf.filter(x=>x.result==="WIN");
+            const losses_=pf.filter(x=>x.result==="LOSS");
+            const grossWin=wins_.reduce((s,x)=>s+Math.abs(parseFloat(x.pnlPct)||0),0);
+            const grossLoss=losses_.reduce((s,x)=>s+Math.abs(parseFloat(x.pnlPct)||0),0);
+            const pfVal=grossLoss>0?grossWin/grossLoss:(grossWin>0?Infinity:0);
+            if(grossWin===0&&grossLoss===0) return null;
+            const pfStr=pfVal===Infinity?"∞":pfVal.toFixed(2);
+            const pfColor=pfVal>=1.5?neon:pfVal>=1?"#f0b429":"#ff4d4d";
+            const pfLabel=pfVal>=1.5?(lang==="fr"?"Edge solide":"Strong edge"):pfVal>=1?(lang==="fr"?"Rentable":"Profitable"):pfVal>0?(lang==="fr"?"Perdant":"Losing"):"—";
+            return <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:`linear-gradient(145deg,${pfColor}10,${pfColor}04)`,border:`1px solid ${pfColor}28`,borderRadius:14,padding:"12px 18px",marginBottom:12,boxShadow:`0 4px 20px ${pfColor}10,inset 0 1px 0 ${pfColor}15`}}>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontSize:9,color:"#ffffffaa",letterSpacing:2,fontFamily:MONO,textTransform:"uppercase"}}>Profit Factor</span>
+                <span style={{display:"inline-flex",alignItems:"center",gap:5,background:`${pfColor}15`,borderRadius:20,padding:"2px 9px",border:`1px solid ${pfColor}30`}}>
+                  <span style={{width:4,height:4,borderRadius:"50%",background:pfColor,boxShadow:`0 0 5px ${pfColor}`}}/>
+                  <span style={{fontSize:8,color:pfColor,fontWeight:700,letterSpacing:0.5}}>{pfLabel}</span>
+                </span>
+              </div>
+              <span style={{fontSize:24,fontWeight:900,color:"#ffffff",fontFamily:MONO,lineHeight:1,textShadow:`0 0 20px ${pfColor}aa, 0 2px 6px rgba(0,0,0,0.6)`}}>{pfStr}</span>
+            </div>;
+          })()}
+          {/* === Courbe + Résumé groupés (au-dessus du dernier trade) === */}
+          {total>=5&&<div id="tut-coach" style={{marginBottom:12,display:"flex",flexDirection:"column",gap:10}}>
+            <PerformanceChart trades={pf} neon={neon} lang={lang}/>
+            <CoachSummaryCard trades={pf} lang={lang} neon={neon} onOpen={()=>setShowStats(true)}/>
           </div>}
           {trades.length>0&&(
             <div id="tut-lasttrade" className="row" onClick={()=>setDetailTrade(trades[0])} style={{background:`${rc(trades[0].result,neon)}0a`,border:`1px solid ${rc(trades[0].result,neon)}35`,borderRadius:12,padding:14,marginBottom:12,borderLeft:`3px solid ${rc(trades[0].result,neon)}`,boxShadow:`0 4px 20px ${rc(trades[0].result,neon)}14`}}>
