@@ -1235,14 +1235,22 @@ function IcoStar({neon,size=32}) {
 }
 
 // ── RÉSUMÉ COMPLET MODERNISÉ ──
-function StatsInsightsModal({trades,lang,neon,onClose}) {
+function StatsInsightsModal({trades:tradesProp,lang,neon,onClose,accounts,activeAccountId}) {
   const fr=lang==="fr";
   const MONO2="'Geist Mono','IBM Plex Mono',monospace";
-  if(!trades||trades.length<3) return null;
+  const hasAccounts=Array.isArray(accounts)&&accounts.length>1;
+  const [acctFilter,setAcctFilter]=useState(hasAccounts?(activeAccountId||"ALL"):"ALL");
+  const [acctMenuOpen,setAcctMenuOpen]=useState(false);
+  const allTrades=Array.isArray(tradesProp)?tradesProp:[];
+  if(allTrades.length<3) return null;
+  const selAcc=hasAccounts?accounts.find(a=>a.id===acctFilter):null;
+  const selColor=selAcc?(selAcc.color||neon):neon;
+  // "trades" = trades filtrés par compte (le reste du composant utilise "trades")
+  const trades=acctFilter==="ALL"?allTrades:allTrades.filter(x=>(x.accountId||"ph_0")===acctFilter);
 
   const wins=trades.filter(x=>x.result==="WIN");
   const losses=trades.filter(x=>x.result==="LOSS");
-  const wr=Math.round(wins.length/trades.length*100);
+  const wr=trades.length?Math.round(wins.length/trades.length*100):0;
   const avgWin=wins.length?wins.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0)/wins.length:0;
   const avgLoss=losses.length?Math.abs(losses.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0)/losses.length):0;
   const ratio=avgLoss>0?(avgWin/avgLoss):0;
@@ -1343,6 +1351,25 @@ function StatsInsightsModal({trades,lang,neon,onClose}) {
             <button onClick={onClose} style={{background:"transparent",border:"none",color:`${neon}55`,fontSize:20,cursor:"pointer"}}>✕</button>
           </div>
           <div style={{fontSize:10,color:`${neon}33`,marginTop:4,fontFamily:MONO2}}>{trades.length} {fr?"trades analysés":"trades analyzed"}</div>
+          {/* Sélecteur de compte */}
+          {hasAccounts&&<div style={{position:"relative",marginTop:10}}>
+            <button onClick={()=>setAcctMenuOpen(o=>!o)} className="btn" style={{width:"100%",display:"flex",alignItems:"center",gap:8,background:`${selColor}10`,border:`1px solid ${acctMenuOpen?selColor:`${selColor}28`}`,borderRadius:acctMenuOpen?"8px 8px 0 0":8,padding:"8px 12px",cursor:"pointer",textAlign:"left"}}>
+              {acctFilter!=="ALL"&&<div style={{width:7,height:7,borderRadius:"50%",background:selColor,boxShadow:`0 0 4px ${selColor}`,flexShrink:0}}/>}
+              <span style={{fontSize:11,fontWeight:700,color:"#ffffff",fontFamily:MONO2,flex:1}}>{acctFilter==="ALL"?(fr?"Tous les comptes":"All accounts"):(selAcc?selAcc.name:"")}</span>
+              <span style={{fontSize:9,color:`${selColor}99`,transition:"transform 0.2s",transform:acctMenuOpen?"rotate(180deg)":"none"}}>▼</span>
+            </button>
+            {acctMenuOpen&&<>
+              <div onClick={()=>setAcctMenuOpen(false)} style={{position:"fixed",inset:0,zIndex:410}}/>
+              <div className="slide-up" style={{position:"absolute",top:"100%",left:0,right:0,zIndex:411,background:"#0f0f16",border:`1px solid ${selColor}28`,borderTop:"none",borderRadius:"0 0 8px 8px",overflow:"hidden",maxHeight:200,overflowY:"auto",boxShadow:"0 12px 32px rgba(0,0,0,0.6)"}}>
+                {[{id:"ALL",name:fr?"Tous les comptes":"All accounts",color:neon},...accounts].filter(a=>a.id!==acctFilter).map(acc=>(
+                  <button key={acc.id} onClick={()=>{setAcctFilter(acc.id);setAcctMenuOpen(false);}} className="row" style={{width:"100%",display:"flex",alignItems:"center",gap:7,background:"transparent",border:"none",borderTop:`1px solid ${neon}0a`,padding:"9px 12px",cursor:"pointer"}}>
+                    {acc.id!=="ALL"&&<div style={{width:6,height:6,borderRadius:"50%",background:acc.color||neon,flexShrink:0}}/>}
+                    <span style={{fontSize:11,fontWeight:500,color:"#ffffffcc",fontFamily:MONO2,flex:1,textAlign:"left"}}>{acc.name}{acc.archived?" ⊘":""}</span>
+                  </button>
+                ))}
+              </div>
+            </>}
+          </div>}
         </div>
 
         {/* KPI animés */}
@@ -2299,7 +2326,7 @@ function Tutorial({neon="#00ff9d", onEnd}) {
     {elId:"tut-account",    icon:"🔄", title:"Tes comptes",            body:"Ce bandeau montre ton compte actif, son capital et ta progression vers l'objectif. Clique dessus pour basculer entre tes comptes (prop firm, perso, démo).",  pos:"below"},
     {elId:"tut-kpi",        icon:"📊", title:"Win Rate & P&L",         body:"Tes deux chiffres clés en haut : Win Rate (% de trades gagnants) et P&L (performance en % et en devise, capital recalculé automatiquement).",  pos:"below"},
     {elId:"tut-discipline", icon:"🎯", title:"Discipline & Profit Factor", body:"Discipline : note /10 basée sur ta conformité aux règles et l'absence de revenge trades. Profit Factor : tes gains divisés par tes pertes — au-dessus de 1.5, ton edge est solide.",  pos:"below"},
-    {elId:"tut-coach",      icon:"◆",  title:"Ton coach",              body:"Une lecture de tes stats en une phrase, qui change selon ta situation. Il t'alerte, te motive ou pointe ce qu'il faut corriger. Apparaît dès 5 trades.",  pos:"below"},
+    {elId:"tut-coach",      icon:"◆",  title:"Résumé & performance",   body:"Une lecture de tes stats en une phrase. Bascule entre Résumé (analyse écrite) et Courbe (équité). Clique sur le résumé pour le détail complet, filtrable par compte. Dès 5 trades.",  pos:"below"},
     {elId:"tut-lasttrade",  icon:"⚡", title:"Dernier Trade",          body:"Ton dernier trade enregistré. Clique pour voir le détail complet, le modifier, le partager ou le réassigner à un autre compte.",  pos:"below"},
     {elId:"tut-addtrade",   icon:"✚",  title:"Enregistrer un Trade",   body:"Après chaque trade : actif, checklist, résultat et P&L en % ou en devise. Active ou masque des champs (rejet, check-in, timeframe…) dans Paramètres › Stratégie.",  pos:"above"},
     {elId:"tut-nav",        icon:"🧭", title:"Navigation",             body:"Stats = Dashboard · + Trade = Saisir un trade · Historique = Tous tes trades filtrables · ⚙ = Paramètres, modules, actifs, seuil de conformité.",   pos:"above"},
@@ -2704,74 +2731,33 @@ function computeCoach(trades, lang){
 }
 
 // ── CoachCard : carte de session asymétrique avec barre verticale + glyphe + signature ──
-function CoachCard({trades, lang, neon}){
+function CoachSummaryCard({trades, lang, neon, onOpen}){
   const coach = computeCoach(trades, lang);
   if(!coach) return null;
   const c = coach.color === "NEON" ? neon : coach.color;
   const fr = lang==="fr";
-  // Numéro de session basé sur le jour de l'année (donne un nombre qui évolue)
-  const start = new Date(new Date().getFullYear(), 0, 0);
-  const diff = (new Date() - start) + ((start.getTimezoneOffset() - new Date().getTimezoneOffset()) * 60 * 1000);
-  const dayOfYear = Math.floor(diff / 86400000);
-  const sessionNum = String(dayOfYear).padStart(3, '0');
   return (
-    <div style={{
-      position:"relative",
+    <button onClick={onOpen} className="btn" style={{
+      position:"relative", width:"100%", textAlign:"left",
       background:"linear-gradient(135deg,#0f0f16 0%,#0c0c12 100%)",
-      borderRadius:12,
-      padding:"16px 16px 14px 22px",
-      marginBottom:14,
-      border:`1px solid ${c}18`,
+      borderRadius:12, padding:"16px 16px 14px 22px",
+      border:`1px solid ${c}22`,
       boxShadow:`0 4px 24px ${c}10, inset 0 1px 0 ${c}10`,
-      overflow:"hidden",
+      overflow:"hidden", cursor:"pointer",
     }}>
-      {/* Barre verticale colorée à gauche */}
-      <div style={{
-        position:"absolute",
-        left:0, top:0, bottom:0,
-        width:3,
-        background:`linear-gradient(180deg,${c}99,${c}33)`,
-        boxShadow:`0 0 8px ${c}66`,
-      }}/>
-      {/* Glyphe en filigrane discret en haut à droite */}
-      <div style={{
-        position:"absolute",
-        top:10, right:14,
-        fontSize:22,
-        color:`${c}22`,
-        fontFamily:MONO,
-        lineHeight:1,
-        pointerEvents:"none",
-      }}>{coach.glyph}</div>
-      {/* Glyphe principal */}
+      <div style={{position:"absolute",left:0,top:0,bottom:0,width:3,background:`linear-gradient(180deg,${c}99,${c}33)`,boxShadow:`0 0 8px ${c}66`}}/>
+      <div style={{position:"absolute",top:10,right:14,fontSize:22,color:`${c}22`,fontFamily:MONO,lineHeight:1,pointerEvents:"none"}}>{coach.glyph}</div>
       <div style={{display:"flex",alignItems:"flex-start",gap:11}}>
-        <div style={{
-          fontSize:14, color:c, fontFamily:MONO,
-          lineHeight:1.5, flexShrink:0, marginTop:1,
-          textShadow:`0 0 8px ${c}88`,
-        }}>{coach.glyph}</div>
+        <div style={{fontSize:14,color:c,fontFamily:MONO,lineHeight:1.5,flexShrink:0,marginTop:1,textShadow:`0 0 8px ${c}88`}}>{coach.glyph}</div>
         <div style={{flex:1,minWidth:0,paddingRight:30}}>
-          <div style={{
-            fontSize:12, color:"#ffffffdd", fontFamily:MONO,
-            lineHeight:1.6, fontWeight:400,
-            letterSpacing:0.1,
-          }}>{coach.message}</div>
-          {/* Signature */}
-          <div style={{
-            marginTop:10,
-            display:"flex",
-            alignItems:"center",
-            gap:6,
-          }}>
+          <div style={{fontSize:12,color:"#ffffffdd",fontFamily:MONO,lineHeight:1.6,fontWeight:400,letterSpacing:0.1}}>{coach.message}</div>
+          <div style={{marginTop:10,display:"flex",alignItems:"center",gap:6}}>
             <div style={{height:1,width:14,background:`${c}44`}}/>
-            <span style={{
-              fontSize:8, color:`${c}77`, fontFamily:MONO,
-              letterSpacing:2, fontWeight:700,
-            }}>{fr?"COACH":"COACH"} · {sessionNum}</span>
+            <span style={{fontSize:8,color:`${c}99`,fontFamily:MONO,letterSpacing:1.5,fontWeight:700}}>{fr?"VOIR LE RÉSUMÉ COMPLET →":"VIEW FULL SUMMARY →"}</span>
           </div>
         </div>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -2809,6 +2795,8 @@ export default function App() {
   const [view,setView]=useState("dashboard");
   const [accSwitchOpen,setAccSwitchOpen]=useState(false);
   const [accSwitchOpenPC,setAccSwitchOpenPC]=useState(false);
+  const [homeTestView,setHomeTestView]=useState("resume");
+  const [statsAccountFilter,setStatsAccountFilter]=useState(null);
   const [histArchOpen,setHistArchOpen]=useState(false);
   const [form,setForm]=useState(emptyForm("XAU/USD","M5"));
   const [editingId,setEditingId]=useState(null);
@@ -3316,56 +3304,58 @@ export default function App() {
               </div>
             </div>;
           })()}
-          {/* === NIVEAU 2 : Discipline 2/3 + Profit Factor 1/3 === */}
+          {/* === Profit Factor discret (sous les KPI) === */}
           {total>0&&(()=>{
             const wins_=pf.filter(x=>x.result==="WIN");
             const losses_=pf.filter(x=>x.result==="LOSS");
             const grossWin=wins_.reduce((s,x)=>s+Math.abs(parseFloat(x.pnlPct)||0),0);
             const grossLoss=losses_.reduce((s,x)=>s+Math.abs(parseFloat(x.pnlPct)||0),0);
             const pfVal=grossLoss>0?grossWin/grossLoss:(grossWin>0?Infinity:0);
+            if(grossWin===0&&grossLoss===0) return null;
             const pfStr=pfVal===Infinity?"∞":pfVal.toFixed(2);
             const pfColor=pfVal>=1.5?neon:pfVal>=1?"#f0b429":"#ff4d4d";
             const pfLabel=pfVal>=1.5?(lang==="fr"?"Edge solide":"Strong edge"):pfVal>=1?(lang==="fr"?"Rentable":"Profitable"):pfVal>0?(lang==="fr"?"Perdant":"Losing"):"—";
-            return <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:10,marginBottom:12}}>
-              {/* Discipline 2/3 */}
-              {discScore!==null?<div id="tut-discipline" style={{background:`linear-gradient(145deg,${scoreColor}12,${scoreColor}05)`,border:`1px solid ${scoreColor}30`,borderRadius:14,padding:"14px 16px",boxShadow:`0 8px 32px ${scoreColor}12,inset 0 1px 0 ${scoreColor}18`}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <div>
-                    <div style={{fontSize:9,color:"#ffffffaa",letterSpacing:2,fontFamily:MONO,marginBottom:4}}>{t.disciplineLabel}</div>
-                    <div style={{fontSize:36,fontWeight:900,fontFamily:MONO,lineHeight:1,textShadow:`0 0 32px ${scoreColor}cc, 0 0 8px ${scoreColor}88, 0 2px 10px rgba(0,0,0,0.7)`,color:"#ffffff"}}>{discScore}<span style={{fontSize:14,color:"#ffffff44",textShadow:"none"}}>/10</span></div>
-                    <div style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:6,background:`${scoreColor}15`,borderRadius:20,padding:"3px 10px",border:`1px solid ${scoreColor}30`}}>
-                      <div style={{width:5,height:5,borderRadius:"50%",background:scoreColor,boxShadow:`0 0 6px ${scoreColor}`}}/>
-                      <span style={{fontSize:8,color:scoreColor,fontWeight:700,letterSpacing:1}}>{discScore>=8?t.disciplineExcellent:discScore>=6?t.disciplineGood:discScore>=4?t.disciplineWork:t.disciplinePoor}</span>
-                    </div>
-                  </div>
-                  <div style={{display:"flex",flexDirection:"column",gap:8,minWidth:110}}>
-                    {[{l:t.conformiteLabel,v:Math.round(pf.filter(x=>x.conforming).length/total*100),c:neon},{l:t.sansRevengeLabel,v:Math.round(pf.filter(x=>!x.isRevenge).length/total*100),c:pf.filter(x=>x.isRevenge).length===0?neon:"#f0b429"}].map(({l,v,c})=>(
-                      <div key={l}>
-                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:8,color:"#ffffffaa",fontFamily:MONO}}>{l}</span><span style={{fontSize:9,fontWeight:700,color:"#ffffff",fontFamily:MONO}}>{v}%</span></div>
-                        <div style={{height:3,background:"#ffffff10",borderRadius:2}}><div style={{width:`${v}%`,height:"100%",background:`linear-gradient(90deg,${c}99,${c})`,borderRadius:2,transition:"width 0.5s",boxShadow:`0 0 8px ${c}55`}}/></div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>:<div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                <div style={{textAlign:"center"}}>
-                  <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,fontFamily:MONO,marginBottom:4}}>{t.disciplineLabel}</div>
-                  <div style={{fontSize:11,color:"#ffffff44",fontFamily:MONO}}>{lang==="fr"?"≥2 trades":"≥2 trades"}</div>
-                </div>
-              </div>}
-              {/* Profit Factor 1/3 */}
-              <div style={{background:`linear-gradient(145deg,${pfColor}12,${pfColor}05)`,border:`1px solid ${pfColor}30`,borderRadius:14,padding:"14px 12px",boxShadow:`0 8px 32px ${pfColor}12,inset 0 1px 0 ${pfColor}18`,display:"flex",flexDirection:"column",justifyContent:"center"}}>
-                <div style={{fontSize:8,color:"#ffffffaa",letterSpacing:1.5,fontFamily:MONO,marginBottom:4}}>{lang==="fr"?"PROFIT FACT.":"PROFIT FACT."}</div>
-                <div style={{fontSize:28,fontWeight:900,fontFamily:MONO,lineHeight:1,color:"#ffffff",textShadow:`0 0 28px ${pfColor}cc, 0 0 8px ${pfColor}88, 0 2px 10px rgba(0,0,0,0.7)`}}>{pfStr}</div>
-                {(grossWin>0||grossLoss>0)&&<div style={{display:"inline-flex",alignItems:"center",gap:4,marginTop:6,background:`${pfColor}15`,borderRadius:14,padding:"2px 7px",border:`1px solid ${pfColor}30`,alignSelf:"flex-start"}}>
-                  <div style={{width:4,height:4,borderRadius:"50%",background:pfColor,boxShadow:`0 0 5px ${pfColor}`}}/>
-                  <span style={{fontSize:7,color:pfColor,fontWeight:700,letterSpacing:0.5}}>{pfLabel}</span>
-                </div>}
-              </div>
+            return <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:7,marginBottom:12,padding:"6px 0"}}>
+              <span style={{fontSize:9,color:"#ffffff66",letterSpacing:1.5,fontFamily:MONO,textTransform:"uppercase"}}>Profit Factor</span>
+              <span style={{fontSize:13,fontWeight:800,color:pfColor,fontFamily:MONO,textShadow:`0 0 10px ${pfColor}66`}}>{pfStr}</span>
+              <span style={{width:3,height:3,borderRadius:"50%",background:"#ffffff22"}}/>
+              <span style={{fontSize:9,color:`${pfColor}cc`,fontFamily:MONO,fontWeight:700}}>{pfLabel}</span>
             </div>;
           })()}
-          {/* === COACH : séparateur visuel parlant, dès 5 trades === */}
-          <div id="tut-coach"><CoachCard trades={pf} lang={lang} neon={neon}/></div>
+          {/* === Discipline pleine largeur (gros) === */}
+          {total>=2&&discScore!==null&&(
+            <div id="tut-discipline" style={{background:`linear-gradient(145deg,${scoreColor}12,${scoreColor}05)`,border:`1px solid ${scoreColor}30`,borderRadius:14,padding:"16px 18px",marginBottom:12,boxShadow:`0 8px 32px ${scoreColor}12,inset 0 1px 0 ${scoreColor}18`}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div>
+                  <div style={{fontSize:9,color:"#ffffffaa",letterSpacing:2,fontFamily:MONO,marginBottom:4}}>{t.disciplineLabel}</div>
+                  <div style={{fontSize:42,fontWeight:900,fontFamily:MONO,lineHeight:1,textShadow:`0 0 40px ${scoreColor}cc, 0 0 8px ${scoreColor}88, 0 2px 10px rgba(0,0,0,0.7)`,color:"#ffffff"}}>{discScore}<span style={{fontSize:15,color:"#ffffff44",textShadow:"none"}}>/10</span></div>
+                  <div style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:6,background:`${scoreColor}15`,borderRadius:20,padding:"3px 10px",border:`1px solid ${scoreColor}30`}}>
+                    <div style={{width:5,height:5,borderRadius:"50%",background:scoreColor,boxShadow:`0 0 6px ${scoreColor}`}}/>
+                    <span style={{fontSize:8,color:scoreColor,fontWeight:700,letterSpacing:1}}>{discScore>=8?t.disciplineExcellent:discScore>=6?t.disciplineGood:discScore>=4?t.disciplineWork:t.disciplinePoor}</span>
+                  </div>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:8,minWidth:130}}>
+                  {[{l:t.conformiteLabel,v:Math.round(pf.filter(x=>x.conforming).length/total*100),c:neon},{l:t.sansRevengeLabel,v:Math.round(pf.filter(x=>!x.isRevenge).length/total*100),c:pf.filter(x=>x.isRevenge).length===0?neon:"#f0b429"}].map(({l,v,c})=>(
+                    <div key={l}>
+                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:8,color:"#ffffffaa",fontFamily:MONO}}>{l}</span><span style={{fontSize:9,fontWeight:700,color:"#ffffff",fontFamily:MONO}}>{v}%</span></div>
+                      <div style={{height:3,background:"#ffffff10",borderRadius:2}}><div style={{width:`${v}%`,height:"100%",background:`linear-gradient(90deg,${c}99,${c})`,borderRadius:2,transition:"width 0.5s",boxShadow:`0 0 8px ${c}55`}}/></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          {/* === ZONE TEST : Résumé texte OU Courbe (toggle temporaire) === */}
+          {total>=5&&<div id="tut-coach" style={{marginBottom:12}}>
+            <div style={{display:"flex",gap:4,marginBottom:8,background:"#0f0f14",borderRadius:8,padding:3}}>
+              {[["resume",lang==="fr"?"Résumé":"Summary"],["courbe",lang==="fr"?"Courbe":"Curve"]].map(([m,l])=>(
+                <button key={m} onClick={()=>setHomeTestView(m)} className="btn" style={{flex:1,padding:"6px 0",borderRadius:6,fontSize:10,fontWeight:700,fontFamily:MONO,background:homeTestView===m?neon:"transparent",color:homeTestView===m?"#131318":"#ffffffaa",border:"none"}}>{l}</button>
+              ))}
+            </div>
+            {homeTestView==="resume"
+              ? <CoachSummaryCard trades={pf} lang={lang} neon={neon} onOpen={()=>setShowStats(true)}/>
+              : <PerformanceChart trades={pf} neon={neon} lang={lang}/>}
+          </div>}
           {trades.length>0&&(
             <div id="tut-lasttrade" className="row" onClick={()=>setDetailTrade(trades[0])} style={{background:`${rc(trades[0].result,neon)}0a`,border:`1px solid ${rc(trades[0].result,neon)}35`,borderRadius:12,padding:14,marginBottom:12,borderLeft:`3px solid ${rc(trades[0].result,neon)}`,boxShadow:`0 4px 20px ${rc(trades[0].result,neon)}14`}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
@@ -3397,9 +3387,8 @@ export default function App() {
               </div>
             </div>
           )}
-          {/* Bloc Insights : 4 conseils, replié par défaut, à partir de 10 trades */}
-          <InsightsBlock trades={pf} lang={lang} neon={neon}/>
-          {total>=3&&<button onClick={()=>setShowStats(true)} className="btn" style={{width:"100%",background:`${neon}0d`,border:`1px solid ${neon}28`,borderRadius:10,padding:"12px 0",color:neon,fontSize:11,fontWeight:700,fontFamily:MONO,letterSpacing:2,marginBottom:12}}>
+          {/* Résumé & insights : accès direct si trop peu de trades pour le coach (<5) */}
+          {total>=3&&total<5&&<button onClick={()=>setShowStats(true)} className="btn" style={{width:"100%",background:`${neon}0d`,border:`1px solid ${neon}28`,borderRadius:10,padding:"12px 0",color:neon,fontSize:11,fontWeight:700,fontFamily:MONO,letterSpacing:2,marginBottom:12}}>
             {lang==="fr"?"◈ RÉSUMÉ & INSIGHTS":"◈ SUMMARY & INSIGHTS"}
           </button>}
           <NoTradeButton onSave={e=>{
@@ -3752,7 +3741,7 @@ export default function App() {
 
       {detailTrade&&<TradeDetailModal trade={detailTrade} config={config} onClose={()=>setDetailTrade(null)} onEdit={startEdit} onShare={t=>{setShareTarget(t);setShowShare(true);}} lang={lang} neon={neon} accounts={accounts} onReassign={(tid,aid)=>{reassignTrade(tid,aid);setDetailTrade(dt=>dt?{...dt,accountId:aid}:dt);}}/>}
       {showExport&&<ExportModal trades={trades} onClose={()=>setShowExport(false)} lang={lang} neon={neon}/>}
-      {showStats&&<StatsInsightsModal trades={trades} lang={lang} neon={neon} onClose={()=>setShowStats(false)}/>}
+      {showStats&&<StatsInsightsModal trades={trades} lang={lang} neon={neon} onClose={()=>setShowStats(false)} accounts={accounts} activeAccountId={activeAccountId}/>}
       {showShare&&<ShareModal trade={shareTarget} trades={trades} lang={lang} neon={neon} config={config} onClose={()=>{setShowShare(false);setShareTarget(null);}}/> }
       {showReset&&<ResetModal trades={trades} onReset={handleReset} onClose={()=>setShowReset(false)} lang={lang} neon={neon}/>}
       {showNewPhase&&<NewPhaseModal onConfirm={data=>{handleNewPhase(data);setShowNewPhase(false);}} onClose={()=>setShowNewPhase(false)} lang={lang} neon={neon} phases={phases} config={config}/>}
