@@ -2296,12 +2296,14 @@ function ExportModal({trades,onClose,lang,neon}) {
 
 function Tutorial({neon="#00ff9d", onEnd}) {
   const STEPS = [
-    {elId:"tut-kpi",        icon:"📈", title:"Win Rate & P&L",        body:"Tes KPI en temps réel. Win Rate = % trades gagnants. P&L = performance % et en devise. Le capital total est recalculé automatiquement.",  pos:"below"},
-    {elId:"tut-discipline", icon:"🎯", title:"Score Discipline",       body:"Note sur 10 calculée sur ta conformité aux règles (60%) et l'absence de revenge trades (40%). Objectif : 8/10 minimum.",                   pos:"below"},
-    {elId:"tut-lasttrade",  icon:"⚡", title:"Dernier Trade",          body:"Ton dernier trade enregistré. Clique pour voir le détail complet : checklist, score de rejet, notes et screenshot.",                        pos:"below"},
-    {elId:"tut-addtrade",   icon:"✚",  title:"Enregistrer un Trade",   body:"Après chaque trade : sélectionne ton actif, coche ta checklist, note le résultat et le P&L en % ou en devise. Le score de conformité est calculé automatiquement.",  pos:"above"},
-    {elId:"tut-nav",        icon:"🧭", title:"Navigation",             body:"Stats = Dashboard · + Trade = Saisir un trade · Historique = Tous tes trades filtrables · ⚙ = Paramètres, actifs, seuil de conformité.",   pos:"above"},
-    {elId:"tut-nav",        icon:"📋", title:"Phases de trading",      body:"Une phase = un compte ou une période. Crée une nouvelle phase dans ⚙ pour remettre les stats à zéro tout en conservant l'historique complet. Idéal pour les prop firms.",  pos:"above", last:true},
+    {elId:"tut-account",    icon:"🔄", title:"Tes comptes",            body:"Ce bandeau montre ton compte actif, son capital et ta progression vers l'objectif. Clique dessus pour basculer entre tes comptes (prop firm, perso, démo).",  pos:"below"},
+    {elId:"tut-kpi",        icon:"📊", title:"Win Rate & P&L",         body:"Tes deux chiffres clés en haut : Win Rate (% de trades gagnants) et P&L (performance en % et en devise, capital recalculé automatiquement).",  pos:"below"},
+    {elId:"tut-discipline", icon:"🎯", title:"Discipline & Profit Factor", body:"Discipline : note /10 basée sur ta conformité aux règles et l'absence de revenge trades. Profit Factor : tes gains divisés par tes pertes — au-dessus de 1.5, ton edge est solide.",  pos:"below"},
+    {elId:"tut-coach",      icon:"◆",  title:"Ton coach",              body:"Une lecture de tes stats en une phrase, qui change selon ta situation. Il t'alerte, te motive ou pointe ce qu'il faut corriger. Apparaît dès 5 trades.",  pos:"below"},
+    {elId:"tut-lasttrade",  icon:"⚡", title:"Dernier Trade",          body:"Ton dernier trade enregistré. Clique pour voir le détail complet, le modifier, le partager ou le réassigner à un autre compte.",  pos:"below"},
+    {elId:"tut-addtrade",   icon:"✚",  title:"Enregistrer un Trade",   body:"Après chaque trade : actif, checklist, résultat et P&L en % ou en devise. Active ou masque des champs (rejet, check-in, timeframe…) dans Paramètres › Stratégie.",  pos:"above"},
+    {elId:"tut-nav",        icon:"🧭", title:"Navigation",             body:"Stats = Dashboard · + Trade = Saisir un trade · Historique = Tous tes trades filtrables · ⚙ = Paramètres, modules, actifs, seuil de conformité.",   pos:"above"},
+    {elId:"tut-nav",        icon:"📋", title:"Phases & comptes",       body:"Une phase ou un compte = une période ou un capital séparé. Crée-en de nouveaux dans ⚙ pour repartir à zéro tout en gardant l'historique. Idéal pour les prop firms.",  pos:"above", last:true},
   ];
   const [step, setStep] = useState(0);
   const [spotRect, setSpotRect] = useState(null);
@@ -2361,6 +2363,12 @@ function Tutorial({neon="#00ff9d", onEnd}) {
       if(animate) animateTo(r);
       else { setSpotRect(r); prevRect.current = r; }
       setTtPos(calcTtPos(r, s.pos));
+    } else {
+      // Élément absent (ex: coach/compte pas encore visibles) → pas de halo, tooltip centré
+      if(animRef.current) cancelAnimationFrame(animRef.current);
+      setSpotRect(null); prevRect.current = null;
+      const ttW=282, ttH=195;
+      setTtPos({top:Math.max(80,(window.innerHeight-ttH)/2), left:Math.max(10,(window.innerWidth-ttW)/2)});
     }
     setTtVisible(false);
     setTimeout(() => setTtVisible(true), 60);
@@ -2541,6 +2549,230 @@ function InsightsBlock({trades, lang, neon}){
       })}
     </div>}
   </div>);
+}
+
+// ── COACH : calcul de la phrase du moment ──
+// Retourne {type, glyph, color, message, variant} où variant est un index pour varier les formulations
+function computeCoach(trades, lang){
+  const fr = lang==="fr";
+  if(!trades || trades.length < 5) return null;
+
+  // Helpers
+  const lastN = (n) => trades.slice(0, n);
+  const wins = trades.filter(x=>x.result==="WIN");
+  const losses = trades.filter(x=>x.result==="LOSS");
+  const now = new Date();
+  const cutoff7 = new Date(now.getTime() - 7*86400000).toISOString().split("T")[0];
+  const last7 = trades.filter(x=>x.date>=cutoff7);
+
+  // Index pour varier les formulations (basé sur le jour du mois, change quotidiennement)
+  const dayIdx = new Date().getDate() % 3;
+
+  // ─── 1. ALERTE CRITIQUE ───
+  // 1a. Losing streak (3 LOSS dans les 5 derniers)
+  const last5 = lastN(5);
+  const recentLosses = last5.filter(x=>x.result==="LOSS").length;
+  if(recentLosses >= 3){
+    const variants = fr ? [
+      `Pause. ${recentLosses} LOSS sur tes 5 derniers — la prochaine décision compte plus que la précédente.`,
+      `${recentLosses} LOSS récents. Ferme l'écran 20 minutes avant de décider quoi que ce soit.`,
+      `Série rouge en cours. La meilleure réaction maintenant : ne pas réagir.`,
+    ] : [
+      `Pause. ${recentLosses} LOSS in your last 5 — the next decision matters more than the last.`,
+      `${recentLosses} recent losses. Close the screen for 20 minutes before deciding anything.`,
+      `Losing streak active. Best move now: don't move.`,
+    ];
+    return {type:"alert", glyph:"⚠", color:"#ff4d4d", message:variants[dayIdx]};
+  }
+
+  // 1b. Revenge trades cette semaine
+  const rev7 = last7.filter(x=>x.isRevenge);
+  if(rev7.length >= 2){
+    const variants = fr ? [
+      `${rev7.length} revenge trades cette semaine. Ta limite quotidienne te protégerait.`,
+      `${rev7.length} fois où tu as forcé. Le marché ne récompense pas l'insistance.`,
+      `Revenge x${rev7.length}. Chacun coûte plus cher que le précédent — coupe le robinet.`,
+    ] : [
+      `${rev7.length} revenge trades this week. Your daily limit would protect you.`,
+      `${rev7.length} times you forced it. The market doesn't reward stubbornness.`,
+      `Revenge x${rev7.length}. Each costs more than the last — shut the tap.`,
+    ];
+    return {type:"alert", glyph:"⚠", color:"#ff4d4d", message:variants[dayIdx]};
+  }
+
+  // ─── 2. MOMENTUM POSITIF ───
+  // 2a. Streak WIN ≥ 3
+  let streakWin = 0;
+  for(const t of trades){ if(t.result==="WIN") streakWin++; else break; }
+  if(streakWin >= 3){
+    const variants = fr ? [
+      `${streakWin} WIN d'affilée. Ne deviens pas euphorique — reste sur ta checklist.`,
+      `${streakWin} en série. L'arrogance est le plus cher des biais cognitifs.`,
+      `${streakWin} WIN de suite. Le danger n'est plus le marché, c'est toi.`,
+    ] : [
+      `${streakWin} WINs in a row. Don't get euphoric — stick to your checklist.`,
+      `${streakWin}-streak. Arrogance is the most expensive cognitive bias.`,
+      `${streakWin} consecutive wins. The danger isn't the market anymore — it's you.`,
+    ];
+    return {type:"momentum", glyph:"▲", color:"NEON", message:variants[dayIdx]};
+  }
+
+  // 2b. Semaine très positive (P&L 7j > 3% et ≥ 3 trades)
+  if(last7.length >= 3){
+    const weekPnl = last7.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
+    if(weekPnl >= 3){
+      const variants = fr ? [
+        `+${weekPnl.toFixed(1)}% cette semaine. Capitalise sans forcer le rythme.`,
+        `Belle semaine (+${weekPnl.toFixed(1)}%). Reste exigeant, pas gourmand.`,
+        `+${weekPnl.toFixed(1)}% en 7 jours. Le piège maintenant : sur-trader pour "doubler".`,
+      ] : [
+        `+${weekPnl.toFixed(1)}% this week. Capitalize without forcing the pace.`,
+        `Solid week (+${weekPnl.toFixed(1)}%). Stay demanding, not greedy.`,
+        `+${weekPnl.toFixed(1)}% over 7 days. The trap now: overtrading to "double up".`,
+      ];
+      return {type:"momentum", glyph:"▲", color:"NEON", message:variants[dayIdx]};
+    }
+  }
+
+  // ─── 3. EDGE CONFIRMÉ ───
+  const conf = trades.filter(x=>x.conforming);
+  const nconf = trades.filter(x=>!x.conforming);
+  if(conf.length >= 5 && nconf.length >= 3){
+    const cWR = Math.round(conf.filter(x=>x.result==="WIN").length/conf.length*100);
+    const nWR = Math.round(nconf.filter(x=>x.result==="WIN").length/nconf.length*100);
+    if(cWR - nWR >= 15){
+      const variants = fr ? [
+        `Tes setups conformes : ${cWR}% WR. Ton edge est dans ta discipline — pas ailleurs.`,
+        `Quand tu respectes ta checklist : ${cWR}%. Sans : ${nWR}%. Pose-toi la question.`,
+        `${cWR}% conformes vs ${nWR}% hors règles. Ta stratégie marche — toi parfois moins.`,
+      ] : [
+        `Your compliant setups: ${cWR}% WR. Your edge is in your discipline — nowhere else.`,
+        `When you follow the checklist: ${cWR}%. When you don't: ${nWR}%. Ask yourself why.`,
+        `${cWR}% compliant vs ${nWR}% off-rules. Your strategy works — sometimes you less so.`,
+      ];
+      return {type:"edge", glyph:"◆", color:"NEON", message:variants[dayIdx]};
+    }
+  }
+
+  // ─── 4. LEVIER IDENTIFIÉ ───
+  // Asymétrie WIN/LOSS défavorable
+  if(wins.length >= 5 && losses.length >= 5){
+    const avgWin = wins.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0)/wins.length;
+    const avgLoss = Math.abs(losses.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0)/losses.length);
+    const ratio = avgLoss>0 ? avgWin/avgLoss : Infinity;
+    const wr = Math.round(wins.length/trades.length*100);
+    if(ratio < 1 && avgWin > 0 && avgLoss > 0){
+      const variants = fr ? [
+        `WR à ${wr}% mais ratio ${ratio.toFixed(2)}. Tes gains sont trop courts — travaille tes sorties.`,
+        `Tu gagnes souvent mais petit (+${avgWin.toFixed(1)}%) et perds plus (-${avgLoss.toFixed(1)}%). Inverse ça.`,
+        `Ratio ${ratio.toFixed(2)} : tu coupes tes WIN trop tôt. Laisse-les respirer.`,
+      ] : [
+        `${wr}% WR but ratio ${ratio.toFixed(2)}. Your wins are too short — work on your exits.`,
+        `You win often but small (+${avgWin.toFixed(1)}%) and lose bigger (-${avgLoss.toFixed(1)}%). Reverse it.`,
+        `Ratio ${ratio.toFixed(2)}: you cut WINs too early. Let them breathe.`,
+      ];
+      return {type:"lever", glyph:"◈", color:"#f0b429", message:variants[dayIdx]};
+    }
+  }
+
+  // ─── 5. ÉTAT STABLE ───
+  if(trades.length >= 15){
+    const totalPnl = trades.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
+    const variants = fr ? [
+      `${trades.length} trades, ${totalPnl>=0?"+":""}${totalPnl.toFixed(1)}%. Tu construis quelque chose. Continue.`,
+      `Phase stable. C'est dans ces moments qu'on creuse l'écart sans le voir.`,
+      `${trades.length} trades enregistrés. La régularité est ta meilleure arme à long terme.`,
+    ] : [
+      `${trades.length} trades, ${totalPnl>=0?"+":""}${totalPnl.toFixed(1)}%. You're building something. Keep going.`,
+      `Stable phase. This is when the gap quietly widens.`,
+      `${trades.length} trades logged. Consistency is your best long-term weapon.`,
+    ];
+    return {type:"stable", glyph:"●", color:"#00d4ff", message:variants[dayIdx]};
+  }
+
+  // ─── 6. DÉBUT DE PARCOURS ───
+  const variants = fr ? [
+    `${trades.length} trades — trop tôt pour des conclusions. Reste constant.`,
+    `Phase d'observation. Chaque trade enregistré construit ton statistique.`,
+    `${trades.length} trades : ton journal a plus de valeur que tes résultats à ce stade.`,
+  ] : [
+    `${trades.length} trades — too early for conclusions. Stay consistent.`,
+    `Observation phase. Every logged trade builds your dataset.`,
+    `${trades.length} trades: your journal is worth more than your results at this stage.`,
+  ];
+  return {type:"start", glyph:"○", color:"#ffffff66", message:variants[dayIdx]};
+}
+
+// ── CoachCard : carte de session asymétrique avec barre verticale + glyphe + signature ──
+function CoachCard({trades, lang, neon}){
+  const coach = computeCoach(trades, lang);
+  if(!coach) return null;
+  const c = coach.color === "NEON" ? neon : coach.color;
+  const fr = lang==="fr";
+  // Numéro de session basé sur le jour de l'année (donne un nombre qui évolue)
+  const start = new Date(new Date().getFullYear(), 0, 0);
+  const diff = (new Date() - start) + ((start.getTimezoneOffset() - new Date().getTimezoneOffset()) * 60 * 1000);
+  const dayOfYear = Math.floor(diff / 86400000);
+  const sessionNum = String(dayOfYear).padStart(3, '0');
+  return (
+    <div style={{
+      position:"relative",
+      background:"linear-gradient(135deg,#0f0f16 0%,#0c0c12 100%)",
+      borderRadius:12,
+      padding:"16px 16px 14px 22px",
+      marginBottom:14,
+      border:`1px solid ${c}18`,
+      boxShadow:`0 4px 24px ${c}10, inset 0 1px 0 ${c}10`,
+      overflow:"hidden",
+    }}>
+      {/* Barre verticale colorée à gauche */}
+      <div style={{
+        position:"absolute",
+        left:0, top:0, bottom:0,
+        width:3,
+        background:`linear-gradient(180deg,${c}99,${c}33)`,
+        boxShadow:`0 0 8px ${c}66`,
+      }}/>
+      {/* Glyphe en filigrane discret en haut à droite */}
+      <div style={{
+        position:"absolute",
+        top:10, right:14,
+        fontSize:22,
+        color:`${c}22`,
+        fontFamily:MONO,
+        lineHeight:1,
+        pointerEvents:"none",
+      }}>{coach.glyph}</div>
+      {/* Glyphe principal */}
+      <div style={{display:"flex",alignItems:"flex-start",gap:11}}>
+        <div style={{
+          fontSize:14, color:c, fontFamily:MONO,
+          lineHeight:1.5, flexShrink:0, marginTop:1,
+          textShadow:`0 0 8px ${c}88`,
+        }}>{coach.glyph}</div>
+        <div style={{flex:1,minWidth:0,paddingRight:30}}>
+          <div style={{
+            fontSize:12, color:"#ffffffdd", fontFamily:MONO,
+            lineHeight:1.6, fontWeight:400,
+            letterSpacing:0.1,
+          }}>{coach.message}</div>
+          {/* Signature */}
+          <div style={{
+            marginTop:10,
+            display:"flex",
+            alignItems:"center",
+            gap:6,
+          }}>
+            <div style={{height:1,width:14,background:`${c}44`}}/>
+            <span style={{
+              fontSize:8, color:`${c}77`, fontFamily:MONO,
+              letterSpacing:2, fontWeight:700,
+            }}>{fr?"COACH":"COACH"} · {sessionNum}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function App() {
@@ -2999,7 +3231,7 @@ export default function App() {
         const target=parseFloat(objectif.pnl)||1;
         const objPct=hasObj?Math.min(100,Math.max(0,accPnl/target*100)):0;
         const canSwitch=activeAccounts.length>1;
-        return <div style={{position:"relative",background:"rgba(9,9,16,0.6)",borderBottom:`1px solid #ffffff06`}}>
+        return <div id="tut-account" style={{position:"relative",background:"rgba(9,9,16,0.6)",borderBottom:`1px solid #ffffff06`}}>
           {hasObj&&<div style={{height:2,background:"#ffffff08"}}>
             <div style={{width:`${objPct}%`,height:"100%",background:`linear-gradient(90deg,${c}66,${c})`,transition:"width 0.6s ease",boxShadow:`0 0 4px ${c}55`}}/>
           </div>}
@@ -3132,6 +3364,8 @@ export default function App() {
               </div>
             </div>;
           })()}
+          {/* === COACH : séparateur visuel parlant, dès 5 trades === */}
+          <div id="tut-coach"><CoachCard trades={pf} lang={lang} neon={neon}/></div>
           {trades.length>0&&(
             <div id="tut-lasttrade" className="row" onClick={()=>setDetailTrade(trades[0])} style={{background:`${rc(trades[0].result,neon)}0a`,border:`1px solid ${rc(trades[0].result,neon)}35`,borderRadius:12,padding:14,marginBottom:12,borderLeft:`3px solid ${rc(trades[0].result,neon)}`,boxShadow:`0 4px 20px ${rc(trades[0].result,neon)}14`}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
