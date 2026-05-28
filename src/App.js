@@ -873,6 +873,74 @@ function NoTradeButton({onSave,alreadyDone,lang,neon,accounts,activeAccountId}) 
   );
 }
 
+function NoTradeEditModal({entry,onSave,onDelete,onClose,lang,neon,accounts}) {
+  const t=T[lang];
+  const fr=lang==="fr";
+  const ntr=NTR[lang]||NTR.fr;
+  const initIsPreset = entry && ntr.includes(entry.reason);
+  const [reason,setReason]=useState(entry&&initIsPreset?entry.reason:"");
+  const [customReason,setCustomReason]=useState(entry&&!initIsPreset&&entry.reason?entry.reason:"");
+  const [date,setDate]=useState(entry?.date||today());
+  const [acctId,setAcctId]=useState(entry?.accountId||(Array.isArray(accounts)&&accounts[0]?.id)||null);
+  const [acctMenuOpen,setAcctMenuOpen]=useState(false);
+  const liveAccounts=Array.isArray(accounts)?accounts.filter(a=>!a.archived):[];
+  const hasAccounts=liveAccounts.length>1;
+  const selAcc=Array.isArray(accounts)?accounts.find(a=>a.id===acctId):null;
+  const selColor=selAcc?(selAcc.color||neon):neon;
+  const inSt=mkInput(neon);
+  if(!entry) return null;
+  const finalReason=customReason.trim()||reason;
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={onClose}>
+      <div className="slide-up" style={{background:"#131318",border:`1px solid ${neon}35`,borderRadius:16,width:"100%",maxWidth:440,maxHeight:"88vh",overflow:"auto",padding:20}} onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <div style={{fontSize:13,fontWeight:700,color:neon,fontFamily:MONO,display:"flex",alignItems:"center",gap:8}}><span>⊘</span><span>{fr?"Modifier — Pas de trade":"Edit — No trade"}</span></div>
+          <button onClick={onClose} className="btn" style={{background:"transparent",border:"none",color:"#ffffff66",fontSize:18,cursor:"pointer"}}>✕</button>
+        </div>
+        {/* Date */}
+        <div style={{marginBottom:12}}>
+          <div style={{fontSize:9,color:"#ffffff66",letterSpacing:2,marginBottom:6,fontFamily:MONO}}>{fr?"DATE":"DATE"}</div>
+          <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={{...inSt,fontSize:12}}/>
+        </div>
+        {/* Raison prédéfinie */}
+        <div style={{marginBottom:10}}>
+          <div style={{fontSize:9,color:"#ffffff66",letterSpacing:2,marginBottom:6,fontFamily:MONO}}>{t.noTradeReason}</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}}>
+            {ntr.map(r=><button key={r} onClick={()=>{setReason(reason===r?"":r);setCustomReason("");}} className="btn" style={{background:reason===r&&!customReason?"rgba(255,255,255,0.1)":"#131318",border:`1px solid ${reason===r&&!customReason?"rgba(255,255,255,0.25)":"rgba(255,255,255,0.08)"}`,color:reason===r&&!customReason?"#ffffff":"#ffffffbb",borderRadius:6,padding:"5px 10px",fontSize:11,fontFamily:MONO}}>{r}</button>)}
+          </div>
+          {/* Champ libre */}
+          <input value={customReason} onChange={e=>{setCustomReason(e.target.value);if(e.target.value)setReason("");}} placeholder={fr?"Autre raison (optionnel)…":"Other reason (optional)…"} style={{...inSt,fontSize:12}}/>
+        </div>
+        {/* Sélecteur de compte */}
+        {hasAccounts&&<div style={{position:"relative",marginBottom:14}}>
+          <div style={{fontSize:9,color:"#ffffff66",letterSpacing:2,marginBottom:6,fontFamily:MONO}}>{fr?"COMPTE":"ACCOUNT"}</div>
+          <button onClick={()=>setAcctMenuOpen(o=>!o)} className="btn" style={{width:"100%",display:"flex",alignItems:"center",gap:7,background:`${selColor}10`,border:`1px solid ${acctMenuOpen?selColor:`${selColor}28`}`,borderRadius:acctMenuOpen?"8px 8px 0 0":8,padding:"8px 12px",cursor:"pointer",textAlign:"left"}}>
+            {selAcc&&<div style={{width:7,height:7,borderRadius:"50%",background:selColor,boxShadow:`0 0 4px ${selColor}`,flexShrink:0}}/>}
+            <span style={{fontSize:11,fontWeight:700,color:"#ffffff",fontFamily:MONO,flex:1}}>{selAcc?selAcc.name:(fr?"Aucun compte":"No account")}</span>
+            <span style={{fontSize:9,color:`${selColor}99`,transition:"transform 0.2s",transform:acctMenuOpen?"rotate(180deg)":"none"}}>▼</span>
+          </button>
+          {acctMenuOpen&&<>
+            <div onClick={()=>setAcctMenuOpen(false)} style={{position:"fixed",inset:0,zIndex:310}}/>
+            <div className="slide-up" style={{position:"absolute",top:"100%",left:0,right:0,zIndex:311,background:"#0f0f16",border:`1px solid ${selColor}28`,borderTop:"none",borderRadius:"0 0 8px 8px",overflow:"hidden",boxShadow:"0 12px 32px rgba(0,0,0,0.6)"}}>
+              {liveAccounts.filter(a=>a.id!==acctId).map(acc=>(
+                <button key={acc.id} onClick={()=>{setAcctId(acc.id);setAcctMenuOpen(false);}} className="row" style={{width:"100%",display:"flex",alignItems:"center",gap:7,background:"transparent",border:"none",borderTop:`1px solid ${neon}0a`,padding:"9px 12px",cursor:"pointer"}}>
+                  <div style={{width:6,height:6,borderRadius:"50%",background:acc.color||neon,flexShrink:0}}/>
+                  <span style={{fontSize:11,fontWeight:500,color:"#ffffffcc",fontFamily:MONO,flex:1,textAlign:"left"}}>{acc.name}</span>
+                </button>
+              ))}
+            </div>
+          </>}
+        </div>}
+        {/* Actions */}
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={()=>{onSave({...entry,date,reason:finalReason,accountId:acctId});onClose();}} className="btn" style={{flex:1,background:`${neon}18`,border:`1px solid ${neon}55`,color:neon,borderRadius:8,padding:11,fontSize:12,fontWeight:700,fontFamily:MONO}}>{t.confirmBtn||"Confirmer"}</button>
+          <button onClick={()=>{if(window.confirm(fr?"Supprimer cette entrée ?":"Delete this entry?")){onDelete(entry.id);onClose();}}} className="btn" style={{background:"transparent",border:"1px solid rgba(255,77,77,0.3)",color:"#ff4d4d",borderRadius:8,padding:"11px 14px",fontSize:11,fontFamily:MONO}}>{fr?"Supprimer":"Delete"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ResetModal({trades,onReset,onClose,lang,neon}) {
   const t=T[lang];
   const [step,setStep]=useState("confirm");
@@ -2611,10 +2679,14 @@ function InsightsBlock({trades, lang, neon}){
 
 // ── COACH : calcul de la phrase du moment ──
 // Retourne {type, glyph, color, message, variant} où variant est un index pour varier les formulations
-function computeCoach(trades, lang){
+function computeCoach(tradesInput, lang){
   const fr = lang==="fr";
-  if(!trades || trades.length < 5) return null;
+  if(!tradesInput || tradesInput.length < 5) return null;
 
+  // Tri par id décroissant : id = Date.now() au moment de la création,
+  // donc trades[0] est toujours le plus récemment créé (= l'action en cours),
+  // peu importe la date saisie. C'est ce qui détermine les streaks réels.
+  const trades = [...tradesInput].sort((a,b)=>(Number(b.id)||0)-(Number(a.id)||0));
   const lastN = (n) => trades.slice(0, n);
   const wins = trades.filter(x=>x.result==="WIN");
   const losses = trades.filter(x=>x.result==="LOSS");
@@ -2625,7 +2697,10 @@ function computeCoach(trades, lang){
   // ─── 1. ALERTE CRITIQUE ───
   const last5 = lastN(5);
   const recentLosses = last5.filter(x=>x.result==="LOSS").length;
-  if(recentLosses >= 3){
+  // Garde : la série de pertes n'est "en cours" QUE si le tout dernier trade (plus récent) est lui-même un LOSS.
+  // Sinon, l'utilisateur vient de gagner et ce n'est plus la situation à commenter.
+  const lastTradeIsLoss = trades[0] && trades[0].result === "LOSS";
+  if(recentLosses >= 3 && lastTradeIsLoss){
     const v = fr ? [
       `${recentLosses} LOSS sur tes 5 derniers trades. Ce n'est pas le marché le problème à cet instant, c'est ton état mental. Les pertes en série poussent à "se refaire" — c'est exactement le piège. Ferme la plateforme et reviens demain avec les yeux clairs.`,
       `Série de ${recentLosses} pertes en cours. Statistiquement, ta prochaine décision sera prise sous stress, donc dégradée. La meilleure action de trading maintenant est de ne pas trader. Note ce que tu ressens, ça vaut plus qu'un trade de plus.`,
@@ -2829,6 +2904,7 @@ export default function App() {
   const [histAsset,setHistAsset]=useState("ALL");
   const [confirmDeleteId,setConfirmDeleteId]=useState(null);
   const [detailTrade,setDetailTrade]=useState(null);
+  const [editingNoTrade,setEditingNoTrade]=useState(null);
   const [config,setConfig]=useState({items:DEFAULT_CRITERIA,threshold:6,strategyName:"Ma Stratégie",defaultAsset:"XAU/USD",maxTrades:1,neonColor:"#00ff9d",calendarOn:true,notifOn:true,customAssets:[...PRESET_ASSETS],capital:"",devise:"€",accountType:"perso",phaseStartDate:"",modules:{rejet:true,checkin:true,postSl:true,revenge:true,timeframe:true},timeframes:[...DEFAULT_TIMEFRAMES]});
   const fileRef=useRef();const pageRef=useRef();const weeklyShownRef=useRef(false);const currentUserRef=useRef(null);
   const neon=config.neonColor||"#00ff9d";const t=T[lang];const inSt=mkInput(neon);
@@ -2982,6 +3058,15 @@ export default function App() {
   const usedAssets=[...new Set(trades.map(x=>x.asset))];
 
   const checkRevenge=fd=>{if(!config.maxTrades||config.maxTrades===0)return false;const aid=form.accountId||activeAccountId;return trades.filter(x=>x.date===fd&&x.id!==editingId&&(x.accountId||"ph_0")===aid).length>=config.maxTrades;};
+  // Helper : force le signe de la valeur P&L selon le résultat (BE laisse libre)
+  const forceSign=(val,result)=>{
+    if(val===""||val===null||val===undefined) return val;
+    const s=String(val).replace(/^[+-]/,"");
+    if(s===""||isNaN(parseFloat(s))) return val;
+    if(result==="WIN") return s==="0"?"0":s; // pas de + dans le state (juste un nombre positif)
+    if(result==="LOSS") return s==="0"?"0":"-"+s;
+    return val; // BE ou autre : libre
+  };
   const isRevengeNow=editingId===null&&checkRevenge(form.date);
   const pnlVal=form.pnlManual!==""?form.pnlManual:form.pnlPreset;
   const pnlIncoherent=pnlVal!==""&&((form.result==="WIN"&&parseFloat(pnlVal)<0)||(form.result==="LOSS"&&parseFloat(pnlVal)>0));
@@ -3377,14 +3462,21 @@ export default function App() {
                 </div>
                 <span style={{fontSize:24,fontWeight:900,color:"#ffffff",fontFamily:MONO,lineHeight:1,textShadow:`0 0 20px ${pfColor}aa, 0 2px 6px rgba(0,0,0,0.6)`}}>{pfStr}</span>
               </div>
-              {/* Mini-jauge à paliers */}
-              <div style={{position:"relative",height:6,borderRadius:4,overflow:"hidden",display:"flex",marginBottom:5}}>
-                <div style={{width:"33.33%",height:"100%",background:"#ff4d4d44"}}/>
-                <div style={{width:"16.67%",height:"100%",background:"#f0b42944"}}/>
-                <div style={{flex:1,height:"100%",background:`${neon}44`}}/>
-                {/* Curseur */}
-                <div style={{position:"absolute",top:-1,left:`${gaugePct}%`,transform:"translateX(-50%)",width:3,height:8,borderRadius:2,background:"#ffffff",boxShadow:`0 0 6px ${pfColor},0 0 2px #fff`}}/>
-              </div>
+              {/* Mini-jauge à paliers : segment actif éclairé, autres discrets */}
+              {(()=>{
+                const activeZone = pfVal<1?"red":pfVal<1.5?"orange":"green";
+                const op = (z)=>activeZone===z?"cc":"1f"; // segment actif vif, autres très discrets
+                const glow = (z,c)=>activeZone===z?`0 0 12px ${c}88, inset 0 0 8px ${c}55`:"none";
+                return <div style={{position:"relative",height:8,borderRadius:4,marginBottom:6,padding:"0 1px"}}>
+                  <div style={{position:"relative",height:"100%",borderRadius:4,overflow:"hidden",display:"flex",border:"1px solid #ffffff10"}}>
+                    <div style={{width:"33.33%",height:"100%",background:`#ff4d4d${op("red")}`,boxShadow:glow("red","#ff4d4d"),transition:"all 0.3s"}}/>
+                    <div style={{width:"16.67%",height:"100%",background:`#f0b429${op("orange")}`,boxShadow:glow("orange","#f0b429"),transition:"all 0.3s"}}/>
+                    <div style={{flex:1,height:"100%",background:`${neon}${op("green")}`,boxShadow:glow("green",neon),transition:"all 0.3s"}}/>
+                  </div>
+                  {/* Curseur rond pulsant avec gros halo */}
+                  <div style={{position:"absolute",top:"50%",left:`${gaugePct}%`,transform:"translate(-50%,-50%)",width:14,height:14,borderRadius:"50%",background:"#ffffff",border:`2px solid ${pfColor}`,boxShadow:`0 0 0 3px ${pfColor}33, 0 0 12px ${pfColor}, 0 0 22px ${pfColor}88, 0 2px 6px rgba(0,0,0,0.6)`,zIndex:2}}/>
+                </div>;
+              })()}
               {/* Graduations */}
               <div style={{position:"relative",height:9}}>
                 {[["0","0%"],["1","33.33%"],["1.5","50%"],["3+","100%"]].map(([lbl,pos])=>(
@@ -3543,7 +3635,7 @@ export default function App() {
               ))}
             </div>
           </div>}
-          <div style={{display:"flex",gap:8,marginBottom:10}}>{["WIN","LOSS","BE"].map(r=><button key={r} onClick={()=>setForm({...form,result:r,slDirection:r!=="LOSS"?"":form.slDirection})} className="btn" style={{flex:1,background:form.result===r?`${rc(r,neon)}22`:"#131318",border:`1px solid ${form.result===r?rc(r,neon):`${neon}26`}`,color:form.result===r?rc(r,neon):"#ffffffbb",borderRadius:8,padding:10,fontSize:12,fontWeight:700,fontFamily:MONO}}>{r}</button>)}</div>
+          <div style={{display:"flex",gap:8,marginBottom:10}}>{["WIN","LOSS","BE"].map(r=><button key={r} onClick={()=>setForm({...form,result:r,slDirection:r!=="LOSS"?"":form.slDirection,pnlPreset:forceSign(form.pnlPreset,r),pnlManual:forceSign(form.pnlManual,r)})} className="btn" style={{flex:1,background:form.result===r?`${rc(r,neon)}22`:"#131318",border:`1px solid ${form.result===r?rc(r,neon):`${neon}26`}`,color:form.result===r?rc(r,neon):"#ffffffbb",borderRadius:8,padding:10,fontSize:12,fontWeight:700,fontFamily:MONO}}>{r}</button>)}</div>
           {modOn(config,"postSl")&&form.result==="LOSS"&&(
             <div style={{background:"rgba(255,77,77,0.06)",border:"1px solid rgba(255,77,77,0.15)",borderRadius:8,padding:"10px 12px",marginBottom:10}}>
               <div style={{fontSize:9,color:"#ff4d4d",letterSpacing:2,marginBottom:8}}>{t.slDirectionLabel} <span style={{color:"#ffffffaa"}}>{t.optional}</span></div>
@@ -3568,11 +3660,11 @@ export default function App() {
                 <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
                   {(()=>{
                     const cap=parseFloat(config.capital)||0;
-                    const euroPresets=[-500,-250,0,500,1000,2000,5000].map(v=>({v,pct:cap?parseFloat((v/cap*100).toFixed(3)):0}));
+                    const euroPresets=[-1000,-500,-250,0,500,1000,2000,5000].map(v=>({v,pct:cap?parseFloat((v/cap*100).toFixed(3)):0}));
                     return euroPresets.map(({v,pct})=>{
                       const isActive=form.pnlManual===""&&form.pnlPreset===String(pct);
                       const c=v>0?neon:v<0?"#ff4d4d":"#f0b429";
-                      return <button key={v} onClick={()=>setForm({...form,pnlPreset:String(pct),pnlManual:""})} className="btn"
+                      return <button key={v} onClick={()=>setForm({...form,pnlPreset:forceSign(String(Math.abs(pct)),form.result),pnlManual:""})} className="btn"
                         style={{padding:"7px 8px",borderRadius:6,fontSize:10,fontWeight:700,fontFamily:MONO,
                           background:isActive?`${c}22`:"#131318",
                           border:`1px solid ${isActive?c:`${neon}14`}`,
@@ -3588,7 +3680,7 @@ export default function App() {
                       const euros=parseFloat(e.target.value)||0;
                       const cap=parseFloat(config.capital)||1;
                       const pct=parseFloat((euros/cap*100).toFixed(3));
-                      setForm(f=>({...f,pnlEurManual:e.target.value,pnlManual:String(pct),pnlPreset:""}));
+                      setForm(f=>({...f,pnlEurManual:e.target.value,pnlManual:forceSign(String(Math.abs(pct)),f.result),pnlPreset:""}));
                     }}
                     style={{width:"100%",background:"#131318",border:`1px solid ${neon}35`,borderRadius:8,color:"#ffffff",padding:"10px 50px 10px 14px",fontSize:13,fontFamily:MONO,outline:"none"}}/>
                   <span style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:11,color:"#ffffff44",fontFamily:MONO}}>{config.devise||"€"}</span>
@@ -3597,9 +3689,9 @@ export default function App() {
             ):(
               <div style={{display:"flex",gap:4,alignItems:"center"}}>
                 {PNL_PRESETS.map(v=>(
-                  <button key={v} onClick={()=>setForm({...form,pnlPreset:v,pnlManual:""})} className="btn" style={{padding:"8px 0",borderRadius:6,fontSize:11,fontWeight:700,fontFamily:MONO,flex:1,background:form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?`${neon}33`:parseFloat(v)<0?"rgba(255,77,77,0.2)":"rgba(240,180,41,0.2)"):"#131318",border:`1px solid ${form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?neon:parseFloat(v)<0?"#ff4d4d":"#f0b429"):`${neon}14`}`,color:form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?neon:parseFloat(v)<0?"#ff4d4d":"#f0b429"):"#ffffffaa"}}>{v}%</button>
+                  <button key={v} onClick={()=>setForm({...form,pnlPreset:forceSign(v.replace(/^[+-]/,""),form.result),pnlManual:""})} className="btn" style={{padding:"8px 0",borderRadius:6,fontSize:11,fontWeight:700,fontFamily:MONO,flex:1,background:form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?`${neon}33`:parseFloat(v)<0?"rgba(255,77,77,0.2)":"rgba(240,180,41,0.2)"):"#131318",border:`1px solid ${form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?neon:parseFloat(v)<0?"#ff4d4d":"#f0b429"):`${neon}14`}`,color:form.pnlPreset===v&&form.pnlManual===""?(parseFloat(v)>0?neon:parseFloat(v)<0?"#ff4d4d":"#f0b429"):"#ffffffaa"}}>{v}%</button>
                 ))}
-                <input type="number" step="0.1" placeholder={t.manualPnl} value={form.pnlManual} onChange={e=>setForm({...form,pnlManual:e.target.value,pnlPreset:""})} style={{width:52,background:"#131318",border:`1px solid ${form.pnlManual?`${neon}66`:`${neon}14`}`,borderRadius:6,color:form.pnlManual?(parseFloat(form.pnlManual)>=0?neon:"#ff4d4d"):"#ffffffaa",padding:"8px 4px",fontSize:10,fontFamily:MONO,outline:"none",textAlign:"center",flexShrink:0}}/>
+                <input type="number" step="0.1" placeholder={t.manualPnl} value={form.pnlManual} onChange={e=>setForm({...form,pnlManual:forceSign(e.target.value.replace(/^[+-]/,""),form.result),pnlPreset:""})} style={{width:52,background:"#131318",border:`1px solid ${form.pnlManual?`${neon}66`:`${neon}14`}`,borderRadius:6,color:form.pnlManual?(parseFloat(form.pnlManual)>=0?neon:"#ff4d4d"):"#ffffffaa",padding:"8px 4px",fontSize:10,fontFamily:MONO,outline:"none",textAlign:"center",flexShrink:0}}/>
               </div>
             )}
             {pnlVal!==""&&(
@@ -3688,7 +3780,8 @@ export default function App() {
                 lastPk=pk;
               }
               if(x._type==="notrade"){
-                els.push(<div key={x.id} style={{background:"rgba(90,90,90,0.06)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"12px 14px",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:16,color:"#ffffff66"}}>⊘</span><div><div style={{fontSize:12,color:"#ffffffaa",fontFamily:MONO,fontWeight:700}}>{t.noTradeToday}</div><div style={{fontSize:10,color:"#ffffffaa",marginTop:2}}>{x.date}{x.reason?" · "+x.reason:""}</div></div></div><button onClick={()=>{const upd=noTrades.filter(n=>n.id!==x.id);setNoTrades(upd);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{noTrades:upd});}} style={{background:"transparent",border:"none",color:"#ffffff55",fontSize:12,cursor:"pointer"}}>✕</button></div>);
+                const nAcc=(accounts||[]).find(a=>a.id===x.accountId);
+                els.push(<div key={x.id} className="row" onClick={()=>setEditingNoTrade(x)} style={{background:"rgba(90,90,90,0.06)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"12px 14px",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}><div style={{display:"flex",alignItems:"center",gap:10,flex:1,minWidth:0}}><span style={{fontSize:16,color:"#ffffff66",flexShrink:0}}>⊘</span><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,color:"#ffffffaa",fontFamily:MONO,fontWeight:700,display:"flex",alignItems:"center",gap:6}}>{t.noTradeToday}{nAcc&&<span style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:9,color:nAcc.color||neon,fontWeight:600,opacity:0.85}}><span style={{width:5,height:5,borderRadius:"50%",background:nAcc.color||neon}}/>{nAcc.name}</span>}</div><div style={{fontSize:10,color:"#ffffffaa",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{x.date}{x.reason?" · "+x.reason:""}</div></div></div><span style={{color:"#ffffff44",fontSize:11,flexShrink:0,marginLeft:8}}>✎</span></div>);
               } else {
                 els.push(
                   <div key={x.id} className="row" onClick={()=>setDetailTrade(x)} style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0a",borderRadius:14,padding:14,marginBottom:10,borderLeft:`3px solid ${rc(x.result,neon)}`}}>
@@ -3783,6 +3876,17 @@ export default function App() {
       {detailTrade&&<TradeDetailModal trade={detailTrade} config={config} onClose={()=>setDetailTrade(null)} onEdit={startEdit} onShare={t=>{setShareTarget(t);setShowShare(true);}} lang={lang} neon={neon} accounts={accounts} onReassign={(tid,aid)=>{reassignTrade(tid,aid);setDetailTrade(dt=>dt?{...dt,accountId:aid}:dt);}}/>}
       {showExport&&<ExportModal trades={trades} onClose={()=>setShowExport(false)} lang={lang} neon={neon}/>}
       {showStats&&<StatsInsightsModal trades={trades} lang={lang} neon={neon} onClose={()=>setShowStats(false)} accounts={accounts} activeAccountId={activeAccountId}/>}
+      {editingNoTrade&&<NoTradeEditModal entry={editingNoTrade} lang={lang} neon={neon} accounts={accounts} onClose={()=>setEditingNoTrade(null)}
+        onSave={updated=>{
+          const next=noTrades.map(n=>n.id===updated.id?updated:n);
+          setNoTrades(next);
+          if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{noTrades:next});
+        }}
+        onDelete={id=>{
+          const next=noTrades.filter(n=>n.id!==id);
+          setNoTrades(next);
+          if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{noTrades:next});
+        }}/>}
       {showShare&&<ShareModal trade={shareTarget} trades={trades} lang={lang} neon={neon} config={config} onClose={()=>{setShowShare(false);setShareTarget(null);}}/> }
       {showReset&&<ResetModal trades={trades} onReset={handleReset} onClose={()=>setShowReset(false)} lang={lang} neon={neon}/>}
       {showNewPhase&&<NewPhaseModal onConfirm={data=>{handleNewPhase(data);setShowNewPhase(false);}} onClose={()=>setShowNewPhase(false)} lang={lang} neon={neon} phases={phases} config={config}/>}
