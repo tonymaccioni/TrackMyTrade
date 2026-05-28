@@ -53,7 +53,7 @@ const PNL_PRESETS = ["-1","-0.5","0","+1","+2","+3","+4","+5"];
 const NEON_COLORS = [{name:"Vert",value:"#00ff9d"},{name:"Bleu",value:"#00d4ff"},{name:"Violet",value:"#bf00ff"},{name:"Rose",value:"#ff00aa"},{name:"Or",value:"#f0b429"}];
 const HUMEUR_PILLS = {fr:["◎ Focus","◌ Neutre","△ Tendu","◷ Fatigué"],en:["◎ Focus","◌ Neutral","△ Tense","◷ Tired"]};
 const BIAIS_PILLS = {fr:["↑ Haussier","→ Range","↓ Baissier"],en:["↑ Bullish","→ Range","↓ Bearish"]};
-const NTR = {fr:["Pas de setup valide","Hors fenêtre","Marché difficile","Journée chargée","Jour de repos"],en:["No valid setup","Out of window","Difficult market","Busy day","Rest day"]};
+const NTR = {fr:["Pas de setup valide","Hors fenêtre","Marché difficile","Journée chargée","Jour de repos","Jour férié"],en:["No valid setup","Out of window","Difficult market","Busy day","Rest day","Holiday"]};
 const today = () => new Date().toISOString().split("T")[0];
 const rc = (r, neon="#00ff9d") => r==="WIN"?neon:r==="LOSS"?"#ff4d4d":"#f0b429";
 const fmtPct = v => { if(v===""||v===null||v===undefined) return "—"; const n=Number(v),abs=Math.abs(n); const s=abs%1===0?abs.toFixed(0):abs*10%1===0?abs.toFixed(1):abs*100%1===0?abs.toFixed(2):abs.toFixed(3); return `${n>=0?"+":""}${n<0?"-":""}${s}%`; };
@@ -820,22 +820,54 @@ function getAdvice(tr,all,lang,neon) {
   return null;
 }
 
-function NoTradeButton({onSave,alreadyDone,lang,neon}) {
+function NoTradeButton({onSave,alreadyDone,lang,neon,accounts,activeAccountId}) {
   const t=T[lang];
+  const fr=lang==="fr";
   const ntr=NTR[lang]||NTR.fr;
   const [open,setOpen]=useState(false);
   const [reason,setReason]=useState("");
+  const [customReason,setCustomReason]=useState("");
+  const [acctId,setAcctId]=useState(activeAccountId||null);
+  const [acctMenuOpen,setAcctMenuOpen]=useState(false);
+  const liveAccounts=Array.isArray(accounts)?accounts.filter(a=>!a.archived):[];
+  const hasAccounts=liveAccounts.length>1;
+  const selAcc=Array.isArray(accounts)?accounts.find(a=>a.id===(acctId||activeAccountId)):null;
+  const selColor=selAcc?(selAcc.color||neon):neon;
+  const inSt=mkInput(neon);
   if(alreadyDone) return <div style={{background:"rgba(90,90,90,0.06)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}><span style={{color:"#ffffff66"}}>⊘</span><span style={{fontSize:11,color:"#ffffffaa",fontFamily:MONO}}>{t.noTradeToday}</span></div>;
-  if(!open) return <button onClick={()=>setOpen(true)} className="btn" style={{width:"100%",background:"transparent",border:"1px dashed rgba(255,255,255,0.1)",borderRadius:10,padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:10,color:"#ffffffaa",fontFamily:MONO,fontSize:12}}><span>⊘</span><span>{t.noTradeToday}</span></button>;
+  if(!open) return <button onClick={()=>{setOpen(true);setAcctId(activeAccountId||null);}} className="btn" style={{width:"100%",background:"transparent",border:"1px dashed rgba(255,255,255,0.1)",borderRadius:10,padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:10,color:"#ffffffaa",fontFamily:MONO,fontSize:12}}><span>⊘</span><span>{t.noTradeToday}</span></button>;
+  const finalReason=customReason.trim()||reason;
   return (
     <div style={{background:"rgba(90,90,90,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:14,marginBottom:12}}>
       <div style={{fontSize:10,color:"#ffffffaa",letterSpacing:2,marginBottom:10,fontFamily:MONO}}>{t.noTradeReason}</div>
-      <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
-        {ntr.map(r=><button key={r} onClick={()=>setReason(reason===r?"":r)} className="btn" style={{background:reason===r?"rgba(255,255,255,0.1)":"#131318",border:`1px solid ${reason===r?"rgba(255,255,255,0.25)":"rgba(255,255,255,0.08)"}`,color:reason===r?"#ffffff":"#ffffffbb",borderRadius:6,padding:"5px 10px",fontSize:11,fontFamily:MONO}}>{r}</button>)}
+      <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}}>
+        {ntr.map(r=><button key={r} onClick={()=>{setReason(reason===r?"":r);setCustomReason("");}} className="btn" style={{background:reason===r&&!customReason?"rgba(255,255,255,0.1)":"#131318",border:`1px solid ${reason===r&&!customReason?"rgba(255,255,255,0.25)":"rgba(255,255,255,0.08)"}`,color:reason===r&&!customReason?"#ffffff":"#ffffffbb",borderRadius:6,padding:"5px 10px",fontSize:11,fontFamily:MONO}}>{r}</button>)}
       </div>
+      {/* Champ libre */}
+      <input value={customReason} onChange={e=>{setCustomReason(e.target.value);if(e.target.value)setReason("");}} placeholder={fr?"Autre raison (optionnel)…":"Other reason (optional)…"} style={{...inSt,marginBottom:hasAccounts?10:12,fontSize:12}}/>
+      {/* Sélecteur de compte */}
+      {hasAccounts&&<div style={{position:"relative",marginBottom:12}}>
+        <div style={{fontSize:8,color:"#ffffff66",letterSpacing:2,marginBottom:6,fontFamily:MONO}}>{fr?"COMPTE":"ACCOUNT"}</div>
+        <button onClick={()=>setAcctMenuOpen(o=>!o)} className="btn" style={{width:"100%",display:"flex",alignItems:"center",gap:7,background:`${selColor}10`,border:`1px solid ${acctMenuOpen?selColor:`${selColor}28`}`,borderRadius:acctMenuOpen?"8px 8px 0 0":8,padding:"8px 12px",cursor:"pointer",textAlign:"left"}}>
+          <div style={{width:7,height:7,borderRadius:"50%",background:selColor,boxShadow:`0 0 4px ${selColor}`,flexShrink:0}}/>
+          <span style={{fontSize:11,fontWeight:700,color:"#ffffff",fontFamily:MONO,flex:1}}>{selAcc?selAcc.name:""}</span>
+          <span style={{fontSize:9,color:`${selColor}99`,transition:"transform 0.2s",transform:acctMenuOpen?"rotate(180deg)":"none"}}>▼</span>
+        </button>
+        {acctMenuOpen&&<>
+          <div onClick={()=>setAcctMenuOpen(false)} style={{position:"fixed",inset:0,zIndex:40}}/>
+          <div className="slide-up" style={{position:"absolute",top:"100%",left:0,right:0,zIndex:41,background:"#0f0f16",border:`1px solid ${selColor}28`,borderTop:"none",borderRadius:"0 0 8px 8px",overflow:"hidden",boxShadow:"0 12px 32px rgba(0,0,0,0.6)"}}>
+            {liveAccounts.filter(a=>a.id!==(acctId||activeAccountId)).map(acc=>(
+              <button key={acc.id} onClick={()=>{setAcctId(acc.id);setAcctMenuOpen(false);}} className="row" style={{width:"100%",display:"flex",alignItems:"center",gap:7,background:"transparent",border:"none",borderTop:`1px solid ${neon}0a`,padding:"9px 12px",cursor:"pointer"}}>
+                <div style={{width:6,height:6,borderRadius:"50%",background:acc.color||neon,flexShrink:0}}/>
+                <span style={{fontSize:11,fontWeight:500,color:"#ffffffcc",fontFamily:MONO,flex:1,textAlign:"left"}}>{acc.name}</span>
+              </button>
+            ))}
+          </div>
+        </>}
+      </div>}
       <div style={{display:"flex",gap:8}}>
-        <button onClick={()=>{onSave({id:Date.now(),date:today(),reason});setOpen(false);setReason("");}} className="btn" style={{flex:1,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.15)",color:"#ffffff",borderRadius:8,padding:10,fontSize:12,fontWeight:700,fontFamily:MONO}}>{t.confirmBtn}</button>
-        <button onClick={()=>{setOpen(false);setReason("");}} className="btn" style={{background:"transparent",border:"1px solid rgba(255,255,255,0.08)",color:"#ffffffaa",borderRadius:8,padding:"10px 12px",fontFamily:MONO}}>✕</button>
+        <button onClick={()=>{onSave({id:Date.now(),date:today(),reason:finalReason,accountId:acctId||activeAccountId||null});setOpen(false);setReason("");setCustomReason("");}} className="btn" style={{flex:1,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.15)",color:"#ffffff",borderRadius:8,padding:10,fontSize:12,fontWeight:700,fontFamily:MONO}}>{t.confirmBtn}</button>
+        <button onClick={()=>{setOpen(false);setReason("");setCustomReason("");}} className="btn" style={{background:"transparent",border:"1px solid rgba(255,255,255,0.08)",color:"#ffffffaa",borderRadius:8,padding:"10px 12px",fontFamily:MONO}}>✕</button>
       </div>
     </div>
   );
@@ -2583,80 +2615,77 @@ function computeCoach(trades, lang){
   const fr = lang==="fr";
   if(!trades || trades.length < 5) return null;
 
-  // Helpers
   const lastN = (n) => trades.slice(0, n);
   const wins = trades.filter(x=>x.result==="WIN");
   const losses = trades.filter(x=>x.result==="LOSS");
-  const now = new Date();
-  const cutoff7 = new Date(now.getTime() - 7*86400000).toISOString().split("T")[0];
-  const last7 = trades.filter(x=>x.date>=cutoff7);
-
-  // Index pour varier les formulations (basé sur le jour du mois, change quotidiennement)
   const dayIdx = new Date().getDate() % 3;
+  const totalPnl = trades.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
+  const wr = trades.length?Math.round(wins.length/trades.length*100):0;
 
   // ─── 1. ALERTE CRITIQUE ───
-  // 1a. Losing streak (3 LOSS dans les 5 derniers)
   const last5 = lastN(5);
   const recentLosses = last5.filter(x=>x.result==="LOSS").length;
   if(recentLosses >= 3){
-    const variants = fr ? [
-      `Pause. ${recentLosses} LOSS sur tes 5 derniers — la prochaine décision compte plus que la précédente.`,
-      `${recentLosses} LOSS récents. Ferme l'écran 20 minutes avant de décider quoi que ce soit.`,
-      `Série rouge en cours. La meilleure réaction maintenant : ne pas réagir.`,
+    const v = fr ? [
+      `${recentLosses} LOSS sur tes 5 derniers trades. Ce n'est pas le marché le problème à cet instant, c'est ton état mental. Les pertes en série poussent à "se refaire" — c'est exactement le piège. Ferme la plateforme et reviens demain avec les yeux clairs.`,
+      `Série de ${recentLosses} pertes en cours. Statistiquement, ta prochaine décision sera prise sous stress, donc dégradée. La meilleure action de trading maintenant est de ne pas trader. Note ce que tu ressens, ça vaut plus qu'un trade de plus.`,
+      `${recentLosses} LOSS récents : ton cerveau est en mode "récupération", le pire pour décider. Les meilleurs traders ne se distinguent pas par leurs gains mais par leur capacité à stopper l'hémorragie. Arrête-toi ici, aujourd'hui.`,
     ] : [
-      `Pause. ${recentLosses} LOSS in your last 5 — the next decision matters more than the last.`,
-      `${recentLosses} recent losses. Close the screen for 20 minutes before deciding anything.`,
-      `Losing streak active. Best move now: don't move.`,
+      `${recentLosses} losses in your last 5 trades. The problem right now isn't the market, it's your mental state. Losing streaks push you to "win it back" — that's the trap. Close the platform, come back tomorrow clear-headed.`,
+      `${recentLosses}-loss streak active. Statistically your next decision will be made under stress, so degraded. The best trading move now is not to trade. Write down how you feel — it's worth more than one more trade.`,
+      `${recentLosses} recent losses: your brain is in "recovery" mode, the worst for deciding. The best traders aren't defined by their wins but by their ability to stop the bleeding. Stop here, today.`,
     ];
-    return {type:"alert", glyph:"⚠", color:"#ff4d4d", message:variants[dayIdx]};
+    return {type:"alert", glyph:"⚠", color:"#ff4d4d", message:v[dayIdx]};
   }
 
-  // 1b. Revenge trades cette semaine
+  const now = new Date();
+  const cutoff7 = new Date(now.getTime() - 7*86400000).toISOString().split("T")[0];
+  const last7 = trades.filter(x=>x.date>=cutoff7);
   const rev7 = last7.filter(x=>x.isRevenge);
   if(rev7.length >= 2){
-    const variants = fr ? [
-      `${rev7.length} revenge trades cette semaine. Ta limite quotidienne te protégerait.`,
-      `${rev7.length} fois où tu as forcé. Le marché ne récompense pas l'insistance.`,
-      `Revenge x${rev7.length}. Chacun coûte plus cher que le précédent — coupe le robinet.`,
+    const rWins = rev7.filter(x=>x.result==="WIN").length;
+    const rWR = Math.round(rWins/rev7.length*100);
+    const v = fr ? [
+      `${rev7.length} revenge trades cette semaine, avec ${rWR}% de réussite seulement. Le revenge trade n'est pas une stratégie, c'est une émotion déguisée en décision. Chaque fois que tu forces, tu apprends à ton cerveau que c'est acceptable. Ta limite quotidienne existe pour ça — utilise-la.`,
+      `${rev7.length} fois où tu as forcé un trade cette semaine. Le marché ne te doit rien et ne récompense pas l'insistance. Ces ${rWR}% de WR sur tes revenge le prouvent : tu joues à pile ou face en pariant gros. Coupe ce comportement avant qu'il devienne une habitude.`,
+      `Revenge x${rev7.length} sur 7 jours. Le danger n'est pas la perte d'argent immédiate, c'est l'ancrage du réflexe : forcer après une frustration. Tu construis ta discipline ou ton auto-sabotage, un trade à la fois. Là, tu construis le mauvais.`,
     ] : [
-      `${rev7.length} revenge trades this week. Your daily limit would protect you.`,
-      `${rev7.length} times you forced it. The market doesn't reward stubbornness.`,
-      `Revenge x${rev7.length}. Each costs more than the last — shut the tap.`,
+      `${rev7.length} revenge trades this week, with only ${rWR}% success. Revenge trading isn't a strategy, it's an emotion disguised as a decision. Every time you force it, you teach your brain it's acceptable. Your daily limit exists for this — use it.`,
+      `${rev7.length} times you forced a trade this week. The market owes you nothing and doesn't reward stubbornness. That ${rWR}% WR on your revenge trades proves it: you're flipping coins with big bets. Cut this before it becomes a habit.`,
+      `Revenge x${rev7.length} over 7 days. The danger isn't the immediate money lost, it's anchoring the reflex: forcing after frustration. You build your discipline or your self-sabotage, one trade at a time. Right now, you're building the wrong one.`,
     ];
-    return {type:"alert", glyph:"⚠", color:"#ff4d4d", message:variants[dayIdx]};
+    return {type:"alert", glyph:"⚠", color:"#ff4d4d", message:v[dayIdx]};
   }
 
   // ─── 2. MOMENTUM POSITIF ───
-  // 2a. Streak WIN ≥ 3
   let streakWin = 0;
-  for(const t of trades){ if(t.result==="WIN") streakWin++; else break; }
+  for(const tr of trades){ if(tr.result==="WIN") streakWin++; else break; }
   if(streakWin >= 3){
-    const variants = fr ? [
-      `${streakWin} WIN d'affilée. Ne deviens pas euphorique — reste sur ta checklist.`,
-      `${streakWin} en série. L'arrogance est le plus cher des biais cognitifs.`,
-      `${streakWin} WIN de suite. Le danger n'est plus le marché, c'est toi.`,
+    const v = fr ? [
+      `${streakWin} WIN d'affilée. C'est exactement le moment où la plupart des comptes explosent : la confiance devient excès de confiance, et tu augmentes la taille "parce que ça marche". Le marché n'a aucune mémoire de ta série. Reste sur la même taille, la même checklist.`,
+      `${streakWin} trades gagnants consécutifs. Profite-en, mais souviens-toi : une série de victoires ne change pas tes probabilités, elle change ta perception. L'euphorie est le biais le plus cher du trading. Ton job maintenant : être aussi rigoureux que sur le trade 1.`,
+      `${streakWin} WIN de suite — bravo, et attention. Le vrai test n'est pas de gagner, c'est de ne pas se croire invincible après. Beaucoup rendent en un trade ce qu'ils ont mis cinq à gagner. Verrouille tes règles, ne touche pas à ton sizing.`,
     ] : [
-      `${streakWin} WINs in a row. Don't get euphoric — stick to your checklist.`,
-      `${streakWin}-streak. Arrogance is the most expensive cognitive bias.`,
-      `${streakWin} consecutive wins. The danger isn't the market anymore — it's you.`,
+      `${streakWin} WINs in a row. This is exactly when most accounts blow up: confidence becomes overconfidence, and you size up "because it's working". The market has no memory of your streak. Keep the same size, the same checklist.`,
+      `${streakWin} consecutive winning trades. Enjoy it, but remember: a winning streak doesn't change your odds, it changes your perception. Euphoria is the most expensive bias in trading. Your job now: be as rigorous as on trade 1.`,
+      `${streakWin} WINs straight — well done, and watch out. The real test isn't winning, it's not feeling invincible after. Many give back in one trade what took five to earn. Lock your rules, don't touch your sizing.`,
     ];
-    return {type:"momentum", glyph:"▲", color:"NEON", message:variants[dayIdx]};
+    return {type:"momentum", glyph:"▲", color:"NEON", message:v[dayIdx]};
   }
 
-  // 2b. Semaine très positive (P&L 7j > 3% et ≥ 3 trades)
   if(last7.length >= 3){
     const weekPnl = last7.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
     if(weekPnl >= 3){
-      const variants = fr ? [
-        `+${weekPnl.toFixed(1)}% cette semaine. Capitalise sans forcer le rythme.`,
-        `Belle semaine (+${weekPnl.toFixed(1)}%). Reste exigeant, pas gourmand.`,
-        `+${weekPnl.toFixed(1)}% en 7 jours. Le piège maintenant : sur-trader pour "doubler".`,
+      const v = fr ? [
+        `+${weekPnl.toFixed(1)}% sur les 7 derniers jours, ta semaine est solide. Le piège classique maintenant : vouloir "doubler" en sur-tradant ou en prenant des setups moyens. La régularité bat la performance ponctuelle sur le long terme. Encaisse cette semaine sans changer ta méthode.`,
+        `Belle dynamique : +${weekPnl.toFixed(1)}% cette semaine. Mais une bonne semaine ne valide pas une stratégie — c'est la répétition sur des dizaines de semaines qui compte. Reste exigeant sur tes entrées, ne deviens pas gourmand parce que le compte est vert.`,
+        `+${weekPnl.toFixed(1)}% en 7 jours, excellent rythme. Le danger n'est pas devant toi, il est en toi : la tentation de forcer pour prolonger la série. Les pros savent s'arrêter quand ça va bien autant que quand ça va mal. Protège tes gains.`,
       ] : [
-        `+${weekPnl.toFixed(1)}% this week. Capitalize without forcing the pace.`,
-        `Solid week (+${weekPnl.toFixed(1)}%). Stay demanding, not greedy.`,
-        `+${weekPnl.toFixed(1)}% over 7 days. The trap now: overtrading to "double up".`,
+        `+${weekPnl.toFixed(1)}% over the last 7 days, solid week. The classic trap now: wanting to "double up" by overtrading or taking mediocre setups. Consistency beats one-off performance long term. Bank this week without changing your method.`,
+        `Strong momentum: +${weekPnl.toFixed(1)}% this week. But one good week doesn't validate a strategy — it's repetition over dozens of weeks that counts. Stay demanding on your entries, don't get greedy because the account is green.`,
+        `+${weekPnl.toFixed(1)}% in 7 days, excellent pace. The danger isn't ahead of you, it's inside you: the temptation to force it to extend the streak. Pros know to stop when things go well as much as when they go badly. Protect your gains.`,
       ];
-      return {type:"momentum", glyph:"▲", color:"NEON", message:variants[dayIdx]};
+      return {type:"momentum", glyph:"▲", color:"NEON", message:v[dayIdx]};
     }
   }
 
@@ -2667,69 +2696,65 @@ function computeCoach(trades, lang){
     const cWR = Math.round(conf.filter(x=>x.result==="WIN").length/conf.length*100);
     const nWR = Math.round(nconf.filter(x=>x.result==="WIN").length/nconf.length*100);
     if(cWR - nWR >= 15){
-      const variants = fr ? [
-        `Tes setups conformes : ${cWR}% WR. Ton edge est dans ta discipline — pas ailleurs.`,
-        `Quand tu respectes ta checklist : ${cWR}%. Sans : ${nWR}%. Pose-toi la question.`,
-        `${cWR}% conformes vs ${nWR}% hors règles. Ta stratégie marche — toi parfois moins.`,
+      const v = fr ? [
+        `Quand tu respectes ta checklist : ${cWR}% de réussite. Quand tu ne la respectes pas : ${nWR}%. L'écart de ${cWR-nWR} points est ton edge réel, et il est entièrement entre tes mains. Ta stratégie fonctionne — le seul variable instable, c'est ta discipline à l'exécution.`,
+        `Tes setups conformes affichent ${cWR}% WR contre ${nWR}% hors règles. Ce n'est pas de la chance, c'est la preuve mathématique que tes critères filtrent les bons trades. Chaque entrée non-conforme est un pari contre tes propres statistiques. Pourquoi le ferais-tu ?`,
+        `${cWR}% sur les trades conformes, ${nWR}% sur les autres. Tu as déjà trouvé ce qui marche : il est écrit dans ta checklist. Ton travail n'est plus de chercher une meilleure stratégie, mais d'avoir la discipline d'appliquer celle qui marche déjà, à chaque fois.`,
       ] : [
-        `Your compliant setups: ${cWR}% WR. Your edge is in your discipline — nowhere else.`,
-        `When you follow the checklist: ${cWR}%. When you don't: ${nWR}%. Ask yourself why.`,
-        `${cWR}% compliant vs ${nWR}% off-rules. Your strategy works — sometimes you less so.`,
+        `When you follow your checklist: ${cWR}% success. When you don't: ${nWR}%. The ${cWR-nWR}-point gap is your real edge, and it's entirely in your hands. Your strategy works — the only unstable variable is your execution discipline.`,
+        `Your compliant setups show ${cWR}% WR versus ${nWR}% off-rules. That's not luck, it's mathematical proof your criteria filter the good trades. Every non-compliant entry is a bet against your own stats. Why would you?`,
+        `${cWR}% on compliant trades, ${nWR}% on the rest. You've already found what works: it's written in your checklist. Your job is no longer to find a better strategy, but to have the discipline to apply the one that already works, every time.`,
       ];
-      return {type:"edge", glyph:"◆", color:"NEON", message:variants[dayIdx]};
+      return {type:"edge", glyph:"◆", color:"NEON", message:v[dayIdx]};
     }
   }
 
-  // ─── 4. LEVIER IDENTIFIÉ ───
-  // Asymétrie WIN/LOSS défavorable
+  // ─── 4. LEVIER : asymétrie WIN/LOSS ───
   if(wins.length >= 5 && losses.length >= 5){
     const avgWin = wins.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0)/wins.length;
     const avgLoss = Math.abs(losses.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0)/losses.length);
     const ratio = avgLoss>0 ? avgWin/avgLoss : Infinity;
-    const wr = Math.round(wins.length/trades.length*100);
     if(ratio < 1 && avgWin > 0 && avgLoss > 0){
-      const variants = fr ? [
-        `WR à ${wr}% mais ratio ${ratio.toFixed(2)}. Tes gains sont trop courts — travaille tes sorties.`,
-        `Tu gagnes souvent mais petit (+${avgWin.toFixed(1)}%) et perds plus (-${avgLoss.toFixed(1)}%). Inverse ça.`,
-        `Ratio ${ratio.toFixed(2)} : tu coupes tes WIN trop tôt. Laisse-les respirer.`,
+      const v = fr ? [
+        `Tu gagnes ${wr}% du temps mais ton ratio gain/perte est de ${ratio.toFixed(2)} : tes WIN moyens (+${avgWin.toFixed(1)}%) sont plus petits que tes LOSS moyens (-${avgLoss.toFixed(1)}%). Tu peux avoir raison souvent et perdre quand même. Le problème n'est pas ton entrée, c'est ta sortie : tu coupes tes gains trop tôt par peur de les rendre.`,
+        `Ratio ${ratio.toFixed(2)} : mathématiquement, même avec ${wr}% de réussite, cette asymétrie ronge ton compte. Tu sécurises tes gains à +${avgWin.toFixed(1)}% mais laisses courir tes pertes à -${avgLoss.toFixed(1)}%. C'est l'inverse de ce qu'il faut faire. Travaille à laisser respirer tes WIN et à couper tes LOSS plus net.`,
+        `Tes gains moyens (+${avgWin.toFixed(1)}%) sont inférieurs à tes pertes moyennes (-${avgLoss.toFixed(1)}%). C'est le défaut numéro un des traders à bon WR : la peur de perdre un gain acquis te fait fermer trop vite. Un seul changement — tenir tes WIN un peu plus longtemps — peut transformer ta courbe.`,
       ] : [
-        `${wr}% WR but ratio ${ratio.toFixed(2)}. Your wins are too short — work on your exits.`,
-        `You win often but small (+${avgWin.toFixed(1)}%) and lose bigger (-${avgLoss.toFixed(1)}%). Reverse it.`,
-        `Ratio ${ratio.toFixed(2)}: you cut WINs too early. Let them breathe.`,
+        `You win ${wr}% of the time but your win/loss ratio is ${ratio.toFixed(2)}: your average WINs (+${avgWin.toFixed(1)}%) are smaller than your average LOSSes (-${avgLoss.toFixed(1)}%). You can be right often and still lose. The issue isn't your entry, it's your exit: you cut winners too early out of fear of giving them back.`,
+        `Ratio ${ratio.toFixed(2)}: mathematically, even at ${wr}% win rate, this asymmetry erodes your account. You secure gains at +${avgWin.toFixed(1)}% but let losses run to -${avgLoss.toFixed(1)}%. That's the opposite of what works. Work on letting WINs breathe and cutting LOSSes sharper.`,
+        `Your average wins (+${avgWin.toFixed(1)}%) are below your average losses (-${avgLoss.toFixed(1)}%). It's the number-one flaw of high-WR traders: fear of losing a booked gain makes you close too fast. One change — holding WINs a bit longer — can transform your curve.`,
       ];
-      return {type:"lever", glyph:"◈", color:"#f0b429", message:variants[dayIdx]};
+      return {type:"lever", glyph:"◈", color:"#f0b429", message:v[dayIdx]};
     }
   }
 
   // ─── 5. ÉTAT STABLE ───
   if(trades.length >= 15){
-    const totalPnl = trades.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
-    const variants = fr ? [
-      `${trades.length} trades, ${totalPnl>=0?"+":""}${totalPnl.toFixed(1)}%. Tu construis quelque chose. Continue.`,
-      `Phase stable. C'est dans ces moments qu'on creuse l'écart sans le voir.`,
-      `${trades.length} trades enregistrés. La régularité est ta meilleure arme à long terme.`,
+    const v = fr ? [
+      `${trades.length} trades enregistrés, ${totalPnl>=0?"+":""}${totalPnl.toFixed(1)}% au total. Tu es dans la phase la moins spectaculaire et la plus importante : la régularité. C'est ici, dans la routine sans drame, que se construit la rentabilité durable. Continue à journaliser chaque trade, c'est ton vrai avantage.`,
+      `Phase stable sur ${trades.length} trades. Pas d'alerte, pas d'euphorie — et c'est une bonne nouvelle. Les comptes qui durent ne sont pas ceux qui font des gros coups, mais ceux qui évitent les gros trous. Ton travail invisible aujourd'hui paiera dans six mois.`,
+      `${trades.length} trades, courbe ${totalPnl>=0?"positive":"à redresser"}. C'est le moment de creuser ton journal plutôt que ton compte : relis tes meilleurs trades, identifie ce qui les relie. La constance que tu montres est rare — la plupart abandonnent avant d'avoir assez de données pour progresser.`,
     ] : [
-      `${trades.length} trades, ${totalPnl>=0?"+":""}${totalPnl.toFixed(1)}%. You're building something. Keep going.`,
-      `Stable phase. This is when the gap quietly widens.`,
-      `${trades.length} trades logged. Consistency is your best long-term weapon.`,
+      `${trades.length} trades logged, ${totalPnl>=0?"+":""}${totalPnl.toFixed(1)}% total. You're in the least spectacular and most important phase: consistency. This is where, in drama-free routine, durable profitability is built. Keep journaling every trade, it's your real edge.`,
+      `Stable phase over ${trades.length} trades. No alerts, no euphoria — and that's good news. Lasting accounts aren't the ones making big hits, but the ones avoiding big holes. Your invisible work today pays off in six months.`,
+      `${trades.length} trades, ${totalPnl>=0?"positive":"recovering"} curve. Time to dig into your journal rather than your account: reread your best trades, find what connects them. The consistency you show is rare — most quit before having enough data to improve.`,
     ];
-    return {type:"stable", glyph:"●", color:"#00d4ff", message:variants[dayIdx]};
+    return {type:"stable", glyph:"●", color:"#00d4ff", message:v[dayIdx]};
   }
 
   // ─── 6. DÉBUT DE PARCOURS ───
-  const variants = fr ? [
-    `${trades.length} trades — trop tôt pour des conclusions. Reste constant.`,
-    `Phase d'observation. Chaque trade enregistré construit ton statistique.`,
-    `${trades.length} trades : ton journal a plus de valeur que tes résultats à ce stade.`,
+  const v = fr ? [
+    `${trades.length} trades : c'est encore trop peu pour tirer des conclusions fiables, et c'est normal. À ce stade, ton objectif n'est pas de gagner, mais d'enregistrer fidèlement chaque trade pour construire un échantillon exploitable. La donnée que tu accumules aujourd'hui te révélera tes vrais patterns demain.`,
+    `Phase d'observation, ${trades.length} trades au compteur. Résiste à l'envie de juger ta stratégie maintenant : sur si peu de trades, la chance domine encore tes résultats. Concentre-toi sur une seule chose : la rigueur de ta saisie. Le reste viendra avec le volume.`,
+    `${trades.length} trades enregistrés. À ce point, ton journal vaut plus que ton solde : chaque entrée honnête, même sur un trade perdant, construit la lucidité qui te fera progresser. Reste constant, ne saute aucun trade, et laisse les statistiques se former.`,
   ] : [
-    `${trades.length} trades — too early for conclusions. Stay consistent.`,
-    `Observation phase. Every logged trade builds your dataset.`,
-    `${trades.length} trades: your journal is worth more than your results at this stage.`,
+    `${trades.length} trades: still too few for reliable conclusions, and that's normal. At this stage, your goal isn't to win, but to faithfully log every trade to build a usable sample. The data you accumulate today will reveal your true patterns tomorrow.`,
+    `Observation phase, ${trades.length} trades in. Resist the urge to judge your strategy now: over so few trades, luck still dominates your results. Focus on one thing: the rigor of your logging. The rest comes with volume.`,
+    `${trades.length} trades logged. At this point, your journal is worth more than your balance: every honest entry, even on a losing trade, builds the clarity that will make you improve. Stay consistent, skip no trade, let the stats form.`,
   ];
-  return {type:"start", glyph:"○", color:"#ffffff66", message:variants[dayIdx]};
+  return {type:"start", glyph:"○", color:"#ffffff66", message:v[dayIdx]};
 }
 
-// ── CoachCard : carte de session asymétrique avec barre verticale + glyphe + signature ──
 function CoachSummaryCard({trades, lang, neon, onOpen}){
   const coach = computeCoach(trades, lang);
   if(!coach) return null;
@@ -3338,15 +3363,34 @@ export default function App() {
             const pfStr=pfVal===Infinity?"∞":pfVal.toFixed(2);
             const pfColor=pfVal>=1.5?neon:pfVal>=1?"#f0b429":"#ff4d4d";
             const pfLabel=pfVal>=1.5?(lang==="fr"?"Edge solide":"Strong edge"):pfVal>=1?(lang==="fr"?"Rentable":"Profitable"):pfVal>0?(lang==="fr"?"Perdant":"Losing"):"—";
-            return <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:`linear-gradient(145deg,${pfColor}10,${pfColor}04)`,border:`1px solid ${pfColor}28`,borderRadius:14,padding:"12px 18px",marginBottom:12,boxShadow:`0 4px 20px ${pfColor}10,inset 0 1px 0 ${pfColor}15`}}>
-              <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <span style={{fontSize:9,color:"#ffffffaa",letterSpacing:2,fontFamily:MONO,textTransform:"uppercase"}}>Profit Factor</span>
-                <span style={{display:"inline-flex",alignItems:"center",gap:5,background:`${pfColor}15`,borderRadius:20,padding:"2px 9px",border:`1px solid ${pfColor}30`}}>
-                  <span style={{width:4,height:4,borderRadius:"50%",background:pfColor,boxShadow:`0 0 5px ${pfColor}`}}/>
-                  <span style={{fontSize:8,color:pfColor,fontWeight:700,letterSpacing:0.5}}>{pfLabel}</span>
-                </span>
+            // Position du curseur sur une échelle 0→3 (PF=1 à 33%, PF=1.5 à 50%, PF=3 à 100%)
+            const gaugePct=pfVal===Infinity?100:Math.min(100,Math.max(0,(pfVal/3)*100));
+            return <div style={{background:`linear-gradient(145deg,${pfColor}10,${pfColor}04)`,border:`1px solid ${pfColor}28`,borderRadius:14,padding:"12px 18px 14px",marginBottom:12,boxShadow:`0 4px 20px ${pfColor}10,inset 0 1px 0 ${pfColor}15`}}>
+              {/* Ligne haut : label + badge + valeur */}
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:11}}>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:9,color:"#ffffffaa",letterSpacing:2,fontFamily:MONO,textTransform:"uppercase"}}>Profit Factor</span>
+                  <span style={{display:"inline-flex",alignItems:"center",gap:5,background:`${pfColor}15`,borderRadius:20,padding:"2px 9px",border:`1px solid ${pfColor}30`}}>
+                    <span style={{width:4,height:4,borderRadius:"50%",background:pfColor,boxShadow:`0 0 5px ${pfColor}`}}/>
+                    <span style={{fontSize:8,color:pfColor,fontWeight:700,letterSpacing:0.5}}>{pfLabel}</span>
+                  </span>
+                </div>
+                <span style={{fontSize:24,fontWeight:900,color:"#ffffff",fontFamily:MONO,lineHeight:1,textShadow:`0 0 20px ${pfColor}aa, 0 2px 6px rgba(0,0,0,0.6)`}}>{pfStr}</span>
               </div>
-              <span style={{fontSize:24,fontWeight:900,color:"#ffffff",fontFamily:MONO,lineHeight:1,textShadow:`0 0 20px ${pfColor}aa, 0 2px 6px rgba(0,0,0,0.6)`}}>{pfStr}</span>
+              {/* Mini-jauge à paliers */}
+              <div style={{position:"relative",height:6,borderRadius:4,overflow:"hidden",display:"flex",marginBottom:5}}>
+                <div style={{width:"33.33%",height:"100%",background:"#ff4d4d44"}}/>
+                <div style={{width:"16.67%",height:"100%",background:"#f0b42944"}}/>
+                <div style={{flex:1,height:"100%",background:`${neon}44`}}/>
+                {/* Curseur */}
+                <div style={{position:"absolute",top:-1,left:`${gaugePct}%`,transform:"translateX(-50%)",width:3,height:8,borderRadius:2,background:"#ffffff",boxShadow:`0 0 6px ${pfColor},0 0 2px #fff`}}/>
+              </div>
+              {/* Graduations */}
+              <div style={{position:"relative",height:9}}>
+                {[["0","0%"],["1","33.33%"],["1.5","50%"],["3+","100%"]].map(([lbl,pos])=>(
+                  <span key={lbl} style={{position:"absolute",left:pos,transform:pos==="0%"?"none":pos==="100%"?"translateX(-100%)":"translateX(-50%)",fontSize:7,color:"#ffffff44",fontFamily:MONO}}>{lbl}</span>
+                ))}
+              </div>
             </div>;
           })()}
           {/* === Courbe + Résumé groupés (au-dessus du dernier trade) === */}
@@ -3393,11 +3437,10 @@ export default function App() {
             const updated=[e,...noTrades];
             setNoTrades(updated);
             if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{noTrades:updated});
-          }} alreadyDone={noTrades.some(x=>x.date===today())} lang={lang} neon={neon}/>
+          }} alreadyDone={noTrades.some(x=>x.date===today())} lang={lang} neon={neon} accounts={accounts} activeAccountId={activeAccountId}/>
           {total>0&&<>
             <AdvancedStats trades={pf} neon={neon} lang={lang}/>
             <ConformityBar trades={pf} threshold={config.threshold} maxItems={config.items.length} neon={neon} lang={lang}/>
-            <PerformanceChart trades={pf} neon={neon} lang={lang}/>
             {config.calendarOn&&<TradingCalendar trades={trades} neon={neon} lang={lang}/>}
           </>}
           {total===0&&<div style={{textAlign:"center",padding:"40px 20px"}}><div style={{display:"inline-block",marginBottom:20}}><SplashLogo neon={neon}/></div><div style={{fontSize:13,color:"#ffffffbb",marginBottom:8,fontWeight:700}}>{t.journalEmpty}</div><div style={{fontSize:11,color:"#ffffff55",marginBottom:24,lineHeight:1.6}}>{t.journalEmptyDesc}</div><button onClick={()=>setView("log")} className="btn" style={{background:`${neon}1a`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:"12px 28px",fontSize:12,fontFamily:MONO,fontWeight:700}}>{t.firstTrade}</button></div>}
