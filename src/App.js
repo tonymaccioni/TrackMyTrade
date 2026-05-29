@@ -605,6 +605,123 @@ function Icon({name, size=18, color="currentColor", strokeW=1.6, animate=false, 
   );
 }
 
+// ── Contenu légal (FR/EN) ──
+const LEGAL_CONTENT = {
+  fr: {
+    cgu: {
+      title: "Conditions Générales d'Utilisation",
+      sections: [
+        ["1. Objet", "TrackMyTrade est un outil de journalisation et d'analyse de trading à usage personnel. L'Application ne fournit aucun conseil en investissement et ne constitue pas un service de gestion de portefeuille."],
+        ["2. Accès", "L'Application est actuellement gratuite. Des fonctionnalités payantes pourront être introduites à l'avenir (modèle freemium), avec des conditions communiquées avant tout achat. L'accès nécessite un compte (e-mail + mot de passe). Vous êtes responsable de la confidentialité de vos identifiants."],
+        ["3. Utilisation", "Vous vous engagez à utiliser l'Application conformément à sa destination et à la loi. Il est interdit de tenter d'accéder aux données d'autres utilisateurs, de compromettre la sécurité de l'Application, ou de la reproduire sans autorisation."],
+        ["4. Vos données", "Vous êtes seul responsable de l'exactitude des données saisies. Il est recommandé d'exporter régulièrement vos données. L'éditeur ne peut être tenu responsable d'une perte résultant d'un évènement échappant à son contrôle raisonnable."],
+        ["5. Propriété intellectuelle", "L'Application, son code et son interface sont la propriété de l'éditeur. Vos données de trading restent votre propriété."],
+        ["6. Responsabilité", "L'Application est fournie « en l'état ». Elle ne constitue pas un conseil financier. L'éditeur n'est pas responsable des décisions de trading ni des pertes financières en résultant."],
+        ["7. Résiliation", "Vous pouvez supprimer votre compte à tout moment. L'éditeur peut suspendre un compte en cas de violation des présentes CGU."],
+        ["8. Droit applicable", "Les présentes CGU sont soumises au droit français. En cas de litige, les tribunaux français sont compétents."],
+      ],
+    },
+    privacy: {
+      title: "Politique de Confidentialité",
+      sections: [
+        ["1. Données collectées", "Adresse e-mail et mot de passe (chiffré, jamais accessible en clair par l'éditeur), opérations de trading enregistrées, paramètres de stratégie et statistiques. Aucune donnée bancaire n'est collectée."],
+        ["2. Finalités", "Gérer votre compte, fournir les fonctionnalités de journalisation, sauvegarder et synchroniser vos données entre vos appareils, sécuriser et améliorer l'Application."],
+        ["3. Base légale", "Exécution du service demandé (RGPD art. 6.1.b), consentement et intérêt légitime à sécuriser l'Application."],
+        ["4. Hébergement", "Les données sont hébergées via Google Firebase (authentification et base Firestore), avec des garanties de conformité au RGPD. Les données peuvent être stockées dans l'UE et/ou faire l'objet de transferts encadrés."],
+        ["5. Conservation", "Les données sont conservées tant que votre compte est actif. En cas de suppression du compte, elles sont effacées dans un délai raisonnable."],
+        ["6. Vos droits", "Vous disposez des droits d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité sur vos données. Contactez l'éditeur pour les exercer. Vous pouvez aussi saisir la CNIL (www.cnil.fr)."],
+        ["7. Sécurité", "Authentification sécurisée, règles d'accès restreignant chaque utilisateur à ses propres données, chiffrement des communications."],
+        ["8. Stockage local", "L'Application utilise un stockage local nécessaire à son fonctionnement (session, préférences). Aucun traceur publicitaire, aucune publicité."],
+      ],
+    },
+    disclaimer: {
+      title: "Avertissement sur les risques",
+      sections: [
+        ["Absence de conseil", "TrackMyTrade est un outil de suivi statistique personnel. L'Application ne fournit aucun conseil en investissement, aucune recommandation d'achat/vente, ni aucune stratégie de trading. Rien dans l'Application ne doit être interprété comme un conseil financier."],
+        ["Risque de perte", "Le trading comporte un risque élevé de perte en capital. Les performances passées ne préjugent pas des performances futures. Vous pouvez perdre tout ou partie de votre capital. N'investissez que des sommes dont la perte n'affecterait pas votre situation."],
+        ["Votre responsabilité", "Toutes vos décisions de trading relèvent de votre seule responsabilité. L'éditeur n'est pas responsable des pertes ou manques à gagner résultant de l'utilisation de l'Application."],
+        ["Exactitude", "Les analyses reposent sur les données que vous saisissez. Leur pertinence dépend de l'exactitude de vos saisies."],
+        ["Recommandation", "Avant toute décision, consultez un conseiller financier habilité et informez-vous auprès de l'AMF. Vous tradez à vos propres risques."],
+      ],
+    },
+  },
+  en: {
+    cgu: {
+      title: "Terms of Use",
+      sections: [
+        ["1. Purpose", "TrackMyTrade is a personal trading journaling and analysis tool. The App provides no investment advice and is not a portfolio management service."],
+        ["2. Access", "The App is currently free. Paid features may be introduced later (freemium model), with terms communicated before any purchase. Access requires an account (email + password). You are responsible for keeping your credentials confidential."],
+        ["3. Use", "You agree to use the App lawfully and as intended. You may not attempt to access other users' data, compromise the App's security, or reproduce it without permission."],
+        ["4. Your data", "You are solely responsible for the accuracy of the data you enter. Regular exports are recommended. The publisher is not liable for losses resulting from events beyond its reasonable control."],
+        ["5. Intellectual property", "The App, its code and interface belong to the publisher. Your trading data remains yours."],
+        ["6. Liability", "The App is provided 'as is'. It is not financial advice. The publisher is not liable for trading decisions or resulting financial losses."],
+        ["7. Termination", "You may delete your account at any time. The publisher may suspend an account in case of breach of these Terms."],
+        ["8. Governing law", "These Terms are governed by French law. French courts have jurisdiction in case of dispute."],
+      ],
+    },
+    privacy: {
+      title: "Privacy Policy",
+      sections: [
+        ["1. Data collected", "Email and password (encrypted, never accessible in clear by the publisher), logged trades, strategy settings and statistics. No banking data is collected."],
+        ["2. Purposes", "Manage your account, provide journaling features, save and sync your data across devices, secure and improve the App."],
+        ["3. Legal basis", "Performance of the requested service (GDPR art. 6.1.b), consent, and legitimate interest in securing the App."],
+        ["4. Hosting", "Data is hosted via Google Firebase (authentication and Firestore), with GDPR compliance guarantees. Data may be stored in the EU and/or subject to framed transfers."],
+        ["5. Retention", "Data is kept while your account is active. Upon account deletion, it is erased within a reasonable time."],
+        ["6. Your rights", "You have rights of access, rectification, erasure, restriction, objection and portability over your data. Contact the publisher to exercise them. You may also contact your data protection authority."],
+        ["7. Security", "Secure authentication, access rules restricting each user to their own data, encrypted communications."],
+        ["8. Local storage", "The App uses local storage necessary for its operation (session, preferences). No advertising trackers, no ads."],
+      ],
+    },
+    disclaimer: {
+      title: "Risk Disclaimer",
+      sections: [
+        ["No advice", "TrackMyTrade is a personal statistical tracking tool. The App provides no investment advice, no buy/sell recommendation, and no trading strategy. Nothing in the App should be interpreted as financial advice."],
+        ["Risk of loss", "Trading carries a high risk of capital loss. Past performance does not predict future results. You may lose all or part of your capital. Only invest amounts whose loss would not affect your situation."],
+        ["Your responsibility", "All your trading decisions are your sole responsibility. The publisher is not liable for losses or missed gains resulting from use of the App."],
+        ["Accuracy", "Analyses rely on the data you enter. Their relevance depends on the accuracy of your input."],
+        ["Recommendation", "Before any decision, consult a licensed financial advisor and inform yourself with the relevant authorities. You trade at your own risk."],
+      ],
+    },
+  },
+};
+
+function LegalModal({tab:initialTab, lang, neon, onClose}) {
+  const [tab,setTab]=useState(initialTab||"cgu");
+  const fr=lang==="fr";
+  const L=LEGAL_CONTENT[lang]||LEGAL_CONTENT.fr;
+  const doc=L[tab];
+  const tabs=[["cgu",fr?"CGU":"Terms"],["privacy",fr?"Confidentialité":"Privacy"],["disclaimer",fr?"Risques":"Risk"]];
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",zIndex:400,display:"flex",alignItems:"center",justifyContent:"center",padding:18}} onClick={onClose}>
+      <div className="slide-up" style={{background:"#131318",border:`1px solid ${neon}30`,borderRadius:16,width:"100%",maxWidth:520,maxHeight:"88vh",display:"flex",flexDirection:"column",overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
+        <div style={{padding:"16px 18px 0",borderBottom:`1px solid ${neon}12`}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <div style={{fontSize:13,fontWeight:700,color:neon,fontFamily:MONO,letterSpacing:1}}>{fr?"INFORMATIONS LÉGALES":"LEGAL"}</div>
+            <button onClick={onClose} className="btn" style={{background:"transparent",border:"none",color:"#ffffff66",cursor:"pointer",display:"inline-flex"}}><Icon name="close" size={16} color="#ffffff66"/></button>
+          </div>
+          <div style={{display:"flex",gap:4}}>
+            {tabs.map(([k,label])=>(
+              <button key={k} onClick={()=>setTab(k)} className="btn" style={{flex:1,padding:"9px 0",borderRadius:"8px 8px 0 0",fontSize:11,fontWeight:700,fontFamily:MONO,background:tab===k?`${neon}14`:"transparent",color:tab===k?neon:"#ffffff77",border:"none",borderBottom:tab===k?`2px solid ${neon}`:"2px solid transparent"}}>{label}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{padding:"18px",overflowY:"auto",flex:1}}>
+          <div style={{fontSize:16,fontWeight:800,color:"#fff",marginBottom:16,fontFamily:MONO}}>{doc.title}</div>
+          {doc.sections.map(([h,body],i)=>(
+            <div key={i} style={{marginBottom:16}}>
+              <div style={{fontSize:12,fontWeight:700,color:neon,marginBottom:5,fontFamily:MONO}}>{h}</div>
+              <div style={{fontSize:12,color:"#ffffffbb",lineHeight:1.65,fontFamily:MONO}}>{body}</div>
+            </div>
+          ))}
+          <div style={{fontSize:10,color:"#ffffff44",fontStyle:"italic",marginTop:20,lineHeight:1.5,fontFamily:MONO}}>
+            {fr?"Pour toute question relative à ces documents, contactez l'éditeur de l'application.":"For any question regarding these documents, contact the app publisher."}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function NotifCard({notif,onClose}) {
   const {txt,color,trade,lang:nl,icon}=notif;
   const neon=color||"#00ff9d";
@@ -1207,12 +1324,15 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
   const [signupDone,setSignupDone]=useState(false);
   const [resetSent,setResetSent]=useState(false);
   const [resetLoading,setResetLoading]=useState(false);
+  const [acceptedTerms,setAcceptedTerms]=useState(false);
+  const [showLegal,setShowLegal]=useState(null); // null | "cgu" | "privacy" | "disclaimer"
   const inSt=mkInput(neon);
   const pwdPlaceholder=fr?"Mot de passe (6 car. min.)":"Password (6 chars min.)";
   const submit=async()=>{
     setError("");if(!email.trim()||!pwd.trim())return;
     if(pwd.trim().length<6){setError(fr?"Mot de passe trop court (6 car. min.)":"Password too short");return;}
     if(mode==="signup"&&pwd.trim()!==confirmPwd.trim()){setError(t.confirmPwdError);return;}
+    if(mode==="signup"&&!acceptedTerms){setError(fr?"Veuillez accepter les conditions et la politique de confidentialité.":"Please accept the terms and privacy policy.");return;}
     if(!db){setError(fr?"Service indisponible, réessayez.":"Service unavailable.");return;}
     setLoading(true);
     try {
@@ -1262,7 +1382,20 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
         <div style={{textAlign:"center",fontSize:9,color:"#ffffff44",letterSpacing:4,marginBottom:20,fontFamily:MONO}}>{mode==="login"?t.loginTitle.toUpperCase():t.signupBtn.toUpperCase()}</div>
         <input type="email" value={email} onChange={e=>{setEmail(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={t.loginEmailPlaceholder} style={{...inSt,marginBottom:10,fontSize:14}} autoFocus/>
         <input type="password" value={pwd} onChange={e=>{setPwd(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={pwdPlaceholder} style={{...inSt,marginBottom:mode==="signup"?10:error?10:16,fontSize:14}}/>
-        {mode==="signup"&&<input type="password" value={confirmPwd} onChange={e=>{setConfirmPwd(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={t.confirmPwdPlaceholder} style={{...inSt,marginBottom:error?10:16,fontSize:14}}/>}
+        {mode==="signup"&&<input type="password" value={confirmPwd} onChange={e=>{setConfirmPwd(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={t.confirmPwdPlaceholder} style={{...inSt,marginBottom:12,fontSize:14}}/>}
+        {mode==="signup"&&<div onClick={()=>setAcceptedTerms(v=>!v)} style={{display:"flex",alignItems:"flex-start",gap:9,marginBottom:16,cursor:"pointer",padding:"2px 2px"}}>
+          <div style={{width:18,height:18,borderRadius:5,border:`1.5px solid ${acceptedTerms?neon:"#ffffff33"}`,background:acceptedTerms?`${neon}22`:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1,transition:"all 0.15s"}}>
+            {acceptedTerms&&<Icon name="check" size={12} color={neon}/>}
+          </div>
+          <div style={{fontSize:10.5,color:"#ffffff99",lineHeight:1.5,fontFamily:MONO}}>
+            {fr?"J'accepte les ":"I accept the "}
+            <span onClick={e=>{e.stopPropagation();setShowLegal("cgu");}} style={{color:neon,textDecoration:"underline",cursor:"pointer"}}>{fr?"Conditions d'utilisation":"Terms of Use"}</span>
+            {fr?", la ":", the "}
+            <span onClick={e=>{e.stopPropagation();setShowLegal("privacy");}} style={{color:neon,textDecoration:"underline",cursor:"pointer"}}>{fr?"Politique de confidentialité":"Privacy Policy"}</span>
+            {fr?" et l'":" and the "}
+            <span onClick={e=>{e.stopPropagation();setShowLegal("disclaimer");}} style={{color:neon,textDecoration:"underline",cursor:"pointer"}}>{fr?"avertissement sur les risques":"Risk Disclaimer"}</span>.
+          </div>
+        </div>}
         {error&&<div style={{fontSize:11,color:"#ff4d4d",marginBottom:14,padding:"8px 12px",background:"rgba(255,77,77,0.08)",borderRadius:8,border:"1px solid rgba(255,77,77,0.2)"}}>{error}</div>}
         <button onClick={submit} disabled={loading} className="btn"
           style={{width:"100%",background:`${neon}22`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:16,fontSize:14,fontWeight:700,fontFamily:MONO,marginBottom:20,letterSpacing:2}}>
@@ -1280,9 +1413,14 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
             {mode==="login"?t.loginSwitch:t.signupSwitch}{" "}
             <button onClick={()=>{setMode(mode==="login"?"signup":"login");setError("");setConfirmPwd("");}} style={{background:"transparent",border:"none",color:neon,fontSize:11,cursor:"pointer",fontFamily:MONO,textDecoration:"underline"}}>{mode==="login"?t.signupBtn:t.loginTitle}</button>
           </div>
-          {mode==="login"&&<div style={{fontSize:10,color:"#ffffff55",fontFamily:MONO,marginTop:4}}>{fr?"CGU & Confidentialité":"Terms & Privacy"}</div>}
+          {mode==="login"&&<div style={{fontSize:10,color:"#ffffff55",fontFamily:MONO,marginTop:4}}>
+            <span onClick={()=>setShowLegal("cgu")} style={{cursor:"pointer",textDecoration:"underline"}}>{fr?"CGU":"Terms"}</span>{" · "}
+            <span onClick={()=>setShowLegal("privacy")} style={{cursor:"pointer",textDecoration:"underline"}}>{fr?"Confidentialité":"Privacy"}</span>{" · "}
+            <span onClick={()=>setShowLegal("disclaimer")} style={{cursor:"pointer",textDecoration:"underline"}}>{fr?"Risques":"Risk"}</span>
+          </div>}
         </div>
       </div>
+      {showLegal&&<LegalModal tab={showLegal} lang={lang} neon={neon} onClose={()=>setShowLegal(null)}/>}
     </div>
   );
 }
@@ -2150,6 +2288,7 @@ function GuidedSetup({onDone,lang}) {
 
 function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChange,neon,phases,onPhasesChange,onObjectifChange,onImport,accounts,activeAccountId,onSwitchAccount,onAccountsChange,onCreateAccount}) {
   const t=T[lang];const inSt=mkInput(neon);
+  const [showLegal,setShowLegal]=useState(null);
   const [items,setItems]=useState([...config.items]);const [threshold,setThreshold]=useState(config.threshold);
   const [stratName,setStratName]=useState(config.strategyName||"");const [maxTrades,setMaxTrades]=useState(config.maxTrades||1);
   const [neonColor,setNeonColor]=useState(neon);const [calendarOn,setCalendarOn]=useState(config.calendarOn!==false);
@@ -2399,7 +2538,19 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
         <div style={{height:1,background:"rgba(255,77,77,0.1)",margin:"14px 0 10px"}}/>
         <button onClick={onImport} className="btn" style={{width:"100%",background:`${neon}0a`,border:`1px solid ${neon}28`,color:neon,borderRadius:10,padding:12,fontSize:12,fontFamily:MONO,marginBottom:10}}>↑ {fr?"Importer un CSV (MT4/MT5/cTrader)":"Import CSV (MT4/MT5/cTrader)"}</button>
         <button onClick={onReset} className="btn" style={{width:"100%",background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d88",borderRadius:10,padding:12,fontSize:12,fontFamily:MONO,marginBottom:10}}>{t.resetBtn}</button>
-        <button onClick={onLogout} className="btn" style={{width:"100%",background:"transparent",border:"1px solid rgba(255,77,77,0.1)",color:"#ff4d4d88",borderRadius:10,padding:12,fontSize:11,fontFamily:MONO}}>{t.logout}</button>
+        <button onClick={onLogout} className="btn" style={{width:"100%",background:"transparent",border:"1px solid rgba(255,77,77,0.1)",color:"#ff4d4d88",borderRadius:10,padding:12,fontSize:11,fontFamily:MONO,marginBottom:18}}>{t.logout}</button>
+        {/* Section Légal */}
+        <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10,fontFamily:MONO}}>{fr?"LÉGAL":"LEGAL"}</div>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {[["cgu",fr?"Conditions d'utilisation":"Terms of Use"],["privacy",fr?"Politique de confidentialité":"Privacy Policy"],["disclaimer",fr?"Avertissement sur les risques":"Risk Disclaimer"]].map(([k,label])=>(
+            <button key={k} onClick={()=>setShowLegal(k)} className="btn" style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#131318",border:"1px solid #ffffff10",color:"#ffffffcc",borderRadius:10,padding:"12px 14px",fontSize:12,fontFamily:MONO}}>
+              <span style={{display:"flex",alignItems:"center",gap:9}}><Icon name="insight" size={14} color={neon}/>{label}</span>
+              <span style={{color:"#ffffff44"}}>›</span>
+            </button>
+          ))}
+        </div>
+        <div style={{fontSize:9,color:"#ffffff33",fontFamily:MONO,marginTop:14,textAlign:"center"}}>TrackMyTrade · v1.0</div>
+        {showLegal&&<LegalModal tab={showLegal} lang={lang} neon={neon} onClose={()=>setShowLegal(null)}/>}
       </div>}
 
     </div>
