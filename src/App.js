@@ -1291,7 +1291,6 @@ function SplashScreen({onDone,neon}) {
   const canvasRef=useRef();
   const rafRef=useRef();
   const startRef=useRef(null);
-  const [fading,setFading]=useState(false);
   const isMobile=window.innerWidth<600;
   const boxSize=isMobile?80:150;
   const svgSize=isMobile?46:88;
@@ -1299,8 +1298,7 @@ function SplashScreen({onDone,neon}) {
   const gap=isMobile?16:30;
 
   useEffect(()=>{
-    const fade=setTimeout(()=>setFading(true),2400);
-    const done=setTimeout(onDone,2950);
+    const done=setTimeout(onDone,2600);
     const canvas=canvasRef.current;
     if(!canvas)return;
     const ctx=canvas.getContext("2d");
@@ -1377,11 +1375,11 @@ function SplashScreen({onDone,neon}) {
       rafRef.current=requestAnimationFrame(animate);
     };
     rafRef.current=requestAnimationFrame(animate);
-    return()=>{clearTimeout(fade);clearTimeout(done);cancelAnimationFrame(rafRef.current);};
+    return()=>{clearTimeout(done);cancelAnimationFrame(rafRef.current);};
   },[]);
 
   return (
-    <div style={{background:"#07070d",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Geist Mono','IBM Plex Mono',monospace",overflow:"hidden",position:"relative",opacity:fading?0:1,transform:fading?"scale(1.04)":"scale(1)",transition:"opacity 0.55s ease, transform 0.55s ease"}}>
+    <div style={{background:"#07070d",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Geist Mono','IBM Plex Mono',monospace",overflow:"hidden",position:"relative"}}>
       <CSS neon={neon}/>
 
       {/* Fond radial fixe */}
@@ -3160,7 +3158,7 @@ export default function App() {
   const [detailTrade,setDetailTrade]=useState(null);
   const [editingNoTrade,setEditingNoTrade]=useState(null);
   const [config,setConfig]=useState({items:DEFAULT_CRITERIA,threshold:6,strategyName:"Ma Stratégie",defaultAsset:"XAU/USD",maxTrades:1,neonColor:"#00ff9d",calendarOn:true,notifOn:true,customAssets:[...PRESET_ASSETS],capital:"",devise:"€",accountType:"perso",phaseStartDate:"",modules:{rejet:true,checkin:true,postSl:true,revenge:true,timeframe:true},timeframes:[...DEFAULT_TIMEFRAMES]});
-  const fileRef=useRef();const pageRef=useRef();const weeklyShownRef=useRef(false);const currentUserRef=useRef(null);
+  const fileRef=useRef();const pageRef=useRef();const weeklyShownRef=useRef(false);const currentUserRef=useRef(null);const sessionRestoringRef=useRef(false);
   // Source de vérité unique pour l'UID : Firebase Auth d'abord, puis le ref. JAMAIS l'email encodé (écritures).
   const uidNow=()=>{ try { if(auth&&auth.currentUser&&auth.currentUser.uid) return auth.currentUser.uid; } catch(e){} return currentUserRef.current?.uid||null; };
   const neon=config.neonColor||"#00ff9d";const t=T[lang];const inSt=mkInput(neon);
@@ -3199,10 +3197,13 @@ export default function App() {
               if(migrated)saveUserData(resolvedUid,{accounts:accs,activeAccountId:aid,trades:tgTrades});
               setPhase("app");
             } else { setPhase("setup"); }
+          } else {
+            sessionRestoringRef.current=false;
+            setPhase("login");
           }
-        }).catch(()=>{});
+        }).catch(()=>{ sessionRestoringRef.current=false; setPhase("login"); });
       }
-    } catch(e){}
+    } catch(e){ sessionRestoringRef.current=false; }
   },[]);
 
   useEffect(()=>{
@@ -3491,7 +3492,7 @@ export default function App() {
     }
   };
 
-  if(phase==="splash") return <SplashScreen onDone={()=>setPhase("login")} neon={neon}/>;
+  if(phase==="splash") return <SplashScreen onDone={()=>{ if(!sessionRestoringRef.current) setPhase("login"); }} neon={neon}/>;
   if(phase==="onboarding") return <><CSS neon={neon}/><Onboarding onDone={l=>{setLang(l);setPhase("setup");}}/></>;
   if(phase==="login") return <LoginScreen onLogin={handleLogin} lang={lang} setLang={setLang} neon={neon}/>;
   if(phase==="setup") return <><CSS neon={neon}/><GuidedSetup onDone={async cfg=>{
