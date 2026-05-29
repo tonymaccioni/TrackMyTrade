@@ -173,9 +173,12 @@ const mkInput = neon => ({width:"100%",background:"#131318",border:`1px solid ${
 
 const T = {
   fr:{
-    welcome:"Bienvenue sur\nTrackMyTrade",welcomeDesc:"Le journal de trading qui transforme ta discipline en données concrètes. Chaque trade enregistré est un pas vers la rentabilité.",
-    checklist:"Ta checklist,\nton filtre",checklistDesc:"Configure tes critères d'entrée. Chaque setup reçoit une note automatique — conforme ou non-conforme. Les chiffres ne mentent pas.",
-    measure:"Mesure ce qui\nfonctionne",measureDesc:"Courbe de capital, conformité des setups, résumé hebdomadaire. Les données te font progresser.",
+    ob1Title:"Le marché ne te bat pas.\nTon indiscipline, oui.",ob1Desc:"La plupart des traders ne perdent pas par manque de stratégie, mais par manque de discipline. TrackMyTrade mesure la tienne, trade après trade.",
+    ob2Title:"Tes règles,\npas celles d'un autre",ob2Desc:"Définis ta propre checklist d'entrée. Chaque trade est noté automatiquement — conforme ou non. Ton edge devient mesurable, pas une impression.",
+    ob3Title:"Scalping, ICT, swing…\nta méthode reste la tienne",ob3Desc:"L'app s'adapte à toute stratégie : tes critères, tes actifs, tes timeframes, tes objectifs. Active seulement ce dont tu as besoin.",
+    ob4Title:"Vois ce qui te rend\nvraiment rentable",ob4Desc:"Win rate, profit factor, discipline, courbe d'équité. Les chiffres qui comptent, réunis et lisibles d'un coup d'œil.",
+    ob5Title:"Un coach dans\nta poche",ob5Desc:"Une lecture honnête de tes stats à chaque session, et tous tes comptes (perso, prop firm, démo) au même endroit. Prêt ?",
+    welcome:"Bienvenue sur\nTrackMyTrade",welcomeDesc:"Le journal de trading qui transforme ta discipline en données concrètes.",
     discover:"Découvrir →",next:"Suivant →",start:"Configurer ma stratégie →",back:"← Retour",step:"ÉTAPE",
     strategy:"Ta stratégie",strategyDesc:"Donne un nom à ta stratégie.",assets:"Tes actifs",assetsDesc:"Sur quoi tu trades ?",
     criteria:"Tes critères",criteriaDesc:"Modifie la checklist.",threshold:"Seuil de conformité",thresholdDesc:"Un setup est conforme s'il valide au moins X critères.",
@@ -231,9 +234,12 @@ const T = {
     resetConfirmBtn:"Confirmer la réinitialisation",resetBtn:"⊘ Réinitialiser les données",
   },
   en:{
-    welcome:"Welcome to\nTrackMyTrade",welcomeDesc:"The trading journal that turns your discipline into concrete data. Every logged trade is a step toward profitability.",
-    checklist:"Your checklist,\nyour filter",checklistDesc:"Set your entry criteria. Each setup gets an automatic score — compliant or non-compliant. Numbers don't lie.",
-    measure:"Measure what\nworks",measureDesc:"Equity curve, setup compliance, weekly summary. Data makes you progress.",
+    ob1Title:"The market isn't beating you.\nYour lack of discipline is.",ob1Desc:"Most traders don't lose from a lack of strategy, but a lack of discipline. TrackMyTrade measures yours, trade after trade.",
+    ob2Title:"Your rules,\nnot someone else's",ob2Desc:"Define your own entry checklist. Each trade is scored automatically — compliant or not. Your edge becomes measurable, not a feeling.",
+    ob3Title:"Scalping, ICT, swing…\nyour method stays yours",ob3Desc:"The app adapts to any strategy: your criteria, your assets, your timeframes, your goals. Turn on only what you need.",
+    ob4Title:"See what truly\nmakes you profitable",ob4Desc:"Win rate, profit factor, discipline, equity curve. The numbers that matter, together and readable at a glance.",
+    ob5Title:"A coach in\nyour pocket",ob5Desc:"An honest read of your stats every session, and all your accounts (personal, prop firm, demo) in one place. Ready?",
+    welcome:"Welcome to\nTrackMyTrade",welcomeDesc:"The trading journal that turns your discipline into concrete data.",
     discover:"Discover →",next:"Next →",start:"Set up my strategy →",back:"← Back",step:"STEP",
     strategy:"Your strategy",strategyDesc:"Give your strategy a name.",assets:"Your assets",assetsDesc:"What do you trade?",
     criteria:"Your criteria",criteriaDesc:"Edit the checklist.",threshold:"Compliance threshold",thresholdDesc:"A setup is compliant if it meets at least X criteria.",
@@ -2011,64 +2017,96 @@ function GridBackground({neon,height=240}) {
 function Onboarding({onDone}) {
   const [step,setStep]=useState(0);const [lang,setLang]=useState("fr");
   const t=T[lang];const neon="#00ff9d";
+
+  // Helper visuel : conteneur de slide avec grille de fond
+  const Stage = ({children,h=210}) => (
+    <div style={{position:"relative",width:"100%",height:h,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
+      <div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse 70% 55% at 50% 50%,${neon}0e,transparent 68%)`,pointerEvents:"none"}}/>
+      <GridBackground neon={neon} height={h}/>
+      <div style={{position:"relative",zIndex:2,width:"100%",display:"flex",alignItems:"center",justifyContent:"center"}}>{children}</div>
+    </div>
+  );
+
   const slides=[
-    {visual:(
-      <div style={{position:"relative",width:"100%",height:240,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
-        <div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse 70% 55% at 50% 50%,${neon}10,transparent 68%)`,pointerEvents:"none"}}/>
-        <GridBackground neon={neon} height={240}/>
-        <div style={{position:"relative",zIndex:2}}><SplashLogo neon={neon}/></div>
-      </div>
-    ),title:t.welcome,desc:t.welcomeDesc,cta:t.discover},
-    {visual:(
-      <div style={{position:"relative",width:"100%",height:220,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
-        <GridBackground neon={neon} height={220}/>
-        <div style={{position:"relative",zIndex:2,display:"flex",flexDirection:"column",gap:8,maxWidth:280,width:"100%",padding:"0 10px"}}>
-          {[["HA M5 claire",true],["MM20 orientée",true],["BB approche",true],["Rejet propre",false]].map(([item,ok],i)=>(
-            <div key={i} className="fu" style={{background:ok?`${neon}0d`:"rgba(255,77,77,0.06)",border:`1px solid ${ok?neon+"30":"rgba(255,77,77,0.2)"}`,borderRadius:10,padding:"10px 14px",fontSize:13,fontWeight:600,color:ok?neon:"#ff4d4d",fontFamily:MONO,animationDelay:`${i*0.08}s`,display:"flex",alignItems:"center",gap:10}}>
-              <span style={{fontSize:14,flexShrink:0,color:ok?neon:"#ff4d4d"}}>{ok?"✓":"✗"}</span>
-              <span style={{color:"#ffffff"}}>{item}</span>
+    // 1 — Accroche / promesse
+    {title:t.ob1Title,desc:t.ob1Desc,cta:t.discover,visual:(
+      <Stage h={230}><SplashLogo neon={neon}/></Stage>
+    )},
+    // 2 — Tes règles : checklist générique
+    {title:t.ob2Title,desc:t.ob2Desc,cta:t.next,visual:(
+      <Stage><div style={{display:"flex",flexDirection:"column",gap:8,maxWidth:280,width:"100%",padding:"0 10px"}}>
+        {[[lang==="fr"?"Setup validé":"Setup confirmed",true],[lang==="fr"?"Règles respectées":"Rules followed",true],[lang==="fr"?"Timing correct":"Right timing",true],[lang==="fr"?"Pas de revenge":"No revenge",false]].map(([item,ok],i)=>(
+          <div key={i} className="fu" style={{background:ok?`${neon}0d`:"rgba(255,77,77,0.06)",border:`1px solid ${ok?neon+"30":"rgba(255,77,77,0.2)"}`,borderRadius:10,padding:"10px 14px",fontSize:13,fontWeight:600,fontFamily:MONO,animationDelay:`${i*0.08}s`,display:"flex",alignItems:"center",gap:10}}>
+            <Icon name={ok?"check":"close"} size={15} color={ok?neon:"#ff4d4d"}/>
+            <span style={{color:"#ffffff"}}>{item}</span>
+          </div>
+        ))}
+      </div></Stage>
+    )},
+    // 3 — Toute stratégie
+    {title:t.ob3Title,desc:t.ob3Desc,cta:t.next,visual:(
+      <Stage><div style={{display:"flex",flexWrap:"wrap",gap:8,maxWidth:290,justifyContent:"center"}}>
+        {["Scalping","ICT","Swing","Day trading","Price action","SMC","Breakout"].map((s,i)=>(
+          <div key={s} className="fu" style={{background:`${neon}0d`,border:`1px solid ${neon}2e`,borderRadius:20,padding:"8px 14px",fontSize:12,fontWeight:600,color:neon,fontFamily:MONO,animationDelay:`${i*0.07}s`,boxShadow:`0 0 14px ${neon}12`}}>{s}</div>
+        ))}
+      </div></Stage>
+    )},
+    // 4 — Les chiffres qui comptent (4 KPI)
+    {title:t.ob4Title,desc:t.ob4Desc,cta:t.next,visual:(
+      <Stage><div style={{maxWidth:290,width:"100%",padding:"0 10px"}}>
+        <div style={{display:"flex",gap:8,marginBottom:8}}>
+          {[["WIN RATE","73%"],["P&L","+4.2%"],["P. FACTOR","1.85"]].map(([l,v])=>(
+            <div key={l} style={{flex:1,background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:12,padding:"12px 6px",textAlign:"center",boxShadow:`0 4px 20px ${neon}0d,inset 0 1px 0 ${neon}15`}}>
+              <div style={{fontSize:18,fontWeight:900,color:"#ffffff",fontFamily:MONO,lineHeight:1,textShadow:`0 0 16px ${neon}55`}}>{v}</div>
+              <div style={{fontSize:7,color:"#ffffffaa",marginTop:5,letterSpacing:1.5}}>{l}</div>
             </div>
           ))}
         </div>
-      </div>
-    ),title:t.checklist,desc:t.checklistDesc,cta:t.next},
-    {visual:(
-      <div style={{position:"relative",width:"100%",height:220,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
-        <GridBackground neon={neon} height={220}/>
-        <div style={{position:"relative",zIndex:2,maxWidth:280,width:"100%",padding:"0 10px"}}>
-          <div style={{display:"flex",gap:10,marginBottom:10}}>
-            {[["WIN RATE","73%"],["P&L","+4.2%"]].map(([l,v])=>(
-              <div key={l} style={{flex:1,background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:14,padding:"14px 12px",textAlign:"center",boxShadow:`0 4px 24px ${neon}10,inset 0 1px 0 ${neon}15`}}>
-                <div style={{fontSize:26,fontWeight:900,color:"#ffffff",fontFamily:MONO,lineHeight:1,textShadow:`0 0 20px ${neon}55`}}>{v}</div>
-                <div style={{fontSize:9,color:"#ffffffaa",marginTop:6,letterSpacing:2,textTransform:"uppercase"}}>{l}</div>
-              </div>
-            ))}
+        <div style={{background:`linear-gradient(145deg,${neon}10,${neon}04)`,border:`1px solid ${neon}30`,borderRadius:12,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",boxShadow:`0 4px 20px ${neon}0d`}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <Icon name="discipline" size={20} color={neon}/>
+            <span style={{fontSize:9,color:"#ffffffaa",letterSpacing:2}}>{lang==="fr"?"DISCIPLINE":"DISCIPLINE"}</span>
           </div>
-          <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:10,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div>
-              <div style={{fontSize:9,color:"#ffffffaa",letterSpacing:2,marginBottom:6}}>CONFORMITÉ</div>
-              <div style={{height:3,width:140,background:"#ffffff10",borderRadius:2,overflow:"hidden"}}>
-                <div style={{width:"73%",height:"100%",background:`linear-gradient(90deg,${neon}66,${neon})`,borderRadius:2,boxShadow:`0 0 8px ${neon}55`}}/>
-              </div>
-            </div>
-            <div style={{fontSize:20,fontWeight:900,color:"#ffffff",fontFamily:MONO,textShadow:`0 0 20px ${neon}55`}}>73%</div>
+          <div style={{fontSize:22,fontWeight:900,color:"#ffffff",fontFamily:MONO,textShadow:`0 0 20px ${neon}66`}}>8<span style={{fontSize:11,color:"#ffffff44"}}>/10</span></div>
+        </div>
+      </div></Stage>
+    )},
+    // 5 — Coach + multi-comptes
+    {title:t.ob5Title,desc:t.ob5Desc,cta:t.start,visual:(
+      <Stage><div style={{maxWidth:290,width:"100%",padding:"0 10px",display:"flex",flexDirection:"column",gap:10}}>
+        <div style={{position:"relative",background:"linear-gradient(135deg,#0f0f16,#0c0c12)",border:`1px solid ${neon}22`,borderRadius:12,padding:"12px 14px 12px 18px",overflow:"hidden"}}>
+          <div style={{position:"absolute",left:0,top:0,bottom:0,width:3,background:`linear-gradient(180deg,${neon}99,${neon}33)`,boxShadow:`0 0 8px ${neon}66`}}/>
+          <div style={{display:"flex",alignItems:"flex-start",gap:9}}>
+            <Icon name="insight" size={15} color={neon} style={{marginTop:1}}/>
+            <div style={{fontSize:11,color:"#ffffffcc",fontFamily:MONO,lineHeight:1.55}}>{lang==="fr"?"Tes setups conformes : 78% WR. Ton edge est dans ta discipline.":"Your compliant setups: 78% WR. Your edge is in your discipline."}</div>
           </div>
         </div>
-      </div>
-    ),title:t.measure,desc:t.measureDesc,cta:t.start},
+        <div style={{display:"flex",gap:7}}>
+          {[["Perso",neon],["FTMO",`#00d4ff`],["Démo",`#f0b429`]].map(([n,c])=>(
+            <div key={n} style={{flex:1,display:"flex",alignItems:"center",gap:6,background:`${c}10`,border:`1px solid ${c}30`,borderRadius:9,padding:"8px 10px"}}>
+              <div style={{width:7,height:7,borderRadius:"50%",background:c,boxShadow:`0 0 5px ${c}`}}/>
+              <span style={{fontSize:10,fontWeight:700,color:"#fff",fontFamily:MONO}}>{n}</span>
+            </div>
+          ))}
+        </div>
+      </div></Stage>
+    )},
   ];
   const s=slides[step];
   return (
     <div style={{background:"#0c0c12",minHeight:"100vh",display:"flex",flexDirection:"column",fontFamily:MONO,maxWidth:480,margin:"0 auto",color:"#ffffff"}}>
       <CSS neon={neon}/>
-      <div style={{padding:"16px 24px 0",display:"flex",justifyContent:"flex-end",gap:6}}>
-        {["fr","en"].map(l=><button key={l} onClick={()=>setLang(l)} className="btn" style={{background:lang===l?`${neon}26`:"transparent",border:`1px solid ${lang===l?neon:`${neon}33`}`,color:lang===l?neon:"#ffffffaa",borderRadius:6,padding:"5px 12px",fontSize:11,fontWeight:700,fontFamily:MONO}}>{l.toUpperCase()}</button>)}
+      <div style={{padding:"16px 24px 0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <button onClick={()=>onDone(lang)} className="btn" style={{background:"transparent",border:"none",color:"#ffffff44",fontSize:11,fontFamily:MONO,cursor:"pointer"}}>{lang==="fr"?"Passer":"Skip"}</button>
+        <div style={{display:"flex",gap:6}}>
+          {["fr","en"].map(l=><button key={l} onClick={()=>setLang(l)} className="btn" style={{background:lang===l?`${neon}26`:"transparent",border:`1px solid ${lang===l?neon:`${neon}33`}`,color:lang===l?neon:"#ffffffaa",borderRadius:6,padding:"5px 12px",fontSize:11,fontWeight:700,fontFamily:MONO}}>{l.toUpperCase()}</button>)}
+        </div>
       </div>
       <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"12px 28px 24px"}}>
-        <div className="fi" key={`v${step}${lang}`} style={{marginBottom:28,width:"100%"}}>{s.visual}</div>
-        <div className="fi" key={`t${step}${lang}`} style={{textAlign:"center",marginBottom:28}}>
-          <div style={{fontSize:24,fontWeight:700,color:neon,whiteSpace:"pre-line",lineHeight:1.25,marginBottom:12,fontFamily:MONO,textShadow:`0 0 30px ${neon}99`}}>{s.title}</div>
-          <div style={{fontSize:13,color:"#ffffffaa",lineHeight:1.8,maxWidth:300,margin:"0 auto"}}>{s.desc}</div>
+        <div className="fi" key={`v${step}${lang}`} style={{marginBottom:26,width:"100%"}}>{s.visual}</div>
+        <div className="fi" key={`t${step}${lang}`} style={{textAlign:"center",marginBottom:26}}>
+          <div style={{fontSize:22,fontWeight:700,color:neon,whiteSpace:"pre-line",lineHeight:1.3,marginBottom:14,fontFamily:MONO,textShadow:`0 0 30px ${neon}88`}}>{s.title}</div>
+          <div style={{fontSize:13,color:"#ffffffaa",lineHeight:1.75,maxWidth:310,margin:"0 auto"}}>{s.desc}</div>
         </div>
         <button onClick={()=>step<slides.length-1?setStep(step+1):onDone(lang)} className="btn" style={{width:"100%",maxWidth:300,background:`${neon}22`,border:`1px solid ${neon}`,color:neon,borderRadius:12,padding:16,fontSize:14,fontWeight:700,fontFamily:MONO,marginBottom:12,boxShadow:`0 0 24px ${neon}33`,textShadow:`0 0 12px ${neon}88`}}>{s.cta}</button>
         {step>0&&<button onClick={()=>setStep(step-1)} className="btn" style={{background:"transparent",border:"none",color:"#ffffff44",fontSize:12,fontFamily:MONO}}>{t.back}</button>}
