@@ -717,17 +717,18 @@ function ConformityBar({trades,threshold,maxItems,neon,lang}) {
 function PerformanceChart({trades, neon, lang}) {
   const fr = lang === "fr";
   const MONO = "'Geist Mono','IBM Plex Mono',monospace";
+  const [active, setActive] = useState(null); // index du point survolé/cliqué
   if(!trades||trades.length<2) return null;
 
-  // Calculer P&L cumulé par trade (ordre chronologique)
-  const sorted = [...trades].sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id);
+  // P&L cumulé par trade (ordre chronologique réel)
+  const sorted = [...trades].sort((a,b)=>a.date.localeCompare(b.date)||(Number(a.id)-Number(b.id)));
   let cum = 0;
   const points = sorted.map(t => {
     cum += parseFloat(t.pnlPct)||0;
     return {pnl: parseFloat(t.pnlPct)||0, cum: parseFloat(cum.toFixed(2)), result: t.result, date: t.date};
   });
 
-  const W = 320, H = 96, PAD = {t:14, r:12, b:16, l:34};
+  const W = 320, H = 104, PAD = {t:16, r:14, b:20, l:34};
   const chartW = W - PAD.l - PAD.r;
   const chartH = H - PAD.t - PAD.b;
 
@@ -740,15 +741,23 @@ function PerformanceChart({trades, neon, lang}) {
   const toY = v => PAD.t + chartH - ((v - minV) / range) * chartH;
   const zeroY = toY(0);
 
-  // Construire le path
   const pathD = points.map((p,i) => `${i===0?'M':'L'}${toX(i).toFixed(1)},${toY(p.cum).toFixed(1)}`).join(' ');
   const areaD = `${pathD} L${toX(points.length-1).toFixed(1)},${zeroY.toFixed(1)} L${toX(0).toFixed(1)},${zeroY.toFixed(1)} Z`;
 
-  // Valeur finale
   const finalVal = points[points.length-1].cum;
   const finalX = toX(points.length-1);
   const finalY = toY(finalVal);
   const color = finalVal >= 0 ? neon : "#ff4d4d";
+
+  // Format date court : "12 mai" / "May 12"
+  const fmtDate = (iso) => {
+    try {
+      const d = new Date(iso+"T00:00:00");
+      const moisFr = ["janv.","févr.","mars","avr.","mai","juin","juil.","août","sept.","oct.","nov.","déc."];
+      const moisEn = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      return fr ? `${d.getDate()} ${moisFr[d.getMonth()]}` : `${moisEn[d.getMonth()]} ${d.getDate()}`;
+    } catch(e){ return iso; }
+  };
 
   // Labels Y
   const yLabels = [];
@@ -758,56 +767,91 @@ function PerformanceChart({trades, neon, lang}) {
     yLabels.push({v: parseFloat(v.toFixed(1)), y: toY(v)});
   }
 
+  const firstDate = points[0].date;
+  const lastDate = points[points.length-1].date;
+  const ap = active!=null ? points[active] : null;
+
   return (
     <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:"12px 14px",marginBottom:12}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-        <div style={{fontSize:9,color:`${neon}44`,letterSpacing:2,fontFamily:MONO}}>
+        <div style={{fontSize:9,color:`${neon}66`,letterSpacing:2,fontFamily:MONO}}>
           {fr?"P&L CUMULÉ":"CUMULATIVE P&L"}
         </div>
-        <div style={{fontSize:12,fontWeight:700,color:color,fontFamily:MONO}}>
-          {finalVal>=0?"+":""}{finalVal.toFixed(1)}%
-        </div>
+        {/* Affiche soit le point actif, soit la valeur finale + sa date */}
+        {ap ? (
+          <div style={{display:"flex",alignItems:"baseline",gap:6}}>
+            <span style={{fontSize:8,color:"#ffffff66",fontFamily:MONO}}>{fmtDate(ap.date)}</span>
+            <span style={{fontSize:12,fontWeight:800,color:ap.cum>=0?neon:"#ff4d4d",fontFamily:MONO}}>{ap.cum>=0?"+":""}{ap.cum.toFixed(1)}%</span>
+          </div>
+        ) : (
+          <div style={{display:"flex",alignItems:"baseline",gap:6}}>
+            <span style={{fontSize:8,color:"#ffffff44",fontFamily:MONO}}>{fmtDate(lastDate)}</span>
+            <span style={{fontSize:12,fontWeight:800,color:color,fontFamily:MONO}}>{finalVal>=0?"+":""}{finalVal.toFixed(1)}%</span>
+          </div>
+        )}
       </div>
-      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{overflow:"visible"}}>
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{overflow:"visible",display:"block"}}>
         <defs>
           <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.25"/>
-            <stop offset="100%" stopColor={color} stopOpacity="0.02"/>
+            <stop offset="0%" stopColor={color} stopOpacity="0.30"/>
+            <stop offset="60%" stopColor={color} stopOpacity="0.08"/>
+            <stop offset="100%" stopColor={color} stopOpacity="0.01"/>
           </linearGradient>
-          <clipPath id="chartClip">
-            <rect x={PAD.l} y={PAD.t} width={chartW} height={chartH}/>
-          </clipPath>
+          <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor={color} stopOpacity="0.55"/>
+            <stop offset="100%" stopColor={color} stopOpacity="1"/>
+          </linearGradient>
+          <filter id="glowLine" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="2.2" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <clipPath id="chartClip"><rect x={PAD.l} y={PAD.t-4} width={chartW} height={chartH+8}/></clipPath>
         </defs>
 
-        {/* Grille horizontale */}
+        {/* Grille */}
         {yLabels.map(({v,y})=>(
           <g key={v}>
             <line x1={PAD.l} y1={y} x2={W-PAD.r} y2={y} stroke={neon} strokeOpacity="0.06" strokeWidth="1"/>
-            <text x={PAD.l-4} y={y+3} fontFamily={MONO} fontSize="7" fill={neon} fillOpacity="0.35" textAnchor="end">
-              {v>0?"+":""}{v}%
-            </text>
+            <text x={PAD.l-5} y={y+3} fontFamily={MONO} fontSize="7" fill={neon} fillOpacity="0.32" textAnchor="end">{v>0?"+":""}{v}%</text>
           </g>
         ))}
 
         {/* Ligne zéro */}
-        {minV<0&&maxV>0&&<line x1={PAD.l} y1={zeroY} x2={W-PAD.r} y2={zeroY} stroke={neon} strokeOpacity="0.18" strokeWidth="1" strokeDasharray="4,3"/>}
+        {minV<0&&maxV>0&&<line x1={PAD.l} y1={zeroY} x2={W-PAD.r} y2={zeroY} stroke={neon} strokeOpacity="0.20" strokeWidth="1" strokeDasharray="4,3"/>}
 
-        {/* Aire */}
+        {/* Aire + courbe avec glow */}
         <path d={areaD} fill="url(#areaGrad)" clipPath="url(#chartClip)"/>
+        <path d={pathD} fill="none" stroke="url(#lineGrad)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" clipPath="url(#chartClip)" filter="url(#glowLine)"/>
 
-        {/* Courbe */}
-        <path d={pathD} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" clipPath="url(#chartClip)"/>
+        {/* Ligne verticale guide si point actif */}
+        {ap && <line x1={toX(active)} y1={PAD.t-4} x2={toX(active)} y2={PAD.t+chartH} stroke={ap.cum>=0?neon:"#ff4d4d"} strokeOpacity="0.35" strokeWidth="1" strokeDasharray="3,2"/>}
 
-        {/* Points WIN/LOSS */}
+        {/* Petits points WIN/LOSS/BE */}
         {points.map((p,i)=>(
-          <circle key={i} cx={toX(i)} cy={toY(p.cum)} r="2.5"
+          <circle key={i} cx={toX(i)} cy={toY(p.cum)} r={active===i?3.5:2.3}
             fill={p.result==="WIN"?neon:p.result==="LOSS"?"#ff4d4d":"#f0b429"}
-            opacity="0.8"/>
+            opacity={active===null||active===i?0.9:0.4}
+            style={{transition:"all 0.12s"}}/>
         ))}
 
-        {/* Point final mis en valeur */}
-        <circle cx={finalX} cy={finalY} r="5" fill={color} opacity="0.9"/>
-        <circle cx={finalX} cy={finalY} r="8" fill="none" stroke={color} strokeOpacity="0.3" strokeWidth="1"/>
+        {/* Point final "tu es ici" : halo pulsant */}
+        <circle cx={finalX} cy={finalY} r="9" fill="none" stroke={color} strokeOpacity="0.25" strokeWidth="1">
+          <animate attributeName="r" values="6;11;6" dur="2.4s" repeatCount="indefinite"/>
+          <animate attributeName="stroke-opacity" values="0.4;0;0.4" dur="2.4s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx={finalX} cy={finalY} r="4.5" fill={color} stroke="#0c0c12" strokeWidth="1.5" style={{filter:`drop-shadow(0 0 5px ${color})`}}/>
+
+        {/* Dates aux extrémités */}
+        <text x={PAD.l} y={H-5} fontFamily={MONO} fontSize="7" fill={neon} fillOpacity="0.30" textAnchor="start">{fmtDate(firstDate)}</text>
+        <text x={W-PAD.r} y={H-5} fontFamily={MONO} fontSize="7" fill={neon} fillOpacity="0.30" textAnchor="end">{fmtDate(lastDate)}</text>
+
+        {/* Zones de survol/clic invisibles pour interactivité */}
+        {points.map((p,i)=>(
+          <rect key={"h"+i} x={toX(i)-(chartW/points.length/2)} y={PAD.t-6} width={Math.max(6,chartW/points.length)} height={chartH+12}
+            fill="transparent" style={{cursor:"pointer"}}
+            onMouseEnter={()=>setActive(i)} onMouseLeave={()=>setActive(null)}
+            onClick={()=>setActive(active===i?null:i)}/>
+        ))}
       </svg>
 
       {/* Légende */}
@@ -815,10 +859,10 @@ function PerformanceChart({trades, neon, lang}) {
         {[{c:neon,l:"WIN"},{c:"#ff4d4d",l:"LOSS"},{c:"#f0b429",l:"BE"}].map(({c,l})=>(
           <div key={l} style={{display:"flex",alignItems:"center",gap:4}}>
             <div style={{width:6,height:6,borderRadius:"50%",background:c}}/>
-            <span style={{fontSize:8,color:`${neon}33`,fontFamily:MONO}}>{l}</span>
+            <span style={{fontSize:8,color:`${neon}44`,fontFamily:MONO}}>{l}</span>
           </div>
         ))}
-        <span style={{fontSize:8,color:`${neon}22`,fontFamily:MONO,marginLeft:"auto"}}>{points.length} {fr?"trades":"trades"}</span>
+        <span style={{fontSize:8,color:`${neon}33`,fontFamily:MONO,marginLeft:"auto"}}>{points.length} {fr?"trades":"trades"}</span>
       </div>
     </div>
   );
