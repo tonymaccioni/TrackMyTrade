@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell } from "recharts";
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail, onAuthStateChanged, setPersistence, browserLocalPersistence } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA6SLYL7Ep451nu6edynUeBbPROtgRucv8",
@@ -18,8 +18,6 @@ try {
   const fbApp = initializeApp(firebaseConfig);
   db = getFirestore(fbApp);
   auth = getAuth(fbApp);
-  // Persistance locale explicite : la session Firebase survit aux rechargements (plus de reconnexion manuelle).
-  try { setPersistence(auth, browserLocalPersistence); } catch(e) { console.error("persistence error:",e); }
 } catch(e) { console.error("Firebase init error:",e); }
 
 // Simple Firestore auth — no Firebase Auth SDK needed
@@ -66,22 +64,7 @@ const flushPending = async (realUid) => {
   }
   setPending(remaining);
 };
-// IMPORTANT : null = le document n'existe pas (vrai nouveau compte).
-//             undefined = lecture impossible (réseau/erreur) → on ne doit JAMAIS traiter ça comme un nouveau compte,
-//             sinon le flux de setup écrase les données existantes. On réessaie plusieurs fois avant d'abandonner.
-const loadUserData = async (id, retries=2) => {
-  if(!db || !id) return undefined;
-  for(let attempt=0; attempt<=retries; attempt++){
-    try {
-      const s = await getDoc(doc(db,"users",id));
-      return s.exists() ? s.data() : null;
-    } catch(e) {
-      console.error("Firestore read failed (try "+(attempt+1)+"):", e);
-      if(attempt<retries) await new Promise(r=>setTimeout(r, 600*(attempt+1)));
-    }
-  }
-  return undefined; // toutes les tentatives ont échoué → lecture impossible
-};
+const loadUserData = async id => { if(!db)return null; try { const s=await getDoc(doc(db,"users",id)); return s.exists()?s.data():null; } catch(e) { return null; } };
 const authLogin = async (email, pwd) => {
   if(!auth) return null;
   try {
@@ -89,13 +72,9 @@ const authLogin = async (email, pwd) => {
     const uid = cred.user.uid;
     // 1) Nouveau système : document sous UID
     let d = await loadUserData(uid);
-    // Lecture impossible (réseau) : auth OK mais données indisponibles.
-    // On le signale clairement et on NE prétend JAMAIS que c'est un compte vierge.
-    if(d === undefined) return { _uid: uid, _readFailed: true };
-    // 2) Document absent → on tente l'ancien système (email encodé) avant de conclure "nouveau"
-    if(d === null) {
+    // 2) Ancien système : document sous email encodé -> migration automatique vers UID
+    if(!d) {
       const legacy = await loadUserData(encEmail(email));
-      if(legacy === undefined) return { _uid: uid, _readFailed: true }; // lecture legacy échouée → on ne risque rien
       if(legacy) {
         // Recopie les anciennes données sous l'UID (une seule fois), puis on travaille sous UID
         try { await setDoc(doc(db,"users",uid), legacy, {merge:true}); } catch(e){}
@@ -336,6 +315,8 @@ const CSS = ({neon="#00ff9d"}) => (
     /* ══ TUTORIAL ══ */
     .tut-overlay{position:fixed;inset:0;z-index:900;pointer-events:all}
     @keyframes iconPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.55;transform:scale(1.08)}}
+    @keyframes appFadeIn{0%{opacity:0;transform:scale(0.985)}100%{opacity:1;transform:scale(1)}}
+    .app-fade-in{animation:appFadeIn 0.6s ease both}
     .icon-pulse{animation:iconPulse 1.1s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
     .icon-hover{transition:transform 0.15s ease,filter 0.15s ease}
     .icon-hover:hover{transform:scale(1.15);filter:drop-shadow(0 0 4px currentColor)}
@@ -1238,11 +1219,7 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
       const em=email.trim().toLowerCase();
       if(mode==="login"){
         const result=await authLogin(em,pwd);
-        if(result&&result._readFailed){
-          setError(fr?"Connexion OK mais données injoignables. Vérifie ta connexion et réessaie.":"Signed in but data unreachable. Check your connection and retry.");
-          setLoading(false);
-        }
-        else if(result){onLogin({email:em, _uid:result._uid, userData:result});}
+        if(result){onLogin({email:em, _uid:result._uid, userData:result});}
         else{setError(t.loginError);setLoading(false);}
       } else {
         const newUid=await authRegister(em,pwd,lang);
@@ -1275,7 +1252,7 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
     </div>
   );
   return (
-    <div style={{background:"#0c0c12",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:28,fontFamily:MONO,maxWidth:480,margin:"0 auto"}}>
+    <div className="app-fade-in" style={{background:"#0c0c12",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:28,fontFamily:MONO,maxWidth:480,margin:"0 auto"}}>
       <CSS neon={neon}/>
       <div style={{position:"absolute",top:20,right:20,display:"flex",gap:6}}>
         {["fr","en"].map(l=><button key={l} onClick={()=>setLang(l)} className="btn" style={{background:lang===l?`${neon}26`:"transparent",border:`1px solid ${lang===l?neon:`${neon}33`}`,color:lang===l?neon:"#ffffffaa",borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:700,fontFamily:MONO}}>{l.toUpperCase()}</button>)}
@@ -1314,6 +1291,7 @@ function SplashScreen({onDone,neon}) {
   const canvasRef=useRef();
   const rafRef=useRef();
   const startRef=useRef(null);
+  const [fading,setFading]=useState(false);
   const isMobile=window.innerWidth<600;
   const boxSize=isMobile?80:150;
   const svgSize=isMobile?46:88;
@@ -1321,7 +1299,8 @@ function SplashScreen({onDone,neon}) {
   const gap=isMobile?16:30;
 
   useEffect(()=>{
-    const done=setTimeout(onDone,2700);
+    const fade=setTimeout(()=>setFading(true),2400);
+    const done=setTimeout(onDone,2950);
     const canvas=canvasRef.current;
     if(!canvas)return;
     const ctx=canvas.getContext("2d");
@@ -1398,11 +1377,11 @@ function SplashScreen({onDone,neon}) {
       rafRef.current=requestAnimationFrame(animate);
     };
     rafRef.current=requestAnimationFrame(animate);
-    return()=>{clearTimeout(done);cancelAnimationFrame(rafRef.current);};
+    return()=>{clearTimeout(fade);clearTimeout(done);cancelAnimationFrame(rafRef.current);};
   },[]);
 
   return (
-    <div style={{background:"#07070d",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Geist Mono','IBM Plex Mono',monospace",overflow:"hidden",position:"relative"}}>
+    <div style={{background:"#07070d",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Geist Mono','IBM Plex Mono',monospace",overflow:"hidden",position:"relative",opacity:fading?0:1,transform:fading?"scale(1.04)":"scale(1)",transition:"opacity 0.55s ease, transform 0.55s ease"}}>
       <CSS neon={neon}/>
 
       {/* Fond radial fixe */}
@@ -2044,82 +2023,58 @@ function Onboarding({onDone}) {
   const [step,setStep]=useState(0);const [lang,setLang]=useState("fr");
   const t=T[lang];const neon="#00ff9d";
 
-  // Teinte d'accent par slide pour faire évoluer l'ambiance
-  const accents=[neon,neon,"#00d4ff",neon,"#f0b429"];
-  const acc=accents[step];
-
   const Stage = ({children,h=216}) => (
     <div style={{position:"relative",width:"100%",height:h,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
-      <GridBackground neon={acc} height={h}/>
+      <div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse 68% 52% at 50% 50%,${neon}10,transparent 70%)`,pointerEvents:"none"}}/>
+      <GridBackground neon={neon} height={h}/>
       <div style={{position:"relative",zIndex:2,width:"100%",display:"flex",alignItems:"center",justifyContent:"center"}}>{children}</div>
     </div>
   );
 
-  // Titre : tableau de segments {txt, hl:true/false} — hl = surligné en couleur d'accent
   const slides=[
-    {hl:lang==="fr"
-        ? [{txt:"Le marché ne te\n"},{txt:"bat pas.",b:true},{txt:" Ton\n"},{txt:"indiscipline",c:true},{txt:", oui."}]
-        : [{txt:"The market isn't\n"},{txt:"beating you.",b:true},{txt:" Your lack of\n"},{txt:"discipline",c:true},{txt:" is."}],
-     desc:t.ob1Desc,cta:t.discover,visual:(<Stage h={232}><SplashLogo neon={neon}/></Stage>)},
-
-    {hl:lang==="fr"
-        ? [{txt:"Tes règles,\n"},{txt:"pas",b:true},{txt:" celles\nd'un ",b:true},{txt:"autre",c:true}]
-        : [{txt:"Your rules,\n"},{txt:"not",b:true},{txt:" someone\n"},{txt:"else's",c:true}],
-     desc:t.ob2Desc,cta:t.next,visual:(
+    {title:t.ob1Title,desc:t.ob1Desc,cta:t.discover,visual:(<Stage h={232}><SplashLogo neon={neon}/></Stage>)},
+    {title:t.ob2Title,desc:t.ob2Desc,cta:t.next,visual:(
       <Stage><div style={{display:"flex",flexDirection:"column",gap:9,maxWidth:280,width:"100%",padding:"0 10px"}}>
         {[[lang==="fr"?"Setup validé":"Setup confirmed",true],[lang==="fr"?"Règles respectées":"Rules followed",true],[lang==="fr"?"Timing correct":"Right timing",true],[lang==="fr"?"Pas de revenge":"No revenge",false]].map(([item,ok],i)=>(
-          <div key={i} className="fu" style={{background:ok?`${neon}0d`:"rgba(255,77,77,0.06)",border:`1px solid ${ok?neon+"2a":"rgba(255,77,77,0.18)"}`,borderRadius:11,padding:"11px 15px",fontSize:13,fontWeight:500,fontFamily:SANS,animationDelay:`${i*0.09}s`,display:"flex",alignItems:"center",gap:11}}>
+          <div key={i} className="fu" style={{background:ok?`${neon}0d`:"rgba(255,77,77,0.06)",border:`1px solid ${ok?neon+"2e":"rgba(255,77,77,0.2)"}`,borderRadius:11,padding:"11px 15px",fontSize:13,fontWeight:600,fontFamily:MONO,animationDelay:`${i*0.09}s`,display:"flex",alignItems:"center",gap:11,boxShadow:ok?`0 0 16px ${neon}0a`:"none"}}>
             <Icon name={ok?"check":"close"} size={15} color={ok?neon:"#ff4d4d"}/>
             <span style={{color:"#fff"}}>{item}</span>
           </div>
         ))}
       </div></Stage>
     )},
-
-    {hl:lang==="fr"
-        ? [{txt:"Scalping, ICT, swing…\n"},{txt:"ta méthode",c:true},{txt:" reste\n"},{txt:"la tienne",b:true}]
-        : [{txt:"Scalping, ICT, swing…\n"},{txt:"your method",c:true},{txt:"\nstays ",b:true},{txt:"yours",b:true}],
-     desc:t.ob3Desc,cta:t.next,visual:(
+    {title:t.ob3Title,desc:t.ob3Desc,cta:t.next,visual:(
       <Stage><div style={{display:"flex",flexWrap:"wrap",gap:9,maxWidth:296,justifyContent:"center"}}>
-        {[["Scalping",0],["ICT",1],["Swing",2],["Day trading",0],["Price action",1],["SMC",2],["Breakout",0]].map(([s,ci],i)=>{
-          const cc=[neon,"#00d4ff","#f0b429"][ci];
-          return <div key={s} className="fu" style={{background:`${cc}10`,border:`1px solid ${cc}33`,borderRadius:22,padding:"9px 16px",fontSize:12.5,fontWeight:500,color:cc,fontFamily:SANS,animationDelay:`${i*0.06}s`,boxShadow:`0 0 16px ${cc}12`}}>{s}</div>;
-        })}
+        {["Scalping","ICT","Swing","Day trading","Price action","SMC","Breakout"].map((s,i)=>(
+          <div key={s} className="fu" style={{background:`${neon}0d`,border:`1px solid ${neon}30`,borderRadius:22,padding:"9px 16px",fontSize:12.5,fontWeight:600,color:neon,fontFamily:MONO,animationDelay:`${i*0.06}s`,boxShadow:`0 0 16px ${neon}12`}}>{s}</div>
+        ))}
       </div></Stage>
     )},
-
-    {hl:lang==="fr"
-        ? [{txt:"Vois ce qui te rend\n"},{txt:"vraiment",b:true},{txt:" "},{txt:"rentable",c:true}]
-        : [{txt:"See what truly\n"},{txt:"makes you",b:true},{txt:" "},{txt:"profitable",c:true}],
-     desc:t.ob4Desc,cta:t.next,visual:(
+    {title:t.ob4Title,desc:t.ob4Desc,cta:t.next,visual:(
       <Stage><div style={{maxWidth:294,width:"100%",padding:"0 10px"}}>
         <div style={{display:"flex",gap:8,marginBottom:8}}>
           {[["WIN RATE","73%"],["P&L","+4.2%"],["P. FACTOR","1.85"]].map(([l,v])=>(
-            <div key={l} style={{flex:1,background:"linear-gradient(150deg,#191922,#101016)",border:`1px solid ${neon}1e`,borderRadius:13,padding:"13px 6px",textAlign:"center"}}>
-              <div style={{fontSize:18,fontWeight:800,color:"#fff",fontFamily:MONO,lineHeight:1,textShadow:`0 0 18px ${neon}66`}}>{v}</div>
-              <div style={{fontSize:7,color:"#ffffff66",marginTop:6,letterSpacing:1.5,fontFamily:MONO}}>{l}</div>
+            <div key={l} style={{flex:1,background:"linear-gradient(150deg,#191922,#101016)",border:`1px solid ${neon}22`,borderRadius:13,padding:"13px 6px",textAlign:"center",boxShadow:`0 4px 20px ${neon}0c,inset 0 1px 0 ${neon}15`}}>
+              <div style={{fontSize:18,fontWeight:900,color:"#fff",fontFamily:MONO,lineHeight:1,textShadow:`0 0 18px ${neon}66`}}>{v}</div>
+              <div style={{fontSize:7,color:"#ffffff88",marginTop:6,letterSpacing:1.5,fontFamily:MONO}}>{l}</div>
             </div>
           ))}
         </div>
-        <div style={{background:`linear-gradient(150deg,${neon}12,${neon}03)`,border:`1px solid ${neon}2e`,borderRadius:13,padding:"13px 15px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{background:`linear-gradient(150deg,${neon}12,${neon}03)`,border:`1px solid ${neon}30`,borderRadius:13,padding:"13px 15px",display:"flex",justifyContent:"space-between",alignItems:"center",boxShadow:`0 4px 20px ${neon}0c`}}>
           <div style={{display:"flex",alignItems:"center",gap:9}}>
             <Icon name="discipline" size={21} color={neon}/>
-            <span style={{fontSize:10,color:"#ffffffcc",letterSpacing:2,fontFamily:MONO}}>{lang==="fr"?"DISCIPLINE":"DISCIPLINE"}</span>
+            <span style={{fontSize:10,color:"#ffffffcc",letterSpacing:2,fontFamily:MONO}}>DISCIPLINE</span>
           </div>
-          <div style={{fontSize:23,fontWeight:800,color:"#fff",fontFamily:MONO,textShadow:`0 0 22px ${neon}77`}}>8<span style={{fontSize:11,color:"#ffffff44"}}>/10</span></div>
+          <div style={{fontSize:23,fontWeight:900,color:"#fff",fontFamily:MONO,textShadow:`0 0 22px ${neon}77`}}>8<span style={{fontSize:11,color:"#ffffff44"}}>/10</span></div>
         </div>
       </div></Stage>
     )},
-
-    {hl:lang==="fr"
-        ? [{txt:"Un "},{txt:"coach",c:true},{txt:"\ndans ta poche"}]
-        : [{txt:"A "},{txt:"coach",c:true},{txt:"\nin your pocket"}],
-     desc:t.ob5Desc,cta:t.start,visual:(
+    {title:t.ob5Title,desc:t.ob5Desc,cta:t.start,visual:(
       <Stage><div style={{maxWidth:294,width:"100%",padding:"0 10px",display:"flex",flexDirection:"column",gap:11}}>
-        <div style={{position:"relative",background:"linear-gradient(135deg,#11111a,#0c0c12)",border:`1px solid ${acc}26`,borderRadius:13,padding:"13px 15px 13px 19px",overflow:"hidden"}}>
-          <div style={{position:"absolute",left:0,top:0,bottom:0,width:3,background:`linear-gradient(180deg,${acc},${acc}33)`,boxShadow:`0 0 10px ${acc}77`}}/>
+        <div style={{position:"relative",background:"linear-gradient(135deg,#11111a,#0c0c12)",border:`1px solid ${neon}26`,borderRadius:13,padding:"13px 15px 13px 19px",overflow:"hidden"}}>
+          <div style={{position:"absolute",left:0,top:0,bottom:0,width:3,background:`linear-gradient(180deg,${neon},${neon}33)`,boxShadow:`0 0 10px ${neon}77`}}/>
           <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
-            <Icon name="insight" size={15} color={acc} style={{marginTop:1}}/>
+            <Icon name="insight" size={15} color={neon} style={{marginTop:1}}/>
             <div style={{fontSize:11.5,color:"#ffffffcc",fontFamily:MONO,lineHeight:1.55}}>{lang==="fr"?"Tes setups conformes : 78% WR. Ton edge est dans ta discipline.":"Your compliant setups: 78% WR. Your edge is in your discipline."}</div>
           </div>
         </div>
@@ -2127,7 +2082,7 @@ function Onboarding({onDone}) {
           {[["Perso",neon],["FTMO","#00d4ff"],["Démo","#f0b429"]].map(([n,c])=>(
             <div key={n} style={{flex:1,display:"flex",alignItems:"center",gap:7,background:`${c}10`,border:`1px solid ${c}30`,borderRadius:10,padding:"9px 11px"}}>
               <div style={{width:7,height:7,borderRadius:"50%",background:c,boxShadow:`0 0 6px ${c}`}}/>
-              <span style={{fontSize:10,fontWeight:600,color:"#fff",fontFamily:SANS}}>{n}</span>
+              <span style={{fontSize:10,fontWeight:700,color:"#fff",fontFamily:MONO}}>{n}</span>
             </div>
           ))}
         </div>
@@ -2136,38 +2091,25 @@ function Onboarding({onDone}) {
   ];
   const s=slides[step];
 
-  // Rendu du titre multi-segments (sans-serif, mot-clé en couleur)
-  const renderTitle = (segs) => (
-    <div style={{fontSize:27,fontWeight:800,whiteSpace:"pre-line",lineHeight:1.18,letterSpacing:-0.5,fontFamily:SANS}}>
-      {segs.map((seg,i)=>(
-        <span key={i} style={{color:seg.c?acc:"#ffffff",textShadow:seg.c?`0 0 28px ${acc}66`:"none"}}>{seg.txt}</span>
-      ))}
-    </div>
-  );
-
   return (
-    <div style={{position:"relative",background:"#0a0a0f",minHeight:"100vh",display:"flex",flexDirection:"column",fontFamily:SANS,maxWidth:480,margin:"0 auto",color:"#fff",overflow:"hidden"}}>
+    <div style={{background:"#0c0c12",minHeight:"100vh",display:"flex",flexDirection:"column",fontFamily:MONO,maxWidth:480,margin:"0 auto",color:"#fff"}}>
       <CSS neon={neon}/>
-      {/* Halo d'ambiance évolutif */}
-      <div style={{position:"absolute",top:"-10%",left:"50%",transform:"translateX(-50%)",width:"120%",height:380,background:`radial-gradient(ellipse 50% 50% at 50% 50%,${acc}14,transparent 70%)`,pointerEvents:"none",transition:"all 0.6s ease",zIndex:0}}/>
-      <div style={{position:"relative",zIndex:1,display:"flex",flexDirection:"column",minHeight:"100vh"}}>
-        <div style={{padding:"18px 24px 0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <button onClick={()=>onDone(lang)} className="btn" style={{background:"transparent",border:"none",color:"#ffffff44",fontSize:12,fontFamily:SANS,cursor:"pointer"}}>{lang==="fr"?"Passer":"Skip"}</button>
-          <div style={{display:"flex",gap:6}}>
-            {["fr","en"].map(l=><button key={l} onClick={()=>setLang(l)} className="btn" style={{background:lang===l?`${neon}22`:"transparent",border:`1px solid ${lang===l?neon:"#ffffff22"}`,color:lang===l?neon:"#ffffff77",borderRadius:7,padding:"5px 12px",fontSize:11,fontWeight:600,fontFamily:MONO}}>{l.toUpperCase()}</button>)}
-          </div>
+      <div style={{padding:"18px 24px 0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <button onClick={()=>onDone(lang)} className="btn" style={{background:"transparent",border:"none",color:"#ffffff44",fontSize:12,fontFamily:MONO,cursor:"pointer"}}>{lang==="fr"?"Passer":"Skip"}</button>
+        <div style={{display:"flex",gap:6}}>
+          {["fr","en"].map(l=><button key={l} onClick={()=>setLang(l)} className="btn" style={{background:lang===l?`${neon}22`:"transparent",border:`1px solid ${lang===l?neon:"#ffffff22"}`,color:lang===l?neon:"#ffffff77",borderRadius:7,padding:"5px 12px",fontSize:11,fontWeight:700,fontFamily:MONO}}>{l.toUpperCase()}</button>)}
         </div>
-        <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"8px 30px 20px"}}>
-          <div className="fi" key={`v${step}${lang}`} style={{marginBottom:30,width:"100%"}}>{s.visual}</div>
-          <div className="fi" key={`t${step}${lang}`} style={{textAlign:"center",marginBottom:30}}>
-            {renderTitle(s.hl)}
-            <div style={{fontSize:13.5,color:"#ffffff99",lineHeight:1.7,maxWidth:320,margin:"16px auto 0",fontFamily:SANS,fontWeight:400}}>{s.desc}</div>
-          </div>
-          <button onClick={()=>step<slides.length-1?setStep(step+1):onDone(lang)} className="btn" style={{width:"100%",maxWidth:300,background:acc,border:"none",color:"#0a0a0f",borderRadius:14,padding:16,fontSize:14.5,fontWeight:700,fontFamily:SANS,marginBottom:14,boxShadow:`0 8px 30px ${acc}44`,transition:"all 0.2s",letterSpacing:0.2}}>{s.cta.replace(" →","")}</button>
-          {step>0&&<button onClick={()=>setStep(step-1)} className="btn" style={{background:"transparent",border:"none",color:"#ffffff44",fontSize:12.5,fontFamily:SANS}}>{t.back}</button>}
-        </div>
-        <div style={{padding:"8px 28px 34px"}}><Dots total={slides.length} current={step} neon={acc}/></div>
       </div>
+      <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"10px 28px 22px"}}>
+        <div className="fi" key={`v${step}${lang}`} style={{marginBottom:28,width:"100%"}}>{s.visual}</div>
+        <div className="fi" key={`t${step}${lang}`} style={{textAlign:"center",marginBottom:28}}>
+          <div style={{fontSize:23,fontWeight:700,color:neon,whiteSpace:"pre-line",lineHeight:1.32,marginBottom:15,fontFamily:MONO,textShadow:`0 0 30px ${neon}88`}}>{s.title}</div>
+          <div style={{fontSize:13,color:"#ffffffaa",lineHeight:1.72,maxWidth:312,margin:"0 auto",fontFamily:MONO}}>{s.desc}</div>
+        </div>
+        <button onClick={()=>step<slides.length-1?setStep(step+1):onDone(lang)} className="btn" style={{width:"100%",maxWidth:300,background:`${neon}1c`,border:`1px solid ${neon}`,color:neon,borderRadius:13,padding:16,fontSize:14,fontWeight:700,fontFamily:MONO,marginBottom:14,boxShadow:`0 0 26px ${neon}2e`,textShadow:`0 0 12px ${neon}88`,transition:"all 0.2s"}}>{s.cta}</button>
+        {step>0&&<button onClick={()=>setStep(step-1)} className="btn" style={{background:"transparent",border:"none",color:"#ffffff44",fontSize:12,fontFamily:MONO}}>{t.back}</button>}
+      </div>
+      <div style={{padding:"8px 28px 34px"}}><Dots total={slides.length} current={step} neon={neon}/></div>
     </div>
   );
 }
@@ -3228,29 +3170,39 @@ export default function App() {
   const neonGhost = neon+"14"; // backgrounds subtils
   const neonBg = neon+"0a";    // backgrounds très légers
 
-  // Restauration de session via la persistance Firebase Auth (aucun mot de passe stocké en clair).
-  // Tant que Firebase garde une session valide, on recharge les données par UID — y compris après un changement d'appareil
-  // une fois la première connexion faite. En cas de lecture impossible, on NE touche à rien (jamais de setup forcé).
+  // Session restore from localStorage on page load (connexion inchangée)
   useEffect(()=>{
-    if(!auth) return;
-    const unsub = onAuthStateChanged(auth, async (user)=>{
-      if(!user) return;                                   // pas de session : on reste sur l'écran de connexion
-      if(currentUserRef.current?.uid === user.uid) return; // déjà chargé pour cet utilisateur
-      const email = user.email || currentUserRef.current?.email || "";
-      let d = await loadUserData(user.uid);
-      if(d === undefined) return;                          // lecture impossible : on ne modifie rien (pas de wipe possible)
-      if(d === null){
-        const legacy = await loadUserData(encEmail(email));
-        if(legacy === undefined) return;                   // legacy illisible aussi : on ne risque rien
-        if(legacy){
-          try { await setDoc(doc(db,"users",user.uid), legacy, {merge:true}); } catch(e){}
-          d = legacy;
-        }
+    try {
+      const saved=localStorage.getItem("tmt_user");
+      if(saved){
+        const {email,pwd,uid}=JSON.parse(saved);
+        const p = pwd||"";
+        authLogin(email,p).then(userData=>{
+          if(userData){
+            // UID = Firebase Auth uniquement (userData._uid). On ne retombe JAMAIS sur encEmail pour l'identité active.
+            const resolvedUid = userData._uid || (auth&&auth.currentUser&&auth.currentUser.uid) || uid || null;
+            currentUserRef.current={email, uid:resolvedUid};
+            // Rejoue les écritures restées en attente (perte réseau / session précédente)
+            if(resolvedUid) flushPending(resolvedUid);
+            if(userData.setupDone){
+              if(Array.isArray(userData.noTrades))setNoTrades(userData.noTrades);
+              if(Array.isArray(userData.phases))setPhases(userData.phases);
+              if(userData.config&&typeof userData.config==="object")setConfig(c=>({...c,...userData.config}));
+              if(userData.lang)setLang(userData.lang);
+              if(userData.objectif&&typeof userData.objectif==="object")setObjectif(o=>({...o,...userData.objectif}));
+              // Comptes (migration auto si nécessaire)
+              const {accounts:accs,activeAccountId:aid,trades:tgTrades,migrated}=ensureAccountsData(userData);
+              setAccounts(accs);setActiveAccountId(aid);setTrades(tgTrades);
+              const act=accs.find(a=>a.id===aid)||accs[0];
+              if(act)setConfig(c=>({...c,capital:act.capital,devise:act.devise,accountType:act.accountType}));
+              if(act)setObjectif(o=>({...o,pnl:act.objPnl,drawdown:act.objDrawdown}));
+              if(migrated)saveUserData(resolvedUid,{accounts:accs,activeAccountId:aid,trades:tgTrades});
+              setPhase("app");
+            } else { setPhase("setup"); }
+          }
+        }).catch(()=>{});
       }
-      handleLogin({ email, _uid: user.uid, userData: d });
-    });
-    return ()=>{ try { unsub(); } catch(e){} };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    } catch(e){}
   },[]);
 
   useEffect(()=>{
@@ -3465,11 +3417,6 @@ export default function App() {
     try { localStorage.setItem("tmt_user",JSON.stringify({email:u.email, uid})); } catch(e){}
     if(uid) flushPending(uid);
     const userData=u.userData;
-    // SÉCURITÉ : données temporairement illisibles (réseau). On NE route PAS vers le setup (sinon écrasement possible).
-    if(userData && userData._readFailed){
-      setPhase("login");
-      return;
-    }
     if(userData&&userData.setupDone){
       // Parser les strings JSON si nécessaire (ancien format Firestore)
       const parseSafe = (v) => {
@@ -3548,39 +3495,15 @@ export default function App() {
   if(phase==="onboarding") return <><CSS neon={neon}/><Onboarding onDone={l=>{setLang(l);setPhase("setup");}}/></>;
   if(phase==="login") return <LoginScreen onLogin={handleLogin} lang={lang} setLang={setLang} neon={neon}/>;
   if(phase==="setup") return <><CSS neon={neon}/><GuidedSetup onDone={async cfg=>{
-    const uid=uidNow();
-    // ── GARDE ANTI-ÉCRASEMENT ──
-    // Avant d'écrire le setup, on RELIT le cloud. Si un compte avec des données existe déjà,
-    // on recharge au lieu d'écraser. Si la lecture échoue, on refuse de continuer (jamais de wipe).
-    if(uid){
-      const existing=await loadUserData(uid);
-      if(existing===undefined){
-        setNotif({txt:lang==="fr"?"Données injoignables (réseau).\nRéessaie dans un instant, rien n'a été modifié.":"Data unreachable (network).\nRetry shortly, nothing was changed.",color:"#f0b429",icon:"warn",lang});
-        setPhase("login");
-        return;
-      }
-      const hasData = existing && (existing.setupDone
-        || (Array.isArray(existing.trades)&&existing.trades.length)
-        || (Array.isArray(existing.phases)&&existing.phases.length)
-        || (Array.isArray(existing.accounts)&&existing.accounts.length)
-        || (Array.isArray(existing.noTrades)&&existing.noTrades.length));
-      if(hasData){
-        // Un compte avec un historique existe déjà → on le recharge, on n'écrase RIEN.
-        handleLogin({email:currentUserRef.current?.email||"", _uid:uid, userData:existing});
-        return;
-      }
-    }
     const newCfg={...config,...cfg};
     const firstAcc=mkAccount("ph_0",cfg.phaseName||cfg.strategyName||"Mon compte",cfg.neonColor||"#00ff9d",{capital:cfg.capital,devise:cfg.devise,accountType:cfg.accountType});
     setAccounts([firstAcc]);setActiveAccountId("ph_0");
     setConfig(newCfg);setForm(emptyForm(cfg.defaultAsset||"XAU/USD","M5","eur","ph_0"));setPhase("app");
-    // On n'écrit PLUS trades:[],noTrades:[],phases:[] : inutile pour un vrai nouveau compte (état déjà vide),
-    // et c'était précisément ce qui écrasait les données quand le setup se déclenchait par erreur.
-    if(currentUserRef.current?.email) await saveUserData(uid,{config:newCfg,setupDone:true,lang,accounts:[firstAcc],activeAccountId:"ph_0"});
+    if(currentUserRef.current?.email) await saveUserData(uidNow(),{config:newCfg,setupDone:true,lang,trades:[],noTrades:[],phases:[],accounts:[firstAcc],activeAccountId:"ph_0"});
   }} lang={lang}/></>;
 
   return (
-    <div style={{display:"flex",background:"#0c0c12",minHeight:"100vh",color:"#ffffff",fontFamily:MONO}}>
+    <div className="app-fade-in" style={{display:"flex",background:"#0c0c12",minHeight:"100vh",color:"#ffffff",fontFamily:MONO}}>
       <CSS neon={neon}/>
       {notif&&<NotifCard notif={notif} onClose={()=>setNotif(null)}/>}
       <InAppBanner notifs={inAppNotifs} onDismiss={()=>setInAppNotifs(n=>n.slice(1))} neon={neon}/>
