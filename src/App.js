@@ -3158,7 +3158,7 @@ export default function App() {
   const [detailTrade,setDetailTrade]=useState(null);
   const [editingNoTrade,setEditingNoTrade]=useState(null);
   const [config,setConfig]=useState({items:DEFAULT_CRITERIA,threshold:6,strategyName:"Ma Stratégie",defaultAsset:"XAU/USD",maxTrades:1,neonColor:"#00ff9d",calendarOn:true,notifOn:true,customAssets:[...PRESET_ASSETS],capital:"",devise:"€",accountType:"perso",phaseStartDate:"",modules:{rejet:true,checkin:true,postSl:true,revenge:true,timeframe:true},timeframes:[...DEFAULT_TIMEFRAMES]});
-  const fileRef=useRef();const pageRef=useRef();const weeklyShownRef=useRef(false);const currentUserRef=useRef(null);const sessionRestoringRef=useRef(false);
+  const fileRef=useRef();const pageRef=useRef();const weeklyShownRef=useRef(false);const currentUserRef=useRef(null);
   // Source de vérité unique pour l'UID : Firebase Auth d'abord, puis le ref. JAMAIS l'email encodé (écritures).
   const uidNow=()=>{ try { if(auth&&auth.currentUser&&auth.currentUser.uid) return auth.currentUser.uid; } catch(e){} return currentUserRef.current?.uid||null; };
   const neon=config.neonColor||"#00ff9d";const t=T[lang];const inSt=mkInput(neon);
@@ -3171,39 +3171,16 @@ export default function App() {
   // Session restore from localStorage on page load (connexion inchangée)
   useEffect(()=>{
     try {
+      // Auto-login désactivé : le splash va toujours vers l'écran de login (comportement simple et fiable).
+      // On nettoie un éventuel mot de passe stocké en clair par d'anciennes versions (sécurité).
       const saved=localStorage.getItem("tmt_user");
       if(saved){
-        const {email,pwd,uid}=JSON.parse(saved);
-        const p = pwd||"";
-        authLogin(email,p).then(userData=>{
-          if(userData){
-            // UID = Firebase Auth uniquement (userData._uid). On ne retombe JAMAIS sur encEmail pour l'identité active.
-            const resolvedUid = userData._uid || (auth&&auth.currentUser&&auth.currentUser.uid) || uid || null;
-            currentUserRef.current={email, uid:resolvedUid};
-            // Rejoue les écritures restées en attente (perte réseau / session précédente)
-            if(resolvedUid) flushPending(resolvedUid);
-            if(userData.setupDone){
-              if(Array.isArray(userData.noTrades))setNoTrades(userData.noTrades);
-              if(Array.isArray(userData.phases))setPhases(userData.phases);
-              if(userData.config&&typeof userData.config==="object")setConfig(c=>({...c,...userData.config}));
-              if(userData.lang)setLang(userData.lang);
-              if(userData.objectif&&typeof userData.objectif==="object")setObjectif(o=>({...o,...userData.objectif}));
-              // Comptes (migration auto si nécessaire)
-              const {accounts:accs,activeAccountId:aid,trades:tgTrades,migrated}=ensureAccountsData(userData);
-              setAccounts(accs);setActiveAccountId(aid);setTrades(tgTrades);
-              const act=accs.find(a=>a.id===aid)||accs[0];
-              if(act)setConfig(c=>({...c,capital:act.capital,devise:act.devise,accountType:act.accountType}));
-              if(act)setObjectif(o=>({...o,pnl:act.objPnl,drawdown:act.objDrawdown}));
-              if(migrated)saveUserData(resolvedUid,{accounts:accs,activeAccountId:aid,trades:tgTrades});
-              setPhase("app");
-            } else { setPhase("setup"); }
-          } else {
-            sessionRestoringRef.current=false;
-            setPhase("login");
-          }
-        }).catch(()=>{ sessionRestoringRef.current=false; setPhase("login"); });
+        try {
+          const o=JSON.parse(saved);
+          if(o&&o.pwd){ delete o.pwd; localStorage.setItem("tmt_user",JSON.stringify(o)); }
+        } catch(e){}
       }
-    } catch(e){ sessionRestoringRef.current=false; }
+    } catch(e){}
   },[]);
 
   useEffect(()=>{
@@ -3415,7 +3392,7 @@ export default function App() {
     // UID = Firebase Auth uniquement. Pas de fallback encEmail (sinon écritures refusées par les règles).
     const uid = u._uid || (auth&&auth.currentUser&&auth.currentUser.uid) || null;
     currentUserRef.current={email:u.email, uid};
-    try { localStorage.setItem("tmt_user",JSON.stringify({email:u.email, uid})); } catch(e){}
+    try { localStorage.setItem("tmt_user",JSON.stringify({email:u.email, uid})); } catch(e){} // pas de mot de passe stocké
     if(uid) flushPending(uid);
     const userData=u.userData;
     if(userData&&userData.setupDone){
@@ -3492,7 +3469,7 @@ export default function App() {
     }
   };
 
-  if(phase==="splash") return <SplashScreen onDone={()=>{ if(!sessionRestoringRef.current) setPhase("login"); }} neon={neon}/>;
+  if(phase==="splash") return <SplashScreen onDone={()=>setPhase("login")} neon={neon}/>;
   if(phase==="onboarding") return <><CSS neon={neon}/><Onboarding onDone={l=>{setLang(l);setPhase("setup");}}/></>;
   if(phase==="login") return <LoginScreen onLogin={handleLogin} lang={lang} setLang={setLang} neon={neon}/>;
   if(phase==="setup") return <><CSS neon={neon}/><GuidedSetup onDone={async cfg=>{
