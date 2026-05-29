@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell } from "recharts";
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail, onAuthStateChanged, setPersistence, browserLocalPersistence } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA6SLYL7Ep451nu6edynUeBbPROtgRucv8",
@@ -18,6 +18,8 @@ try {
   const fbApp = initializeApp(firebaseConfig);
   db = getFirestore(fbApp);
   auth = getAuth(fbApp);
+  // Persistance locale explicite : la session Firebase survit aux rechargements (plus de reconnexion manuelle).
+  try { setPersistence(auth, browserLocalPersistence); } catch(e) { console.error("persistence error:",e); }
 } catch(e) { console.error("Firebase init error:",e); }
 
 // Simple Firestore auth — no Firebase Auth SDK needed
@@ -64,7 +66,22 @@ const flushPending = async (realUid) => {
   }
   setPending(remaining);
 };
-const loadUserData = async id => { if(!db)return null; try { const s=await getDoc(doc(db,"users",id)); return s.exists()?s.data():null; } catch(e) { return null; } };
+// IMPORTANT : null = le document n'existe pas (vrai nouveau compte).
+//             undefined = lecture impossible (réseau/erreur) → on ne doit JAMAIS traiter ça comme un nouveau compte,
+//             sinon le flux de setup écrase les données existantes. On réessaie plusieurs fois avant d'abandonner.
+const loadUserData = async (id, retries=2) => {
+  if(!db || !id) return undefined;
+  for(let attempt=0; attempt<=retries; attempt++){
+    try {
+      const s = await getDoc(doc(db,"users",id));
+      return s.exists() ? s.data() : null;
+    } catch(e) {
+      console.error("Firestore read failed (try "+(attempt+1)+"):", e);
+      if(attempt<retries) await new Promise(r=>setTimeout(r, 600*(attempt+1)));
+    }
+  }
+  return undefined; // toutes les tentatives ont échoué → lecture impossible
+};
 const authLogin = async (email, pwd) => {
   if(!auth) return null;
   try {
@@ -72,9 +89,13 @@ const authLogin = async (email, pwd) => {
     const uid = cred.user.uid;
     // 1) Nouveau système : document sous UID
     let d = await loadUserData(uid);
-    // 2) Ancien système : document sous email encodé -> migration automatique vers UID
-    if(!d) {
+    // Lecture impossible (réseau) : auth OK mais données indisponibles.
+    // On le signale clairement et on NE prétend JAMAIS que c'est un compte vierge.
+    if(d === undefined) return { _uid: uid, _readFailed: true };
+    // 2) Document absent → on tente l'ancien système (email encodé) avant de conclure "nouveau"
+    if(d === null) {
       const legacy = await loadUserData(encEmail(email));
+      if(legacy === undefined) return { _uid: uid, _readFailed: true }; // lecture legacy échouée → on ne risque rien
       if(legacy) {
         // Recopie les anciennes données sous l'UID (une seule fois), puis on travaille sous UID
         try { await setDoc(doc(db,"users",uid), legacy, {merge:true}); } catch(e){}
@@ -1217,7 +1238,11 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
       const em=email.trim().toLowerCase();
       if(mode==="login"){
         const result=await authLogin(em,pwd);
-        if(result){onLogin({email:em, _uid:result._uid, userData:result});}
+        if(result&&result._readFailed){
+          setError(fr?"Connexion OK mais données injoignables. Vérifie ta connexion et réessaie.":"Signed in but data unreachable. Check your connection and retry.");
+          setLoading(false);
+        }
+        else if(result){onLogin({email:em, _uid:result._uid, userData:result});}
         else{setError(t.loginError);setLoading(false);}
       } else {
         const newUid=await authRegister(em,pwd,lang);
@@ -3203,39 +3228,29 @@ export default function App() {
   const neonGhost = neon+"14"; // backgrounds subtils
   const neonBg = neon+"0a";    // backgrounds très légers
 
-  // Session restore from localStorage on page load (connexion inchangée)
+  // Restauration de session via la persistance Firebase Auth (aucun mot de passe stocké en clair).
+  // Tant que Firebase garde une session valide, on recharge les données par UID — y compris après un changement d'appareil
+  // une fois la première connexion faite. En cas de lecture impossible, on NE touche à rien (jamais de setup forcé).
   useEffect(()=>{
-    try {
-      const saved=localStorage.getItem("tmt_user");
-      if(saved){
-        const {email,pwd,uid}=JSON.parse(saved);
-        const p = pwd||"";
-        authLogin(email,p).then(userData=>{
-          if(userData){
-            // UID = Firebase Auth uniquement (userData._uid). On ne retombe JAMAIS sur encEmail pour l'identité active.
-            const resolvedUid = userData._uid || (auth&&auth.currentUser&&auth.currentUser.uid) || uid || null;
-            currentUserRef.current={email, uid:resolvedUid};
-            // Rejoue les écritures restées en attente (perte réseau / session précédente)
-            if(resolvedUid) flushPending(resolvedUid);
-            if(userData.setupDone){
-              if(Array.isArray(userData.noTrades))setNoTrades(userData.noTrades);
-              if(Array.isArray(userData.phases))setPhases(userData.phases);
-              if(userData.config&&typeof userData.config==="object")setConfig(c=>({...c,...userData.config}));
-              if(userData.lang)setLang(userData.lang);
-              if(userData.objectif&&typeof userData.objectif==="object")setObjectif(o=>({...o,...userData.objectif}));
-              // Comptes (migration auto si nécessaire)
-              const {accounts:accs,activeAccountId:aid,trades:tgTrades,migrated}=ensureAccountsData(userData);
-              setAccounts(accs);setActiveAccountId(aid);setTrades(tgTrades);
-              const act=accs.find(a=>a.id===aid)||accs[0];
-              if(act)setConfig(c=>({...c,capital:act.capital,devise:act.devise,accountType:act.accountType}));
-              if(act)setObjectif(o=>({...o,pnl:act.objPnl,drawdown:act.objDrawdown}));
-              if(migrated)saveUserData(resolvedUid,{accounts:accs,activeAccountId:aid,trades:tgTrades});
-              setPhase("app");
-            } else { setPhase("setup"); }
-          }
-        }).catch(()=>{});
+    if(!auth) return;
+    const unsub = onAuthStateChanged(auth, async (user)=>{
+      if(!user) return;                                   // pas de session : on reste sur l'écran de connexion
+      if(currentUserRef.current?.uid === user.uid) return; // déjà chargé pour cet utilisateur
+      const email = user.email || currentUserRef.current?.email || "";
+      let d = await loadUserData(user.uid);
+      if(d === undefined) return;                          // lecture impossible : on ne modifie rien (pas de wipe possible)
+      if(d === null){
+        const legacy = await loadUserData(encEmail(email));
+        if(legacy === undefined) return;                   // legacy illisible aussi : on ne risque rien
+        if(legacy){
+          try { await setDoc(doc(db,"users",user.uid), legacy, {merge:true}); } catch(e){}
+          d = legacy;
+        }
       }
-    } catch(e){}
+      handleLogin({ email, _uid: user.uid, userData: d });
+    });
+    return ()=>{ try { unsub(); } catch(e){} };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
 
   useEffect(()=>{
@@ -3450,6 +3465,11 @@ export default function App() {
     try { localStorage.setItem("tmt_user",JSON.stringify({email:u.email, uid})); } catch(e){}
     if(uid) flushPending(uid);
     const userData=u.userData;
+    // SÉCURITÉ : données temporairement illisibles (réseau). On NE route PAS vers le setup (sinon écrasement possible).
+    if(userData && userData._readFailed){
+      setPhase("login");
+      return;
+    }
     if(userData&&userData.setupDone){
       // Parser les strings JSON si nécessaire (ancien format Firestore)
       const parseSafe = (v) => {
@@ -3528,11 +3548,35 @@ export default function App() {
   if(phase==="onboarding") return <><CSS neon={neon}/><Onboarding onDone={l=>{setLang(l);setPhase("setup");}}/></>;
   if(phase==="login") return <LoginScreen onLogin={handleLogin} lang={lang} setLang={setLang} neon={neon}/>;
   if(phase==="setup") return <><CSS neon={neon}/><GuidedSetup onDone={async cfg=>{
+    const uid=uidNow();
+    // ── GARDE ANTI-ÉCRASEMENT ──
+    // Avant d'écrire le setup, on RELIT le cloud. Si un compte avec des données existe déjà,
+    // on recharge au lieu d'écraser. Si la lecture échoue, on refuse de continuer (jamais de wipe).
+    if(uid){
+      const existing=await loadUserData(uid);
+      if(existing===undefined){
+        setNotif({txt:lang==="fr"?"Données injoignables (réseau).\nRéessaie dans un instant, rien n'a été modifié.":"Data unreachable (network).\nRetry shortly, nothing was changed.",color:"#f0b429",icon:"warn",lang});
+        setPhase("login");
+        return;
+      }
+      const hasData = existing && (existing.setupDone
+        || (Array.isArray(existing.trades)&&existing.trades.length)
+        || (Array.isArray(existing.phases)&&existing.phases.length)
+        || (Array.isArray(existing.accounts)&&existing.accounts.length)
+        || (Array.isArray(existing.noTrades)&&existing.noTrades.length));
+      if(hasData){
+        // Un compte avec un historique existe déjà → on le recharge, on n'écrase RIEN.
+        handleLogin({email:currentUserRef.current?.email||"", _uid:uid, userData:existing});
+        return;
+      }
+    }
     const newCfg={...config,...cfg};
     const firstAcc=mkAccount("ph_0",cfg.phaseName||cfg.strategyName||"Mon compte",cfg.neonColor||"#00ff9d",{capital:cfg.capital,devise:cfg.devise,accountType:cfg.accountType});
     setAccounts([firstAcc]);setActiveAccountId("ph_0");
     setConfig(newCfg);setForm(emptyForm(cfg.defaultAsset||"XAU/USD","M5","eur","ph_0"));setPhase("app");
-    if(currentUserRef.current?.email) await saveUserData(uidNow(),{config:newCfg,setupDone:true,lang,trades:[],noTrades:[],phases:[],accounts:[firstAcc],activeAccountId:"ph_0"});
+    // On n'écrit PLUS trades:[],noTrades:[],phases:[] : inutile pour un vrai nouveau compte (état déjà vide),
+    // et c'était précisément ce qui écrasait les données quand le setup se déclenchait par erreur.
+    if(currentUserRef.current?.email) await saveUserData(uid,{config:newCfg,setupDone:true,lang,accounts:[firstAcc],activeAccountId:"ph_0"});
   }} lang={lang}/></>;
 
   return (
