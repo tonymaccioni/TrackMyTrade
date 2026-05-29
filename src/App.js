@@ -205,7 +205,7 @@ const T = {
     conformityTitle:"Conformité · seuil",langLabel:"LANGUE",colorLabel:"COULEUR NÉON",
     lastTrade:"Dernier trade",rejectStat:"rejet",highStd:"Standard élevé",balanced:"Équilibré",lowStd:"Standard faible",
     inconsistent:"incohérent avec",maxTradesLabel:"TRADES MAX PAR JOUR",
-    revengeLabel:"Revenge trade",revengeWarning:"⚠️ Limite atteinte — tagué Revenge trade",
+    revengeLabel:"Revenge trade",revengeWarning:"⚠ Limite atteinte — tagué Revenge trade",
     statsTitle:"STATISTIQUES",expectancy:"Expectancy",bestAsset:"Meilleur actif",avgWin:"Gain moyen",avgLoss:"Perte moyenne",
     calendarTitle:"CALENDRIER",calendarToggle:"Afficher le calendrier",enableNotif:"Activer les conseils",
     addAsset:"+ Ajouter un actif",customAsset:"Nom de l'actif…",
@@ -263,7 +263,7 @@ const T = {
     conformityTitle:"Compliance · threshold",langLabel:"LANGUAGE",colorLabel:"NEON COLOR",
     lastTrade:"Last trade",rejectStat:"reject",highStd:"High standard",balanced:"Balanced",lowStd:"Low standard",
     inconsistent:"inconsistent with",maxTradesLabel:"MAX TRADES PER DAY",
-    revengeLabel:"Revenge trade",revengeWarning:"⚠️ Limit reached — tagged as Revenge trade",
+    revengeLabel:"Revenge trade",revengeWarning:"⚠ Limit reached — tagged as Revenge trade",
     statsTitle:"STATISTICS",expectancy:"Expectancy",bestAsset:"Best asset",avgWin:"Avg win",avgLoss:"Avg loss",
     calendarTitle:"CALENDAR",calendarToggle:"Show calendar",enableNotif:"Enable tips",
     addAsset:"+ Add asset",customAsset:"Asset name…",
@@ -307,6 +307,10 @@ const CSS = ({neon="#00ff9d"}) => (
 
     /* ══ TUTORIAL ══ */
     .tut-overlay{position:fixed;inset:0;z-index:900;pointer-events:all}
+    @keyframes iconPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.55;transform:scale(1.08)}}
+    .icon-pulse{animation:iconPulse 1.1s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+    .icon-hover{transition:transform 0.15s ease,filter 0.15s ease}
+    .icon-hover:hover{transform:scale(1.15);filter:drop-shadow(0 0 4px currentColor)}
     .tut-svg{position:absolute;inset:0;width:100%;height:100%}
     .tut-tooltip{
       position:fixed;z-index:910;width:282px;pointer-events:all;
@@ -476,6 +480,119 @@ function Stat({label,value,color="#00ff9d"}) {
       <div style={{fontSize:9,color:"#ffffffaa",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>{label}</div>
       <div style={{fontSize:22,fontWeight:900,color:"#ffffff",fontFamily:MONO,lineHeight:1,textShadow:`0 0 20px ${color}cc, 0 2px 6px rgba(0,0,0,0.6)`}}>{value}</div>
     </div>
+  );
+}
+
+// ── Composant Icon centralisé : icônes néon géométriques (style B), animation sur alerte/survol ──
+function Icon({name, size=18, color="currentColor", strokeW=1.6, animate=false, style={}}) {
+  const sw = strokeW;
+  const common = { fill:"none", stroke:color, strokeWidth:sw, strokeLinecap:"round", strokeLinejoin:"round" };
+  const paths = {
+    // Statistiques : axes + barres
+    stats: <g>
+      <path d="M3,3 L3,21 L21,21" {...common}/>
+      <rect x="6" y="13" width="3" height="5" fill={color} stroke="none"/>
+      <rect x="11" y="9" width="3" height="9" fill={color} stroke="none"/>
+      <rect x="16" y="5" width="3" height="13" fill={color} stroke="none"/>
+    </g>,
+    // Nouveau trade : losange + plus
+    add: <g>
+      <rect x="4" y="4" width="16" height="16" rx="3" {...common} transform="rotate(45 12 12)"/>
+      <line x1="12" y1="8" x2="12" y2="16" {...common}/>
+      <line x1="8" y1="12" x2="16" y2="12" {...common}/>
+    </g>,
+    // Discipline : cible bouclier
+    discipline: <g>
+      <path d="M12,2 L20,5 L20,12 Q20,19 12,22 Q4,19 4,12 L4,5 Z" {...common}/>
+      <polyline points="8.5,12 11,14.5 16,8.5" {...common}/>
+    </g>,
+    // Profit factor : courbe montante + point
+    profit: <g>
+      <line x1="3" y1="21" x2="21" y2="21" {...common} opacity="0.35"/>
+      <polyline points="3,18 9,11 13,14 20,5" {...common}/>
+      <circle cx="20" cy="5" r="2" fill={color} stroke="none"/>
+    </g>,
+    // Navigation : étoile/boussole 4 branches
+    nav: <g>
+      <polygon points="12,2 14,10 22,12 14,14 12,22 10,14 2,12 10,10" {...common}/>
+    </g>,
+    // Alerte : triangle
+    alert: <g>
+      <path d="M12,3 L22,21 L2,21 Z" {...common}/>
+      <line x1="12" y1="10" x2="12" y2="15" {...common}/>
+      <circle cx="12" cy="18" r="1" fill={color} stroke="none"/>
+    </g>,
+    // Calendrier
+    calendar: <g>
+      <rect x="3" y="5" width="18" height="16" rx="2.5" {...common}/>
+      <line x1="3" y1="10" x2="21" y2="10" {...common}/>
+      <line x1="8" y1="2.5" x2="8" y2="6.5" {...common}/>
+      <line x1="16" y1="2.5" x2="16" y2="6.5" {...common}/>
+      <circle cx="12" cy="15" r="1.8" fill={color} stroke="none"/>
+    </g>,
+    // Compte / utilisateur
+    account: <g>
+      <circle cx="12" cy="9" r="4" {...common}/>
+      <path d="M5,21 Q5,15 12,15 Q19,15 19,21" {...common}/>
+    </g>,
+    // Switch / rotation
+    swap: <g>
+      <polyline points="4,8 8,4 12,8" {...common}/>
+      <path d="M8,4 L8,14 Q8,18 14,18 L18,18" {...common}/>
+      <polyline points="20,16 16,20 12,16" {...common}/>
+    </g>,
+    // Feu / momentum (remplace 🔥) : flamme stylisée
+    fire: <g>
+      <path d="M12,2 Q17,8 14,12 Q13,9 11,9 Q13,14 9,15 Q6,11 9,6 Q10,9 12,8 Q13,5 12,2 Z" {...common}/>
+    </g>,
+    // Éclair (remplace ⚡)
+    bolt: <g>
+      <polygon points="13,2 4,13 11,13 10,22 19,10 12,10" {...common}/>
+    </g>,
+    // Corbeille (remplace 🗑)
+    trash: <g>
+      <polyline points="4,6 20,6" {...common}/>
+      <path d="M6,6 L7,21 L17,21 L18,6" {...common}/>
+      <line x1="10" y1="10" x2="10" y2="17" {...common}/>
+      <line x1="14" y1="10" x2="14" y2="17" {...common}/>
+      <path d="M9,6 L9,3 L15,3 L15,6" {...common}/>
+    </g>,
+    // Réglages (remplace ⚙) version géométrique
+    settings: <g>
+      <circle cx="12" cy="12" r="3.5" {...common}/>
+      <path d="M12,2 L12,5 M12,19 L12,22 M2,12 L5,12 M19,12 L22,12 M5,5 L7,7 M17,17 L19,19 M19,5 L17,7 M7,17 L5,19" {...common}/>
+    </g>,
+    // Edition (remplace ✏ / ✎)
+    edit: <g>
+      <path d="M4,20 L4,16 L16,4 L20,8 L8,20 Z" {...common}/>
+      <line x1="14" y1="6" x2="18" y2="10" {...common}/>
+    </g>,
+    // Check
+    check: <polyline points="4,12 10,18 20,6" {...common}/>,
+    // Croix
+    close: <g><line x1="5" y1="5" x2="19" y2="19" {...common}/><line x1="19" y1="5" x2="5" y2="19" {...common}/></g>,
+    // Insights / diamant
+    insight: <g>
+      <polygon points="12,2 20,12 12,22 4,12" {...common}/>
+      <polygon points="12,7 16,12 12,17 8,12" fill={color} stroke="none" opacity="0.5"/>
+    </g>,
+    // Pas de trade (cercle barré)
+    notrade: <g>
+      <circle cx="12" cy="12" r="9" {...common}/>
+      <line x1="6" y1="6" x2="18" y2="18" {...common}/>
+    </g>,
+    // Historique (lignes)
+    history: <g>
+      <line x1="4" y1="7" x2="20" y2="7" {...common}/>
+      <line x1="4" y1="12" x2="20" y2="12" {...common}/>
+      <line x1="4" y1="17" x2="14" y2="17" {...common}/>
+    </g>,
+  };
+  const content = paths[name] || paths.insight;
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{display:"inline-block",verticalAlign:"middle",flexShrink:0,color, ...style}} className={animate?"icon-pulse":undefined}>
+      {content}
+    </svg>
   );
 }
 
@@ -2112,7 +2229,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
                       style={{flex:1,background:acc.archived?`${neonColor}10`:"rgba(255,255,255,0.04)",border:`1px solid ${acc.archived?neonColor:"#ffffff12"}`,color:acc.archived?neonColor:"#ffffff66",borderRadius:7,padding:"6px 0",fontSize:9,fontWeight:700,fontFamily:MONO}}>
                       {acc.archived?(fr?"↩ Restaurer":"↩ Restore"):(fr?"⊘ Archiver":"⊘ Archive")}
                     </button>
-                    {(accounts||[]).length>1&&<button onClick={()=>setAcctDelConfirm(acc.id)} className="btn" style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d55",borderRadius:7,padding:"6px 9px",fontSize:11}}>🗑</button>}
+                    {(accounts||[]).length>1&&<button onClick={()=>setAcctDelConfirm(acc.id)} className="btn" style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d55",borderRadius:7,padding:"6px 9px",display:"inline-flex",alignItems:"center"}}><Icon name="trash" size={14} color="#ff4d4d"/></button>}
                   </div>
                 )}
                 {/* Paramètres du compte actif */}
@@ -2222,7 +2339,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
           const isE=(eliminatoires||[]).includes(i);
           return <div key={i} style={{display:"flex",gap:6,marginBottom:8,alignItems:"center"}}>
             <input value={item} onChange={e=>{const n=[...items];n[i]=e.target.value;setItems(n);}} style={{...inSt,marginBottom:0,flex:1}}/>
-            <button onClick={()=>setEliminatoires(p=>isE?p.filter(x=>x!==i):[...p,i])} title={isE?"Retirer éliminatoire":"Marquer éliminatoire"} style={{background:isE?"rgba(255,77,77,0.15)":"transparent",border:`1px solid ${isE?"#ff4d4d":"rgba(255,77,77,0.25)"}`,color:isE?"#ff4d4d":"#ffffff44",borderRadius:6,padding:"6px 8px",cursor:"pointer",fontSize:10,fontWeight:700,flexShrink:0}}>⚡</button>
+            <button onClick={()=>setEliminatoires(p=>isE?p.filter(x=>x!==i):[...p,i])} title={isE?"Retirer éliminatoire":"Marquer éliminatoire"} style={{background:isE?"rgba(255,77,77,0.15)":"transparent",border:`1px solid ${isE?"#ff4d4d":"rgba(255,77,77,0.25)"}`,color:isE?"#ff4d4d":"#ffffff44",borderRadius:6,padding:"6px 8px",cursor:"pointer",flexShrink:0,display:"inline-flex",alignItems:"center"}}><Icon name="bolt" size={13} color={isE?"#ff4d4d":"#ffffff44"}/></button>
             <button onClick={()=>setItems(items.filter((_,idx)=>idx!==i))} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d",borderRadius:6,padding:"8px 10px",cursor:"pointer",flexShrink:0}}>✕</button>
           </div>;
         })}
@@ -2271,7 +2388,7 @@ function InAppBanner({notifs, onDismiss, neon}) {
         {/* Halo décoratif */}
         <div style={{position:"absolute",top:-40,right:-40,width:120,height:120,borderRadius:"50%",background:`radial-gradient(circle,${c}22,transparent 70%)`,pointerEvents:"none"}}/>
         {/* Glyphe dans un cercle */}
-        <div style={{width:48,height:48,borderRadius:14,background:`${c}16`,border:`1px solid ${c}40`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,marginBottom:14,boxShadow:`0 0 20px ${c}25`}}>{n.emoji||"◈"}</div>
+        <div style={{width:48,height:48,borderRadius:14,background:`${c}16`,border:`1px solid ${c}40`,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:14,boxShadow:`0 0 20px ${c}25`}}><Icon name={n.icon||"insight"} size={24} color={c} animate={n.type==="warn"||n.type==="danger"}/></div>
         <div style={{fontSize:15,fontWeight:800,color:"#ffffff",fontFamily:M,marginBottom:7,letterSpacing:0.2}}>{n.title}</div>
         <div style={{fontSize:12,color:"#ffffffaa",fontFamily:M,lineHeight:1.6,marginBottom:20}}>{n.body}</div>
         <button onClick={onDismiss} className="btn" style={{width:"100%",background:`${c}18`,border:`1px solid ${c}55`,color:c,borderRadius:10,padding:"11px 0",fontSize:12,fontWeight:700,fontFamily:M,letterSpacing:1,cursor:"pointer"}}>OK</button>
@@ -2507,13 +2624,13 @@ function ExportModal({trades,onClose,lang,neon}) {
 
 function Tutorial({neon="#00ff9d", onEnd}) {
   const STEPS = [
-    {elId:"tut-account",    icon:"🔄", title:"Tes comptes",            body:"Ce bandeau montre ton compte actif, son capital et ta progression vers l'objectif. Clique dessus pour basculer entre tes comptes (prop firm, perso, démo).",  pos:"below"},
-    {elId:"tut-kpi",        icon:"📊", title:"Win Rate & P&L",         body:"Tes deux chiffres clés en haut : Win Rate (% de trades gagnants) et P&L (performance en % et en devise, capital recalculé automatiquement).",  pos:"below"},
-    {elId:"tut-discipline", icon:"🎯", title:"Discipline & Profit Factor", body:"Discipline : note /10 basée sur ta conformité aux règles et l'absence de revenge trades. Profit Factor : tes gains divisés par tes pertes — au-dessus de 1.5, ton edge est solide.",  pos:"below"},
-    {elId:"tut-coach",      icon:"◆",  title:"Résumé & performance",   body:"Une lecture de tes stats en une phrase. Bascule entre Résumé (analyse écrite) et Courbe (équité). Clique sur le résumé pour le détail complet, filtrable par compte. Dès 5 trades.",  pos:"below"},
-    {elId:"tut-lasttrade",  icon:"⚡", title:"Dernier Trade",          body:"Ton dernier trade enregistré. Clique pour voir le détail complet, le modifier, le partager ou le réassigner à un autre compte.",  pos:"below"},
-    {elId:"tut-addtrade",   icon:"✚",  title:"Enregistrer un Trade",   body:"Après chaque trade : actif, checklist, résultat et P&L en % ou en devise. Active ou masque des champs (rejet, check-in, timeframe…) dans Paramètres › Stratégie.",  pos:"above"},
-    {elId:"tut-nav",        icon:"🧭", title:"Navigation",             body:"Stats = Dashboard · + Trade = Saisir un trade · Historique = Tous tes trades filtrables · ⚙ = Paramètres, modules, actifs, seuil de conformité.",   pos:"above", last:true},
+    {elId:"tut-account",    icon:"account", title:"Tes comptes",            body:"Ce bandeau montre ton compte actif, son capital et ta progression vers l'objectif. Clique dessus pour basculer entre tes comptes (prop firm, perso, démo).",  pos:"below"},
+    {elId:"tut-kpi",        icon:"stats", title:"Win Rate & P&L",         body:"Tes deux chiffres clés en haut : Win Rate (% de trades gagnants) et P&L (performance en % et en devise, capital recalculé automatiquement).",  pos:"below"},
+    {elId:"tut-discipline", icon:"discipline", title:"Discipline & Profit Factor", body:"Discipline : note /10 basée sur ta conformité aux règles et l'absence de revenge trades. Profit Factor : tes gains divisés par tes pertes — au-dessus de 1.5, ton edge est solide.",  pos:"below"},
+    {elId:"tut-coach",      icon:"insight",  title:"Résumé & performance",   body:"Une lecture de tes stats en une phrase. Bascule entre Résumé (analyse écrite) et Courbe (équité). Clique sur le résumé pour le détail complet, filtrable par compte. Dès 5 trades.",  pos:"below"},
+    {elId:"tut-lasttrade",  icon:"bolt", title:"Dernier Trade",          body:"Ton dernier trade enregistré. Clique pour voir le détail complet, le modifier, le partager ou le réassigner à un autre compte.",  pos:"below"},
+    {elId:"tut-addtrade",   icon:"add",  title:"Enregistrer un Trade",   body:"Après chaque trade : actif, checklist, résultat et P&L en % ou en devise. Active ou masque des champs (rejet, check-in, timeframe…) dans Paramètres › Stratégie.",  pos:"above"},
+    {elId:"tut-nav",        icon:"nav", title:"Navigation",             body:"Stats = Dashboard · + Trade = Saisir un trade · Historique = Tous tes trades filtrables · ⚙ = Paramètres, modules, actifs, seuil de conformité.",   pos:"above", last:true},
   ];
   const [step, setStep] = useState(0);
   const [spotRect, setSpotRect] = useState(null);
@@ -2642,7 +2759,7 @@ function Tutorial({neon="#00ff9d", onEnd}) {
         opacity: ttVisible ? 1 : 0,
         transform: ttVisible ? "translateY(0)" : (s.pos==="below" ? "translateY(10px)" : "translateY(-10px)"),
       }}>
-        <div className="tut-icon">{s.icon}</div>
+        <div className="tut-icon"><Icon name={s.icon} size={20} color={neon}/></div>
         <div className="tut-title">{s.title}</div>
         <div className="tut-body">{s.body}</div>
         <div className="tut-foot">
@@ -3315,9 +3432,9 @@ export default function App() {
             return count;
           };
           const workdaysMissed=last?countWorkdays(last.date):999;
-          if(workdaysMissed>=3) notifs_.push({type:"info",emoji:"📅",title:lang==="fr"?"Journal en pause":"Journal paused",body:lang==="fr"?`${workdaysMissed} jours ouvrés sans trade. Pense à journaliser !`:`${workdaysMissed} trading days without a log. Time to journal!`});
+          if(workdaysMissed>=3) notifs_.push({type:"info",icon:"calendar",title:lang==="fr"?"Journal en pause":"Journal paused",body:lang==="fr"?`${workdaysMissed} jours ouvrés sans trade. Pense à journaliser !`:`${workdaysMissed} trading days without a log. Time to journal!`});
           const revStreak=trades_.slice(0,3).filter(x=>x.isRevenge).length;
-          if(revStreak>=2) notifs_.push({type:"warn",emoji:"🔥",title:lang==="fr"?"Attention — Revenge":"Warning — Revenge",body:lang==="fr"?"Plusieurs revenge trades récents. Fais une pause.":"Multiple recent revenge trades. Take a break."});
+          if(revStreak>=2) notifs_.push({type:"warn",icon:"fire",title:lang==="fr"?"Attention — Revenge":"Warning — Revenge",body:lang==="fr"?"Plusieurs revenge trades récents. Fais une pause.":"Multiple recent revenge trades. Take a break."});
         }
         // Limite : 1 notification par jour maximum (anti-spam à chaque connexion)
         if(notifs_.length){
@@ -3373,7 +3490,7 @@ export default function App() {
             const target=parseFloat(objectif.pnl)||1;
             const objPct=hasObj?Math.min(100,Math.max(0,accPnl/target*100)):0;
             const canSwitch=activeAccounts.length>1;
-            return <div style={{position:"relative",borderBottom:"1px solid #ffffff08"}}>
+            return <div id="tut-account" style={{position:"relative",borderBottom:"1px solid #ffffff08"}}>
               <button onClick={()=>canSwitch&&setAccSwitchOpenPC(o=>!o)} className="btn" disabled={!canSwitch}
                 style={{width:"100%",display:"block",background:accSwitchOpenPC?`${c}0d`:"transparent",border:"none",padding:"10px 18px",cursor:canSwitch?"pointer":"default",textAlign:"left",transition:"background 0.15s"}}>
                 <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:hasObj?5:0}}>
@@ -3410,10 +3527,10 @@ export default function App() {
             </div>
             <div style={{fontSize:9,color:"#ffffff33"}}>{wins}W · {losses}L · {total} {lang==="fr"?"trades":"trades"}</div>
           </div>}
-          <div style={{padding:"10px 10px",flex:1,display:"flex",flexDirection:"column",gap:3}}>
-            {[["dashboard","◈",lang==="fr"?"Statistiques":"Statistics"],["log","+",(editingId?lang==="fr"?"✏ Édition":"✏ Edit":lang==="fr"?"Nouveau trade":"New trade")],["history","≡",lang==="fr"?"Historique":"History"],["settings","⚙",lang==="fr"?"Paramètres":"Settings"]].map(([v,icon,label])=>(
-              <button key={v} onClick={()=>{if(editingId&&v!=="log")cancelEdit();else{setView(v);if(pageRef.current)pageRef.current.scrollTo({top:0});scrollToTop();}}} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:view===v?(editingId&&v==="log"?"rgba(240,180,41,0.12)":`${neon}12`):"transparent",border:`1px solid ${view===v?(editingId&&v==="log"?"#f0b42940":`${neon}30`):"transparent"}`,borderRadius:9,color:view===v?(editingId&&v==="log"?"#f0b429":"#ffffff"):"#ffffff66",fontFamily:MONO,fontSize:12,fontWeight:view===v?700:400,cursor:"pointer",textAlign:"left",width:"100%",transition:"all 0.15s"}}>
-                <span style={{color:view===v?(editingId&&v==="log"?"#f0b429":neon):"#ffffff33",fontSize:14,width:18,textAlign:"center"}}>{icon}</span>
+          <div id="tut-nav" style={{padding:"10px 10px",flex:1,display:"flex",flexDirection:"column",gap:3}}>
+            {[["dashboard","stats",lang==="fr"?"Statistiques":"Statistics"],["log",(editingId?"edit":"add"),(editingId?lang==="fr"?"Édition":"Edit":lang==="fr"?"Nouveau trade":"New trade")],["history","history",lang==="fr"?"Historique":"History"],["settings","settings",lang==="fr"?"Paramètres":"Settings"]].map(([v,icon,label])=>(
+              <button key={v} id={v==="log"?"tut-addtrade":undefined} onClick={()=>{if(editingId&&v!=="log")cancelEdit();else{setView(v);if(pageRef.current)pageRef.current.scrollTo({top:0});scrollToTop();}}} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:view===v?(editingId&&v==="log"?"rgba(240,180,41,0.12)":`${neon}12`):"transparent",border:`1px solid ${view===v?(editingId&&v==="log"?"#f0b42940":`${neon}30`):"transparent"}`,borderRadius:9,color:view===v?(editingId&&v==="log"?"#f0b429":"#ffffff"):"#ffffff66",fontFamily:MONO,fontSize:12,fontWeight:view===v?700:400,cursor:"pointer",textAlign:"left",width:"100%",transition:"all 0.15s"}}>
+                <span style={{display:"inline-flex",width:18,justifyContent:"center"}}><Icon name={icon} size={16} color={view===v?(editingId&&v==="log"?"#f0b429":neon):"#ffffff55"}/></span>
                 {label}
               </button>
             ))}
@@ -3724,7 +3841,7 @@ export default function App() {
             </div>
           </div>}
           {modOn(config,"revenge")&&<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",background:"rgba(255,77,77,0.06)",border:"1px solid rgba(255,77,77,0.15)",borderRadius:8,marginBottom:10}}>
-            <span style={{fontSize:12,color:form.isRevenge||isRevengeNow?"#ff4d4d":"#ffffffbb",fontFamily:MONO}}>{t.revengeLabel} {(form.isRevenge||isRevengeNow)?"⚠️":""}</span>
+            <span style={{fontSize:12,color:form.isRevenge||isRevengeNow?"#ff4d4d":"#ffffffbb",fontFamily:MONO}}>{t.revengeLabel} {(form.isRevenge||isRevengeNow)?"⚠":""}</span>
             <button onClick={()=>setForm({...form,isRevenge:!form.isRevenge})} className="btn" style={{width:44,height:24,borderRadius:12,background:(form.isRevenge||isRevengeNow)?"rgba(255,77,77,0.3)":"#ffffff12",border:`1px solid ${(form.isRevenge||isRevengeNow)?"#ff4d4d":"rgba(255,77,77,0.2)"}`,position:"relative",transition:"all 0.2s"}}>
               <div style={{width:16,height:16,borderRadius:"50%",background:(form.isRevenge||isRevengeNow)?"#ff4d4d":"#ffffffaa",position:"absolute",top:3,left:(form.isRevenge||isRevengeNow)?24:4,transition:"all 0.2s"}}/>
             </button>
@@ -3826,7 +3943,7 @@ export default function App() {
             {form.screenshot&&<div style={{display:"flex",gap:8,alignItems:"center",marginTop:8}}><img src={form.screenshot} alt="" style={{height:40,borderRadius:4,border:`1px solid ${neon}26`}}/><button onClick={()=>setForm({...form,screenshot:""})} style={{background:"transparent",border:"none",color:"#ff4d4d",fontSize:12,cursor:"pointer"}}>✕</button></div>}
           </div>
           <button onClick={saveTrade} className="btn" style={{width:"100%",background:editingId!==null?"rgba(240,180,41,0.18)":(isRevengeNow||form.isRevenge?"rgba(255,77,77,0.15)":form.checklist.length>=config.threshold?`${neon}2a`:"rgba(255,77,77,0.1)"),border:`1px solid ${editingId!==null?"#f0b429":(isRevengeNow||form.isRevenge?"#ff4d4d":form.checklist.length>=config.threshold?neon:"#ff4d4d")}`,color:editingId!==null?"#f0b429":(isRevengeNow||form.isRevenge?"#ff4d4d":form.checklist.length>=config.threshold?neon:"#ff4d4d"),borderRadius:10,padding:14,fontSize:13,fontWeight:700,fontFamily:MONO,letterSpacing:1}}>
-            {editingId!==null?t.updateBtn:isRevengeNow||form.isRevenge?"⚠️ REVENGE — Non-conforme":form.checklist.length>=config.threshold?t.saveConform:`${t.saveNonConform} — ${form.checklist.length}/${config.items.length}`}
+            {editingId!==null?t.updateBtn:isRevengeNow||form.isRevenge?"⚠ REVENGE — Non-conforme":form.checklist.length>=config.threshold?t.saveConform:`${t.saveNonConform} — ${form.checklist.length}/${config.items.length}`}
           </button>
           {saved&&(
         <div className="slide-up" style={{marginTop:12,background:`${neon}12`,border:`1px solid ${neon}40`,borderRadius:10,padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}>
