@@ -97,6 +97,7 @@ const authRegister = async (email, pwd, lang) => {
 const PRESET_ASSETS = ["XAU/USD","EUR/USD","GBP/USD","NAS100","BTC/USD","ETH/USD","US30","SPX500","GBP/JPY","USD/JPY"];
 const DEFAULT_CRITERIA = ["HA M5 claire (pas de doji)","MM20 bien orientée","BB approche sur M1","Bougie de rejet propre","Fenêtre horaire respectée","Pas de distraction","Contexte macro neutre"];
 const MONO = "'Geist Mono','IBM Plex Mono',monospace";
+const SANS = "'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
 const PNL_PRESETS = ["-1","-0.5","0","+1","+2","+3","+4","+5"];
 const NEON_COLORS = [{name:"Vert",value:"#00ff9d"},{name:"Bleu",value:"#00d4ff"},{name:"Violet",value:"#bf00ff"},{name:"Rose",value:"#ff00aa"},{name:"Or",value:"#f0b429"}];
 const HUMEUR_PILLS = {fr:["◎ Focus","◌ Neutre","△ Tendu","◷ Fatigué"],en:["◎ Focus","◌ Neutral","△ Tense","◷ Tired"]};
@@ -2018,74 +2019,90 @@ function Onboarding({onDone}) {
   const [step,setStep]=useState(0);const [lang,setLang]=useState("fr");
   const t=T[lang];const neon="#00ff9d";
 
-  // Helper visuel : conteneur de slide avec grille de fond
-  const Stage = ({children,h=210}) => (
+  // Teinte d'accent par slide pour faire évoluer l'ambiance
+  const accents=[neon,neon,"#00d4ff",neon,"#f0b429"];
+  const acc=accents[step];
+
+  const Stage = ({children,h=216}) => (
     <div style={{position:"relative",width:"100%",height:h,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
-      <div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse 70% 55% at 50% 50%,${neon}0e,transparent 68%)`,pointerEvents:"none"}}/>
-      <GridBackground neon={neon} height={h}/>
+      <GridBackground neon={acc} height={h}/>
       <div style={{position:"relative",zIndex:2,width:"100%",display:"flex",alignItems:"center",justifyContent:"center"}}>{children}</div>
     </div>
   );
 
+  // Titre : tableau de segments {txt, hl:true/false} — hl = surligné en couleur d'accent
   const slides=[
-    // 1 — Accroche / promesse
-    {title:t.ob1Title,desc:t.ob1Desc,cta:t.discover,visual:(
-      <Stage h={230}><SplashLogo neon={neon}/></Stage>
-    )},
-    // 2 — Tes règles : checklist générique
-    {title:t.ob2Title,desc:t.ob2Desc,cta:t.next,visual:(
-      <Stage><div style={{display:"flex",flexDirection:"column",gap:8,maxWidth:280,width:"100%",padding:"0 10px"}}>
+    {hl:lang==="fr"
+        ? [{txt:"Le marché ne te\n"},{txt:"bat pas.",b:true},{txt:" Ton\n"},{txt:"indiscipline",c:true},{txt:", oui."}]
+        : [{txt:"The market isn't\n"},{txt:"beating you.",b:true},{txt:" Your lack of\n"},{txt:"discipline",c:true},{txt:" is."}],
+     desc:t.ob1Desc,cta:t.discover,visual:(<Stage h={232}><SplashLogo neon={neon}/></Stage>)},
+
+    {hl:lang==="fr"
+        ? [{txt:"Tes règles,\n"},{txt:"pas",b:true},{txt:" celles\nd'un ",b:true},{txt:"autre",c:true}]
+        : [{txt:"Your rules,\n"},{txt:"not",b:true},{txt:" someone\n"},{txt:"else's",c:true}],
+     desc:t.ob2Desc,cta:t.next,visual:(
+      <Stage><div style={{display:"flex",flexDirection:"column",gap:9,maxWidth:280,width:"100%",padding:"0 10px"}}>
         {[[lang==="fr"?"Setup validé":"Setup confirmed",true],[lang==="fr"?"Règles respectées":"Rules followed",true],[lang==="fr"?"Timing correct":"Right timing",true],[lang==="fr"?"Pas de revenge":"No revenge",false]].map(([item,ok],i)=>(
-          <div key={i} className="fu" style={{background:ok?`${neon}0d`:"rgba(255,77,77,0.06)",border:`1px solid ${ok?neon+"30":"rgba(255,77,77,0.2)"}`,borderRadius:10,padding:"10px 14px",fontSize:13,fontWeight:600,fontFamily:MONO,animationDelay:`${i*0.08}s`,display:"flex",alignItems:"center",gap:10}}>
+          <div key={i} className="fu" style={{background:ok?`${neon}0d`:"rgba(255,77,77,0.06)",border:`1px solid ${ok?neon+"2a":"rgba(255,77,77,0.18)"}`,borderRadius:11,padding:"11px 15px",fontSize:13,fontWeight:500,fontFamily:SANS,animationDelay:`${i*0.09}s`,display:"flex",alignItems:"center",gap:11}}>
             <Icon name={ok?"check":"close"} size={15} color={ok?neon:"#ff4d4d"}/>
-            <span style={{color:"#ffffff"}}>{item}</span>
+            <span style={{color:"#fff"}}>{item}</span>
           </div>
         ))}
       </div></Stage>
     )},
-    // 3 — Toute stratégie
-    {title:t.ob3Title,desc:t.ob3Desc,cta:t.next,visual:(
-      <Stage><div style={{display:"flex",flexWrap:"wrap",gap:8,maxWidth:290,justifyContent:"center"}}>
-        {["Scalping","ICT","Swing","Day trading","Price action","SMC","Breakout"].map((s,i)=>(
-          <div key={s} className="fu" style={{background:`${neon}0d`,border:`1px solid ${neon}2e`,borderRadius:20,padding:"8px 14px",fontSize:12,fontWeight:600,color:neon,fontFamily:MONO,animationDelay:`${i*0.07}s`,boxShadow:`0 0 14px ${neon}12`}}>{s}</div>
-        ))}
+
+    {hl:lang==="fr"
+        ? [{txt:"Scalping, ICT, swing…\n"},{txt:"ta méthode",c:true},{txt:" reste\n"},{txt:"la tienne",b:true}]
+        : [{txt:"Scalping, ICT, swing…\n"},{txt:"your method",c:true},{txt:"\nstays ",b:true},{txt:"yours",b:true}],
+     desc:t.ob3Desc,cta:t.next,visual:(
+      <Stage><div style={{display:"flex",flexWrap:"wrap",gap:9,maxWidth:296,justifyContent:"center"}}>
+        {[["Scalping",0],["ICT",1],["Swing",2],["Day trading",0],["Price action",1],["SMC",2],["Breakout",0]].map(([s,ci],i)=>{
+          const cc=[neon,"#00d4ff","#f0b429"][ci];
+          return <div key={s} className="fu" style={{background:`${cc}10`,border:`1px solid ${cc}33`,borderRadius:22,padding:"9px 16px",fontSize:12.5,fontWeight:500,color:cc,fontFamily:SANS,animationDelay:`${i*0.06}s`,boxShadow:`0 0 16px ${cc}12`}}>{s}</div>;
+        })}
       </div></Stage>
     )},
-    // 4 — Les chiffres qui comptent (4 KPI)
-    {title:t.ob4Title,desc:t.ob4Desc,cta:t.next,visual:(
-      <Stage><div style={{maxWidth:290,width:"100%",padding:"0 10px"}}>
+
+    {hl:lang==="fr"
+        ? [{txt:"Vois ce qui te rend\n"},{txt:"vraiment",b:true},{txt:" "},{txt:"rentable",c:true}]
+        : [{txt:"See what truly\n"},{txt:"makes you",b:true},{txt:" "},{txt:"profitable",c:true}],
+     desc:t.ob4Desc,cta:t.next,visual:(
+      <Stage><div style={{maxWidth:294,width:"100%",padding:"0 10px"}}>
         <div style={{display:"flex",gap:8,marginBottom:8}}>
           {[["WIN RATE","73%"],["P&L","+4.2%"],["P. FACTOR","1.85"]].map(([l,v])=>(
-            <div key={l} style={{flex:1,background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${neon}22`,borderRadius:12,padding:"12px 6px",textAlign:"center",boxShadow:`0 4px 20px ${neon}0d,inset 0 1px 0 ${neon}15`}}>
-              <div style={{fontSize:18,fontWeight:900,color:"#ffffff",fontFamily:MONO,lineHeight:1,textShadow:`0 0 16px ${neon}55`}}>{v}</div>
-              <div style={{fontSize:7,color:"#ffffffaa",marginTop:5,letterSpacing:1.5}}>{l}</div>
+            <div key={l} style={{flex:1,background:"linear-gradient(150deg,#191922,#101016)",border:`1px solid ${neon}1e`,borderRadius:13,padding:"13px 6px",textAlign:"center"}}>
+              <div style={{fontSize:18,fontWeight:800,color:"#fff",fontFamily:MONO,lineHeight:1,textShadow:`0 0 18px ${neon}66`}}>{v}</div>
+              <div style={{fontSize:7,color:"#ffffff66",marginTop:6,letterSpacing:1.5,fontFamily:MONO}}>{l}</div>
             </div>
           ))}
         </div>
-        <div style={{background:`linear-gradient(145deg,${neon}10,${neon}04)`,border:`1px solid ${neon}30`,borderRadius:12,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",boxShadow:`0 4px 20px ${neon}0d`}}>
-          <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <Icon name="discipline" size={20} color={neon}/>
-            <span style={{fontSize:9,color:"#ffffffaa",letterSpacing:2}}>{lang==="fr"?"DISCIPLINE":"DISCIPLINE"}</span>
+        <div style={{background:`linear-gradient(150deg,${neon}12,${neon}03)`,border:`1px solid ${neon}2e`,borderRadius:13,padding:"13px 15px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{display:"flex",alignItems:"center",gap:9}}>
+            <Icon name="discipline" size={21} color={neon}/>
+            <span style={{fontSize:10,color:"#ffffffcc",letterSpacing:2,fontFamily:MONO}}>{lang==="fr"?"DISCIPLINE":"DISCIPLINE"}</span>
           </div>
-          <div style={{fontSize:22,fontWeight:900,color:"#ffffff",fontFamily:MONO,textShadow:`0 0 20px ${neon}66`}}>8<span style={{fontSize:11,color:"#ffffff44"}}>/10</span></div>
+          <div style={{fontSize:23,fontWeight:800,color:"#fff",fontFamily:MONO,textShadow:`0 0 22px ${neon}77`}}>8<span style={{fontSize:11,color:"#ffffff44"}}>/10</span></div>
         </div>
       </div></Stage>
     )},
-    // 5 — Coach + multi-comptes
-    {title:t.ob5Title,desc:t.ob5Desc,cta:t.start,visual:(
-      <Stage><div style={{maxWidth:290,width:"100%",padding:"0 10px",display:"flex",flexDirection:"column",gap:10}}>
-        <div style={{position:"relative",background:"linear-gradient(135deg,#0f0f16,#0c0c12)",border:`1px solid ${neon}22`,borderRadius:12,padding:"12px 14px 12px 18px",overflow:"hidden"}}>
-          <div style={{position:"absolute",left:0,top:0,bottom:0,width:3,background:`linear-gradient(180deg,${neon}99,${neon}33)`,boxShadow:`0 0 8px ${neon}66`}}/>
-          <div style={{display:"flex",alignItems:"flex-start",gap:9}}>
-            <Icon name="insight" size={15} color={neon} style={{marginTop:1}}/>
-            <div style={{fontSize:11,color:"#ffffffcc",fontFamily:MONO,lineHeight:1.55}}>{lang==="fr"?"Tes setups conformes : 78% WR. Ton edge est dans ta discipline.":"Your compliant setups: 78% WR. Your edge is in your discipline."}</div>
+
+    {hl:lang==="fr"
+        ? [{txt:"Un "},{txt:"coach",c:true},{txt:"\ndans ta poche"}]
+        : [{txt:"A "},{txt:"coach",c:true},{txt:"\nin your pocket"}],
+     desc:t.ob5Desc,cta:t.start,visual:(
+      <Stage><div style={{maxWidth:294,width:"100%",padding:"0 10px",display:"flex",flexDirection:"column",gap:11}}>
+        <div style={{position:"relative",background:"linear-gradient(135deg,#11111a,#0c0c12)",border:`1px solid ${acc}26`,borderRadius:13,padding:"13px 15px 13px 19px",overflow:"hidden"}}>
+          <div style={{position:"absolute",left:0,top:0,bottom:0,width:3,background:`linear-gradient(180deg,${acc},${acc}33)`,boxShadow:`0 0 10px ${acc}77`}}/>
+          <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
+            <Icon name="insight" size={15} color={acc} style={{marginTop:1}}/>
+            <div style={{fontSize:11.5,color:"#ffffffcc",fontFamily:MONO,lineHeight:1.55}}>{lang==="fr"?"Tes setups conformes : 78% WR. Ton edge est dans ta discipline.":"Your compliant setups: 78% WR. Your edge is in your discipline."}</div>
           </div>
         </div>
-        <div style={{display:"flex",gap:7}}>
-          {[["Perso",neon],["FTMO",`#00d4ff`],["Démo",`#f0b429`]].map(([n,c])=>(
-            <div key={n} style={{flex:1,display:"flex",alignItems:"center",gap:6,background:`${c}10`,border:`1px solid ${c}30`,borderRadius:9,padding:"8px 10px"}}>
-              <div style={{width:7,height:7,borderRadius:"50%",background:c,boxShadow:`0 0 5px ${c}`}}/>
-              <span style={{fontSize:10,fontWeight:700,color:"#fff",fontFamily:MONO}}>{n}</span>
+        <div style={{display:"flex",gap:8}}>
+          {[["Perso",neon],["FTMO","#00d4ff"],["Démo","#f0b429"]].map(([n,c])=>(
+            <div key={n} style={{flex:1,display:"flex",alignItems:"center",gap:7,background:`${c}10`,border:`1px solid ${c}30`,borderRadius:10,padding:"9px 11px"}}>
+              <div style={{width:7,height:7,borderRadius:"50%",background:c,boxShadow:`0 0 6px ${c}`}}/>
+              <span style={{fontSize:10,fontWeight:600,color:"#fff",fontFamily:SANS}}>{n}</span>
             </div>
           ))}
         </div>
@@ -2093,25 +2110,39 @@ function Onboarding({onDone}) {
     )},
   ];
   const s=slides[step];
+
+  // Rendu du titre multi-segments (sans-serif, mot-clé en couleur)
+  const renderTitle = (segs) => (
+    <div style={{fontSize:27,fontWeight:800,whiteSpace:"pre-line",lineHeight:1.18,letterSpacing:-0.5,fontFamily:SANS}}>
+      {segs.map((seg,i)=>(
+        <span key={i} style={{color:seg.c?acc:"#ffffff",textShadow:seg.c?`0 0 28px ${acc}66`:"none"}}>{seg.txt}</span>
+      ))}
+    </div>
+  );
+
   return (
-    <div style={{background:"#0c0c12",minHeight:"100vh",display:"flex",flexDirection:"column",fontFamily:MONO,maxWidth:480,margin:"0 auto",color:"#ffffff"}}>
+    <div style={{position:"relative",background:"#0a0a0f",minHeight:"100vh",display:"flex",flexDirection:"column",fontFamily:SANS,maxWidth:480,margin:"0 auto",color:"#fff",overflow:"hidden"}}>
       <CSS neon={neon}/>
-      <div style={{padding:"16px 24px 0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <button onClick={()=>onDone(lang)} className="btn" style={{background:"transparent",border:"none",color:"#ffffff44",fontSize:11,fontFamily:MONO,cursor:"pointer"}}>{lang==="fr"?"Passer":"Skip"}</button>
-        <div style={{display:"flex",gap:6}}>
-          {["fr","en"].map(l=><button key={l} onClick={()=>setLang(l)} className="btn" style={{background:lang===l?`${neon}26`:"transparent",border:`1px solid ${lang===l?neon:`${neon}33`}`,color:lang===l?neon:"#ffffffaa",borderRadius:6,padding:"5px 12px",fontSize:11,fontWeight:700,fontFamily:MONO}}>{l.toUpperCase()}</button>)}
+      {/* Halo d'ambiance évolutif */}
+      <div style={{position:"absolute",top:"-10%",left:"50%",transform:"translateX(-50%)",width:"120%",height:380,background:`radial-gradient(ellipse 50% 50% at 50% 50%,${acc}14,transparent 70%)`,pointerEvents:"none",transition:"all 0.6s ease",zIndex:0}}/>
+      <div style={{position:"relative",zIndex:1,display:"flex",flexDirection:"column",minHeight:"100vh"}}>
+        <div style={{padding:"18px 24px 0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <button onClick={()=>onDone(lang)} className="btn" style={{background:"transparent",border:"none",color:"#ffffff44",fontSize:12,fontFamily:SANS,cursor:"pointer"}}>{lang==="fr"?"Passer":"Skip"}</button>
+          <div style={{display:"flex",gap:6}}>
+            {["fr","en"].map(l=><button key={l} onClick={()=>setLang(l)} className="btn" style={{background:lang===l?`${neon}22`:"transparent",border:`1px solid ${lang===l?neon:"#ffffff22"}`,color:lang===l?neon:"#ffffff77",borderRadius:7,padding:"5px 12px",fontSize:11,fontWeight:600,fontFamily:MONO}}>{l.toUpperCase()}</button>)}
+          </div>
         </div>
-      </div>
-      <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"12px 28px 24px"}}>
-        <div className="fi" key={`v${step}${lang}`} style={{marginBottom:26,width:"100%"}}>{s.visual}</div>
-        <div className="fi" key={`t${step}${lang}`} style={{textAlign:"center",marginBottom:26}}>
-          <div style={{fontSize:22,fontWeight:700,color:neon,whiteSpace:"pre-line",lineHeight:1.3,marginBottom:14,fontFamily:MONO,textShadow:`0 0 30px ${neon}88`}}>{s.title}</div>
-          <div style={{fontSize:13,color:"#ffffffaa",lineHeight:1.75,maxWidth:310,margin:"0 auto"}}>{s.desc}</div>
+        <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"8px 30px 20px"}}>
+          <div className="fi" key={`v${step}${lang}`} style={{marginBottom:30,width:"100%"}}>{s.visual}</div>
+          <div className="fi" key={`t${step}${lang}`} style={{textAlign:"center",marginBottom:30}}>
+            {renderTitle(s.hl)}
+            <div style={{fontSize:13.5,color:"#ffffff99",lineHeight:1.7,maxWidth:320,margin:"16px auto 0",fontFamily:SANS,fontWeight:400}}>{s.desc}</div>
+          </div>
+          <button onClick={()=>step<slides.length-1?setStep(step+1):onDone(lang)} className="btn" style={{width:"100%",maxWidth:300,background:acc,border:"none",color:"#0a0a0f",borderRadius:14,padding:16,fontSize:14.5,fontWeight:700,fontFamily:SANS,marginBottom:14,boxShadow:`0 8px 30px ${acc}44`,transition:"all 0.2s",letterSpacing:0.2}}>{s.cta.replace(" →","")}</button>
+          {step>0&&<button onClick={()=>setStep(step-1)} className="btn" style={{background:"transparent",border:"none",color:"#ffffff44",fontSize:12.5,fontFamily:SANS}}>{t.back}</button>}
         </div>
-        <button onClick={()=>step<slides.length-1?setStep(step+1):onDone(lang)} className="btn" style={{width:"100%",maxWidth:300,background:`${neon}22`,border:`1px solid ${neon}`,color:neon,borderRadius:12,padding:16,fontSize:14,fontWeight:700,fontFamily:MONO,marginBottom:12,boxShadow:`0 0 24px ${neon}33`,textShadow:`0 0 12px ${neon}88`}}>{s.cta}</button>
-        {step>0&&<button onClick={()=>setStep(step-1)} className="btn" style={{background:"transparent",border:"none",color:"#ffffff44",fontSize:12,fontFamily:MONO}}>{t.back}</button>}
+        <div style={{padding:"8px 28px 34px"}}><Dots total={slides.length} current={step} neon={acc}/></div>
       </div>
-      <div style={{padding:"8px 28px 32px"}}><Dots total={slides.length} current={step} neon={neon}/></div>
     </div>
   );
 }
