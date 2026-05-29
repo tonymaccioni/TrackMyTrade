@@ -2260,29 +2260,21 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
 const NOTIF_PERMISSION_KEY = "tmt_notif_perm";
 
 function InAppBanner({notifs, onDismiss, neon}) {
-  useEffect(()=>{
-    if(!notifs||!notifs.length) return;
-    const id=setTimeout(()=>onDismiss(),3000);
-    return ()=>clearTimeout(id);
-  },[notifs]);
   if(!notifs||!notifs.length) return null;
   const n = notifs[0];
-  const colors = {
-    info: neon,
-    warn: "#f0b429",
-    danger: "#ff4d4d",
-    success: neon,
-  };
+  const colors = { info: neon, warn: "#f0b429", danger: "#ff4d4d", success: neon };
   const c = colors[n.type] || neon;
+  const M = "'Geist Mono','IBM Plex Mono',monospace";
   return (
-    <div style={{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,zIndex:600,padding:"8px 12px",pointerEvents:"none"}}>
-      <div className="slide-up" style={{background:`${c}12`,border:`1px solid ${c}35`,borderLeft:`3px solid ${c}`,borderRadius:10,padding:"10px 14px",display:"flex",alignItems:"flex-start",gap:10,backdropFilter:"blur(8px)",pointerEvents:"all"}}>
-        <span style={{fontSize:16,flexShrink:0}}>{n.emoji||"◈"}</span>
-        <div style={{flex:1}}>
-          <div style={{fontSize:12,fontWeight:700,color:c,fontFamily:"'Geist Mono','IBM Plex Mono',monospace",marginBottom:2}}>{n.title}</div>
-          <div style={{fontSize:10,color:`${c}88`,fontFamily:"'Geist Mono','IBM Plex Mono',monospace",lineHeight:1.5}}>{n.body}</div>
-        </div>
-        <button onClick={onDismiss} style={{background:"transparent",border:"none",color:`${c}55`,fontSize:16,cursor:"pointer",flexShrink:0,marginTop:-2}}>✕</button>
+    <div onClick={onDismiss} style={{position:"fixed",inset:0,zIndex:600,background:"rgba(0,0,0,0.72)",backdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+      <div className="slide-up" onClick={e=>e.stopPropagation()} style={{position:"relative",width:"100%",maxWidth:340,background:"linear-gradient(150deg,#15151c,#0e0e14)",border:`1px solid ${c}3a`,borderRadius:18,padding:"26px 22px 22px",boxShadow:`0 24px 60px rgba(0,0,0,0.6), 0 0 40px ${c}15, inset 0 1px 0 ${c}1a`,overflow:"hidden"}}>
+        {/* Halo décoratif */}
+        <div style={{position:"absolute",top:-40,right:-40,width:120,height:120,borderRadius:"50%",background:`radial-gradient(circle,${c}22,transparent 70%)`,pointerEvents:"none"}}/>
+        {/* Glyphe dans un cercle */}
+        <div style={{width:48,height:48,borderRadius:14,background:`${c}16`,border:`1px solid ${c}40`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,marginBottom:14,boxShadow:`0 0 20px ${c}25`}}>{n.emoji||"◈"}</div>
+        <div style={{fontSize:15,fontWeight:800,color:"#ffffff",fontFamily:M,marginBottom:7,letterSpacing:0.2}}>{n.title}</div>
+        <div style={{fontSize:12,color:"#ffffffaa",fontFamily:M,lineHeight:1.6,marginBottom:20}}>{n.body}</div>
+        <button onClick={onDismiss} className="btn" style={{width:"100%",background:`${c}18`,border:`1px solid ${c}55`,color:c,borderRadius:10,padding:"11px 0",fontSize:12,fontWeight:700,fontFamily:M,letterSpacing:1,cursor:"pointer"}}>OK</button>
       </div>
     </div>
   );
@@ -2574,8 +2566,8 @@ function Tutorial({neon="#00ff9d", onEnd}) {
     animRef.current = requestAnimationFrame(frame);
   };
 
-  const showStep = (i, animate=false) => {
-    const s = STEPS[i];
+  // Applique le halo + tooltip une fois que l'élément est correctement positionné à l'écran
+  const applyStep = (s, animate) => {
     const r = getRect(s.elId);
     if(r) {
       if(animate) animateTo(r);
@@ -2590,6 +2582,23 @@ function Tutorial({neon="#00ff9d", onEnd}) {
     }
     setTtVisible(false);
     setTimeout(() => setTtVisible(true), 60);
+  };
+
+  const showStep = (i, animate=false) => {
+    const s = STEPS[i];
+    const el = document.getElementById(s.elId);
+    if(el && typeof el.scrollIntoView === "function") {
+      // Centrer l'élément à l'écran AVANT de dessiner le halo
+      // On masque le tooltip pendant le scroll pour éviter un flash mal placé
+      setTtVisible(false);
+      try { el.scrollIntoView({behavior:"smooth", block:"center", inline:"nearest"}); }
+      catch(e){ try { el.scrollIntoView(); } catch(_){} }
+      // Attendre la fin du scroll (≈ durée d'un smooth scroll) puis appliquer
+      setTimeout(() => applyStep(s, animate), 380);
+    } else {
+      // Pas d'élément à scroller : appliquer directement (tooltip centré)
+      applyStep(s, animate);
+    }
   };
 
   useEffect(() => { setTimeout(() => showStep(0, false), 120); }, []);
@@ -3310,7 +3319,16 @@ export default function App() {
           const revStreak=trades_.slice(0,3).filter(x=>x.isRevenge).length;
           if(revStreak>=2) notifs_.push({type:"warn",emoji:"🔥",title:lang==="fr"?"Attention — Revenge":"Warning — Revenge",body:lang==="fr"?"Plusieurs revenge trades récents. Fais une pause.":"Multiple recent revenge trades. Take a break."});
         }
-        if(notifs_.length) setInAppNotifs(notifs_);
+        // Limite : 1 notification par jour maximum (anti-spam à chaque connexion)
+        if(notifs_.length){
+          let lastShown="";
+          try { lastShown=localStorage.getItem("tmt_last_notif_day")||""; } catch(e){}
+          const todayStr=today();
+          if(lastShown!==todayStr){
+            setInAppNotifs(notifs_);
+            try { localStorage.setItem("tmt_last_notif_day",todayStr); } catch(e){}
+          }
+        }
       },2000);
     } else {
       if(u.lang) setLang(u.lang);
