@@ -22,17 +22,65 @@ try {
 
 // Simple Firestore auth — no Firebase Auth SDK needed
 const encEmail = e => e.replace(/\./g,"_DOT_").replace(/@/g,"_AT_");
-const saveUserData = async (id, data) => { if(!db)return; try { await setDoc(doc(db,"users",id), data, {merge:true}); } catch(e) { console.error("Firestore save:",e); } };
+// File d'attente locale anti-perte : si une écriture Firestore échoue, on stocke le payload et on réessaie.
+const PENDING_KEY = "ttm_pending_writes";
+const getPending = () => { try { return JSON.parse(localStorage.getItem(PENDING_KEY)||"[]"); } catch(e){ return []; } };
+const setPending = (arr) => { try { localStorage.setItem(PENDING_KEY, JSON.stringify(arr)); } catch(e){} };
+// Empile une écriture en attente (fusionne par id pour ne garder que le dernier état)
+const queuePending = (id, data) => {
+  const key = id || "__PENDING_UID__"; // si pas d'UID, on garde pour réattribuer au prochain login
+  const arr = getPending().filter(p => p.id !== key);
+  // fusionne avec un éventuel payload déjà en attente pour cette clé
+  const prev = getPending().find(p => p.id === key);
+  const merged = prev ? { ...prev.data, ...data } : data;
+  arr.push({ id: key, data: merged, ts: Date.now() });
+  setPending(arr);
+};
+// Tente d'écrire ; renvoie true si succès, false sinon. En cas d'échec, met en file d'attente.
+const saveUserData = async (id, data) => {
+  if(!db) return false;
+  if(!id) { queuePending(null, data); return false; } // pas d'UID encore : on garde pour plus tard
+  try {
+    await setDoc(doc(db,"users",id), data, {merge:true});
+    return true;
+  } catch(e) {
+    console.error("Firestore save failed, queued:", e);
+    queuePending(id, data);
+    return false;
+  }
+};
+// Rejoue les écritures en attente (appelé après login / retour réseau).
+const flushPending = async (realUid) => {
+  if(!db) return;
+  const arr = getPending();
+  if(!arr.length) return;
+  const remaining = [];
+  for(const p of arr){
+    // Réattribue les payloads sans UID à l'UID réel maintenant connu
+    const targetId = (p.id === "__PENDING_UID__") ? realUid : p.id;
+    if(!targetId){ remaining.push(p); continue; }
+    try { await setDoc(doc(db,"users",targetId), p.data, {merge:true}); }
+    catch(e){ remaining.push(p); }
+  }
+  setPending(remaining);
+};
 const loadUserData = async id => { if(!db)return null; try { const s=await getDoc(doc(db,"users",id)); return s.exists()?s.data():null; } catch(e) { return null; } };
 const authLogin = async (email, pwd) => {
   if(!auth) return null;
   try {
     const cred = await signInWithEmailAndPassword(auth, email, pwd);
     const uid = cred.user.uid;
-    // Essayer d'abord avec UID (nouveau système)
+    // 1) Nouveau système : document sous UID
     let d = await loadUserData(uid);
-    // Si pas trouvé, essayer avec email encodé (ancien système)
-    if(!d) d = await loadUserData(encEmail(email));
+    // 2) Ancien système : document sous email encodé -> migration automatique vers UID
+    if(!d) {
+      const legacy = await loadUserData(encEmail(email));
+      if(legacy) {
+        // Recopie les anciennes données sous l'UID (une seule fois), puis on travaille sous UID
+        try { await setDoc(doc(db,"users",uid), legacy, {merge:true}); } catch(e){}
+        d = legacy;
+      }
+    }
     return { ...(d || { setupDone: false }), _uid: uid };
   } catch(e) { return null; }
 };
@@ -2907,6 +2955,8 @@ export default function App() {
   const [editingNoTrade,setEditingNoTrade]=useState(null);
   const [config,setConfig]=useState({items:DEFAULT_CRITERIA,threshold:6,strategyName:"Ma Stratégie",defaultAsset:"XAU/USD",maxTrades:1,neonColor:"#00ff9d",calendarOn:true,notifOn:true,customAssets:[...PRESET_ASSETS],capital:"",devise:"€",accountType:"perso",phaseStartDate:"",modules:{rejet:true,checkin:true,postSl:true,revenge:true,timeframe:true},timeframes:[...DEFAULT_TIMEFRAMES]});
   const fileRef=useRef();const pageRef=useRef();const weeklyShownRef=useRef(false);const currentUserRef=useRef(null);
+  // Source de vérité unique pour l'UID : Firebase Auth d'abord, puis le ref. JAMAIS l'email encodé (écritures).
+  const uidNow=()=>{ try { if(auth&&auth.currentUser&&auth.currentUser.uid) return auth.currentUser.uid; } catch(e){} return currentUserRef.current?.uid||null; };
   const neon=config.neonColor||"#00ff9d";const t=T[lang];const inSt=mkInput(neon);
   // Couleurs dérivées du neon pour une cohérence visuelle complète
   const neonDim = neon+"66";   // texte secondaire
@@ -2923,8 +2973,11 @@ export default function App() {
         const p = pwd||"";
         authLogin(email,p).then(userData=>{
           if(userData){
-            const resolvedUid = userData._uid || uid || encEmail(email);
+            // UID = Firebase Auth uniquement (userData._uid). On ne retombe JAMAIS sur encEmail pour l'identité active.
+            const resolvedUid = userData._uid || (auth&&auth.currentUser&&auth.currentUser.uid) || uid || null;
             currentUserRef.current={email, uid:resolvedUid};
+            // Rejoue les écritures restées en attente (perte réseau / session précédente)
+            if(resolvedUid) flushPending(resolvedUid);
             if(userData.setupDone){
               if(Array.isArray(userData.noTrades))setNoTrades(userData.noTrades);
               if(Array.isArray(userData.phases))setPhases(userData.phases);
@@ -2973,7 +3026,7 @@ export default function App() {
   const saveAccounts=(newAccs,newActiveId)=>{
     setAccounts(newAccs);
     if(newActiveId!==undefined)setActiveAccountId(newActiveId);
-    const uid=currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||"");
+    const uid=uidNow();
     if(currentUserRef.current?.email)saveUserData(uid,{accounts:newAccs,activeAccountId:newActiveId!==undefined?newActiveId:activeAccountId,trades});
   };
   const switchAccount=(id)=>{
@@ -2981,7 +3034,7 @@ export default function App() {
     setActiveAccountId(id);
     setConfig(c=>({...c,capital:acc.capital,devise:acc.devise,accountType:acc.accountType}));
     setObjectif(o=>({...o,pnl:acc.objPnl,drawdown:acc.objDrawdown}));
-    const uid=currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||"");
+    const uid=uidNow();
     if(currentUserRef.current?.email)saveUserData(uid,{accounts,activeAccountId:id,trades});
   };
   // Phase uses trade.id (timestamp) not date — trades before phase creation excluded even if date is today
@@ -2996,7 +3049,7 @@ export default function App() {
     const newCfg={...config,capital:phaseData.capital||config.capital,devise:phaseData.devise||config.devise,accountType:phaseData.accountType||config.accountType};
     setConfig(newCfg);
     setNotif({txt:lang==="fr"?`${name} démarrée.\nStats remises à zéro.`:`${name} started.\nStats reset.`,color:neon,icon:"ok",lang});
-    if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{phases:newPhases,config:newCfg});
+    if(currentUserRef.current?.email) saveUserData(uidNow(),{phases:newPhases,config:newCfg});
   };
 
   // ── Phase management ──
@@ -3016,12 +3069,12 @@ export default function App() {
       // Rename the original phase = update config.phaseName
       const newCfg={...config,phaseName:newName.trim()};
       setConfig(newCfg);
-      if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:newCfg});
+      if(currentUserRef.current?.email) saveUserData(uidNow(),{config:newCfg});
     } else {
       // Rename a created phase = update name in phases array
       const newPhases=phases.map((ph,i)=>i===phaseIndex-1?{...ph,name:newName.trim()}:ph);
       setPhases(newPhases);
-      if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{phases:newPhases});
+      if(currentUserRef.current?.email) saveUserData(uidNow(),{phases:newPhases});
     }
     setPhaseEditIndex(null);
   };
@@ -3034,13 +3087,13 @@ export default function App() {
       const newNoTrades=noTrades.filter(x=>x.id>boundary);
       const newPhases=phases.slice(1);
       setTrades(newTrades);setNoTrades(newNoTrades);setPhases(newPhases);setStatsMode("phase");
-      const uid=currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||"");
+      const uid=uidNow();
       if(currentUserRef.current?.email) saveUserData(uid,{trades:newTrades,noTrades:newNoTrades,phases:newPhases});
     } else {
       // Delete phase N: remove boundary entry, trades of this phase merge into previous
       const newPhases=phases.filter((_,i)=>i!==phaseIndex-1);
       setPhases(newPhases);setStatsMode("phase");
-      const uid=currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||"");
+      const uid=uidNow();
       if(currentUserRef.current?.email) saveUserData(uid,{phases:newPhases});
     }
     setPhaseDeleteConfirmIdx(null);
@@ -3081,8 +3134,8 @@ export default function App() {
     if(editingId!==null){updated=trades.map(x=>x.id===editingId?{...x,...form,pnlPct:pnl,setupScore:score,conforming,isRevenge,checklistMax:config.items.length}:x);}
     else{const trade={...form,pnlPct:pnl,id:Date.now(),setupScore:score,conforming,isRevenge,checklistMax:config.items.length,accountId:form.accountId||activeAccountId};ut=trade;updated=[trade,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);}
     setTrades(updated);
-    if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{trades:updated,accounts,activeAccountId});
-    const newCfgAfterSave={...config,lastPnlMode:form.pnlMode||"eur"};setConfig(newCfgAfterSave);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:newCfgAfterSave});
+    if(currentUserRef.current?.email) saveUserData(uidNow(),{trades:updated,accounts,activeAccountId});
+    const newCfgAfterSave={...config,lastPnlMode:form.pnlMode||"eur"};setConfig(newCfgAfterSave);if(currentUserRef.current?.email)saveUserData(uidNow(),{config:newCfgAfterSave});
     setForm(emptyForm(config.defaultAsset||"XAU/USD",config.defaultTimeframe||config.lastTimeframe||"M5",config.lastPnlMode||"eur",activeAccountId));setEditingId(null);setCheckinOpen(false);
     // Conseil biais/direction incohérents
     const biaisCheck=form.checkin?.biais||"";
@@ -3111,19 +3164,19 @@ export default function App() {
   const reassignTrade=(tradeId,accId)=>{
     const updated=trades.map(x=>x.id===tradeId?{...x,accountId:accId}:x);
     setTrades(updated);
-    const uid=currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||"");
+    const uid=uidNow();
     if(currentUserRef.current?.email)saveUserData(uid,{trades:updated,accounts,activeAccountId});
   };
   const cancelEdit=()=>{setForm(emptyForm(config.defaultAsset||"XAU/USD",config.defaultTimeframe||config.lastTimeframe||"M5",config.lastPnlMode||"eur",activeAccountId));setEditingId(null);setView("history");scrollToTop();};
   const deleteTrade=id=>{
     const updated=trades.filter(x=>x.id!==id);
     setTrades(updated);setConfirmDeleteId(null);
-    if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{trades:updated});
+    if(currentUserRef.current?.email) saveUserData(uidNow(),{trades:updated});
   };
   const handleReset=()=>{
     setObjectif({pnl:"",wr:"",trades:"",editMode:false});
     setTrades([]);setNoTrades([]);setPhases([]);setShowReset(false);
-    if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{trades:[],noTrades:[],phases:[]});
+    if(currentUserRef.current?.email) saveUserData(uidNow(),{trades:[],noTrades:[],phases:[]});
   };
 
   const [histPhase,setHistPhase]=useState("ALL");
@@ -3152,9 +3205,11 @@ export default function App() {
   // handleLogin must be defined before conditional returns (Rules of Hooks)
   const handleLogin=u=>{
     if(!u) return;
-    const uid = u._uid || encEmail(u.email);
+    // UID = Firebase Auth uniquement. Pas de fallback encEmail (sinon écritures refusées par les règles).
+    const uid = u._uid || (auth&&auth.currentUser&&auth.currentUser.uid) || null;
     currentUserRef.current={email:u.email, uid};
     try { localStorage.setItem("tmt_user",JSON.stringify({email:u.email, uid})); } catch(e){}
+    if(uid) flushPending(uid);
     const userData=u.userData;
     if(userData&&userData.setupDone){
       // Parser les strings JSON si nécessaire (ancien format Firestore)
@@ -3229,7 +3284,7 @@ export default function App() {
     const firstAcc=mkAccount("ph_0",cfg.phaseName||cfg.strategyName||"Mon compte",cfg.neonColor||"#00ff9d",{capital:cfg.capital,devise:cfg.devise,accountType:cfg.accountType});
     setAccounts([firstAcc]);setActiveAccountId("ph_0");
     setConfig(newCfg);setForm(emptyForm(cfg.defaultAsset||"XAU/USD","M5","eur","ph_0"));setPhase("app");
-    if(currentUserRef.current?.email) await saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:newCfg,setupDone:true,lang,trades:[],noTrades:[],phases:[],accounts:[firstAcc],activeAccountId:"ph_0"});
+    if(currentUserRef.current?.email) await saveUserData(uidNow(),{config:newCfg,setupDone:true,lang,trades:[],noTrades:[],phases:[],accounts:[firstAcc],activeAccountId:"ph_0"});
   }} lang={lang}/></>;
 
   return (
@@ -3238,7 +3293,7 @@ export default function App() {
       {notif&&<NotifCard notif={notif} onClose={()=>setNotif(null)}/>}
       <InAppBanner notifs={inAppNotifs} onDismiss={()=>setInAppNotifs(n=>n.slice(1))} neon={neon}/>
       {showTutorial&&<Tutorial neon={neon} onEnd={()=>setShowTutorial(false)}/>}
-      {showImport&&<ImportCSVModal onImport={imported=>{const merged=[...imported,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);setTrades(merged);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{trades:merged});}} onClose={()=>setShowImport(false)} lang={lang} neon={neon} config={config}/>}
+      {showImport&&<ImportCSVModal onImport={imported=>{const merged=[...imported,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);setTrades(merged);if(currentUserRef.current?.email)saveUserData(uidNow(),{trades:merged});}} onClose={()=>setShowImport(false)} lang={lang} neon={neon} config={config}/>}
       {showWeeklyRecap&&<WeeklyRecapModal trades={trades} lang={lang} neon={neon} onClose={()=>setShowWeeklyRecap(false)} onShareWeek={()=>{setShareTarget(null);setShowShare(true);}}/>}
 
       {/* ── SIDEBAR PC ── */}
@@ -3528,7 +3583,7 @@ export default function App() {
           <NoTradeButton onSave={e=>{
             const updated=[e,...noTrades];
             setNoTrades(updated);
-            if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{noTrades:updated});
+            if(currentUserRef.current?.email) saveUserData(uidNow(),{noTrades:updated});
           }} alreadyDone={noTrades.some(x=>x.date===today())} lang={lang} neon={neon} accounts={accounts} activeAccountId={activeAccountId}/>
           {total>0&&<>
             <AdvancedStats trades={pf} neon={neon} lang={lang}/>
@@ -3599,7 +3654,7 @@ export default function App() {
             <div style={{fontSize:8,color:"#ffffff33",letterSpacing:2,marginBottom:6}}>TIMEFRAME</div>
             <div style={{display:"flex",gap:4}}>
               {getTimeframes(config).map(tf=>(
-                <button key={tf} onClick={()=>{setForm({...form,timeframe:tf});const nc={...config,lastTimeframe:tf};setConfig(nc);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:nc});}} className="btn"
+                <button key={tf} onClick={()=>{setForm({...form,timeframe:tf});const nc={...config,lastTimeframe:tf};setConfig(nc);if(currentUserRef.current?.email)saveUserData(uidNow(),{config:nc});}} className="btn"
                   style={{flex:1,padding:"7px 0",background:form.timeframe===tf?`${neon}18`:"#131318",border:`1px solid ${form.timeframe===tf?neon:"#ffffff0d"}`,borderRadius:7,fontSize:9,fontWeight:700,color:form.timeframe===tf?neon:"#ffffffbb",fontFamily:MONO}}>
                   {tf}
                 </button>
@@ -3839,7 +3894,7 @@ export default function App() {
       {view==="settings"&&<SettingsView config={config} onSave={cfg=>{
         const newCfg={...config,...cfg};
         setConfig(newCfg);
-        if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{config:newCfg});
+        if(currentUserRef.current?.email) saveUserData(uidNow(),{config:newCfg});
       }} onLogout={async()=>{
         currentUserRef.current=null;
         try{localStorage.removeItem("tmt_user");}catch(e){}
@@ -3847,8 +3902,8 @@ export default function App() {
         setTrades([]);setNoTrades([]);setPhases([]);setAccounts([]);setActiveAccountId(null);setPhase("onboarding");
       }} onReset={()=>setShowReset(true)} onNewPhase={handleNewPhase} lang={lang} onLangChange={l=>{
         setLang(l);
-        if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{lang:l});
-      }} neon={neon} phases={phases} onPhasesChange={np=>{setPhases(np);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{phases:np});}} onObjectifChange={obj=>{setObjectif(obj);if(currentUserRef.current?.email)saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{objectif:obj});}} onImport={()=>setShowImport(true)}
+        if(currentUserRef.current?.email) saveUserData(uidNow(),{lang:l});
+      }} neon={neon} phases={phases} onPhasesChange={np=>{setPhases(np);if(currentUserRef.current?.email)saveUserData(uidNow(),{phases:np});}} onObjectifChange={obj=>{setObjectif(obj);if(currentUserRef.current?.email)saveUserData(uidNow(),{objectif:obj});}} onImport={()=>setShowImport(true)}
       accounts={accounts} activeAccountId={activeAccountId} onSwitchAccount={switchAccount}
       onAccountsChange={(newAccs,newActiveId)=>{
         setAccounts(newAccs);
@@ -3856,7 +3911,7 @@ export default function App() {
         if(newActiveId!==undefined)setActiveAccountId(newActiveId);
         const act=newAccs.find(a=>a.id===aid);
         if(act){setConfig(c=>({...c,capital:act.capital,devise:act.devise,accountType:act.accountType}));setObjectif(o=>({...o,pnl:act.objPnl,drawdown:act.objDrawdown}));}
-        const uid=currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||"");
+        const uid=uidNow();
         if(currentUserRef.current?.email)saveUserData(uid,{accounts:newAccs,activeAccountId:aid,trades});
       }}
       onCreateAccount={()=>{
@@ -3865,7 +3920,7 @@ export default function App() {
         const nc=mkAccount(id,(lang==="fr"?"Nouveau compte":"New account"),ACCOUNT_COLORS[used%ACCOUNT_COLORS.length],{devise:config.devise});
         const newAccs=[...accounts,nc];
         setAccounts(newAccs);
-        const uid=currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||"");
+        const uid=uidNow();
         if(currentUserRef.current?.email)saveUserData(uid,{accounts:newAccs,activeAccountId,trades});
       }}/>}
 
@@ -3880,12 +3935,12 @@ export default function App() {
         onSave={updated=>{
           const next=noTrades.map(n=>n.id===updated.id?updated:n);
           setNoTrades(next);
-          if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{noTrades:next});
+          if(currentUserRef.current?.email) saveUserData(uidNow(),{noTrades:next});
         }}
         onDelete={id=>{
           const next=noTrades.filter(n=>n.id!==id);
           setNoTrades(next);
-          if(currentUserRef.current?.email) saveUserData(currentUserRef.current?.uid||encEmail(currentUserRef.current?.email||""),{noTrades:next});
+          if(currentUserRef.current?.email) saveUserData(uidNow(),{noTrades:next});
         }}/>}
       {showShare&&<ShareModal trade={shareTarget} trades={trades} lang={lang} neon={neon} config={config} onClose={()=>{setShowShare(false);setShareTarget(null);}}/> }
       {showReset&&<ResetModal trades={trades} onReset={handleReset} onClose={()=>setShowReset(false)} lang={lang} neon={neon}/>}
