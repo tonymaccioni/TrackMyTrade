@@ -608,6 +608,16 @@ function Icon({name, size=18, color="currentColor", strokeW=1.6, animate=false, 
 // ── Contenu légal (FR/EN) ──
 const LEGAL_CONTENT = {
   fr: {
+    mentions: {
+      title: "Mentions légales",
+      sections: [
+        ["Éditeur", "L'application TrackMyTrade est éditée par un entrepreneur individuel. L'Application est actuellement proposée gratuitement et ne donne lieu à aucune facturation."],
+        ["Contact", "Pour toute question, réclamation ou demande relative à vos données, vous pouvez écrire à : contact@trackmytrade.app"],
+        ["Statut", "L'éditeur exerce à ce jour sans structure commerciale enregistrée, l'Application étant gratuite et non commerciale. Les informations d'immatriculation (n° SIRET) seront ajoutées si une activité commerciale est mise en place."],
+        ["Hébergement", "L'Application et les données sont hébergées via Google Firebase — Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irlande. Le déploiement web est assuré par un hébergeur cloud (Vercel / Netlify), serveurs situés dans l'Union européenne et/ou aux États-Unis."],
+        ["Propriété", "L'ensemble des éléments de l'Application (code, interface, nom, logo) est protégé par le droit de la propriété intellectuelle et demeure la propriété exclusive de l'éditeur."],
+      ],
+    },
     cgu: {
       title: "Conditions Générales d'Utilisation",
       sections: [
@@ -629,7 +639,7 @@ const LEGAL_CONTENT = {
         ["3. Base légale", "Exécution du service demandé (RGPD art. 6.1.b), consentement et intérêt légitime à sécuriser l'Application."],
         ["4. Hébergement", "Les données sont hébergées via Google Firebase (authentification et base Firestore), avec des garanties de conformité au RGPD. Les données peuvent être stockées dans l'UE et/ou faire l'objet de transferts encadrés."],
         ["5. Conservation", "Les données sont conservées tant que votre compte est actif. En cas de suppression du compte, elles sont effacées dans un délai raisonnable."],
-        ["6. Vos droits", "Vous disposez des droits d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité sur vos données. Contactez l'éditeur pour les exercer. Vous pouvez aussi saisir la CNIL (www.cnil.fr)."],
+        ["6. Vos droits", "Vous disposez des droits d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité sur vos données. Pour les exercer, contactez contact@trackmytrade.app. Vous pouvez aussi saisir la CNIL (www.cnil.fr)."],
         ["7. Sécurité", "Authentification sécurisée, règles d'accès restreignant chaque utilisateur à ses propres données, chiffrement des communications."],
         ["8. Stockage local", "L'Application utilise un stockage local nécessaire à son fonctionnement (session, préférences). Aucun traceur publicitaire, aucune publicité."],
       ],
@@ -646,6 +656,16 @@ const LEGAL_CONTENT = {
     },
   },
   en: {
+    mentions: {
+      title: "Legal Notice",
+      sections: [
+        ["Publisher", "TrackMyTrade is published by an individual entrepreneur. The App is currently provided free of charge and involves no billing."],
+        ["Contact", "For any question, complaint or data-related request, you can write to: contact@trackmytrade.app"],
+        ["Status", "The publisher currently operates without a registered commercial structure, as the App is free and non-commercial. Registration details (business ID) will be added if a commercial activity is set up."],
+        ["Hosting", "The App and its data are hosted via Google Firebase — Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Ireland. Web deployment is handled by a cloud host (Vercel / Netlify), with servers located in the EU and/or the United States."],
+        ["Ownership", "All elements of the App (code, interface, name, logo) are protected by intellectual property law and remain the exclusive property of the publisher."],
+      ],
+    },
     cgu: {
       title: "Terms of Use",
       sections: [
@@ -667,7 +687,7 @@ const LEGAL_CONTENT = {
         ["3. Legal basis", "Performance of the requested service (GDPR art. 6.1.b), consent, and legitimate interest in securing the App."],
         ["4. Hosting", "Data is hosted via Google Firebase (authentication and Firestore), with GDPR compliance guarantees. Data may be stored in the EU and/or subject to framed transfers."],
         ["5. Retention", "Data is kept while your account is active. Upon account deletion, it is erased within a reasonable time."],
-        ["6. Your rights", "You have rights of access, rectification, erasure, restriction, objection and portability over your data. Contact the publisher to exercise them. You may also contact your data protection authority."],
+        ["6. Your rights", "You have rights of access, rectification, erasure, restriction, objection and portability over your data. To exercise them, contact contact@trackmytrade.app. You may also contact your data protection authority."],
         ["7. Security", "Secure authentication, access rules restricting each user to their own data, encrypted communications."],
         ["8. Local storage", "The App uses local storage necessary for its operation (session, preferences). No advertising trackers, no ads."],
       ],
@@ -689,8 +709,8 @@ function LegalModal({tab:initialTab, lang, neon, onClose}) {
   const [tab,setTab]=useState(initialTab||"cgu");
   const fr=lang==="fr";
   const L=LEGAL_CONTENT[lang]||LEGAL_CONTENT.fr;
-  const doc=L[tab];
-  const tabs=[["cgu",fr?"CGU":"Terms"],["privacy",fr?"Confidentialité":"Privacy"],["disclaimer",fr?"Risques":"Risk"]];
+  const doc=L[tab]||L.cgu;
+  const tabs=[["mentions",fr?"Mentions":"Legal"],["cgu",fr?"CGU":"Terms"],["privacy",fr?"Confidentialité":"Privacy"],["disclaimer",fr?"Risques":"Risk"]];
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",zIndex:400,display:"flex",alignItems:"center",justifyContent:"center",padding:18}} onClick={onClose}>
       <div className="slide-up" style={{background:"#131318",border:`1px solid ${neon}30`,borderRadius:16,width:"100%",maxWidth:520,maxHeight:"88vh",display:"flex",flexDirection:"column",overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
@@ -701,7 +721,7 @@ function LegalModal({tab:initialTab, lang, neon, onClose}) {
           </div>
           <div style={{display:"flex",gap:4}}>
             {tabs.map(([k,label])=>(
-              <button key={k} onClick={()=>setTab(k)} className="btn" style={{flex:1,padding:"9px 0",borderRadius:"8px 8px 0 0",fontSize:11,fontWeight:700,fontFamily:MONO,background:tab===k?`${neon}14`:"transparent",color:tab===k?neon:"#ffffff77",border:"none",borderBottom:tab===k?`2px solid ${neon}`:"2px solid transparent"}}>{label}</button>
+              <button key={k} onClick={()=>setTab(k)} className="btn" style={{flex:1,padding:"9px 2px",borderRadius:"8px 8px 0 0",fontSize:10,fontWeight:700,fontFamily:MONO,whiteSpace:"nowrap",background:tab===k?`${neon}14`:"transparent",color:tab===k?neon:"#ffffff77",border:"none",borderBottom:tab===k?`2px solid ${neon}`:"2px solid transparent"}}>{label}</button>
             ))}
           </div>
         </div>
@@ -713,8 +733,9 @@ function LegalModal({tab:initialTab, lang, neon, onClose}) {
               <div style={{fontSize:12,color:"#ffffffbb",lineHeight:1.65,fontFamily:MONO}}>{body}</div>
             </div>
           ))}
-          <div style={{fontSize:10,color:"#ffffff44",fontStyle:"italic",marginTop:20,lineHeight:1.5,fontFamily:MONO}}>
-            {fr?"Pour toute question relative à ces documents, contactez l'éditeur de l'application.":"For any question regarding these documents, contact the app publisher."}
+          <div style={{fontSize:10,color:"#ffffff66",marginTop:20,lineHeight:1.6,fontFamily:MONO}}>
+            {fr?"Contact : ":"Contact: "}
+            <a href="mailto:contact@trackmytrade.app" style={{color:neon,textDecoration:"underline"}}>contact@trackmytrade.app</a>
           </div>
         </div>
       </div>
@@ -2542,7 +2563,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
         {/* Section Légal */}
         <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10,fontFamily:MONO}}>{fr?"LÉGAL":"LEGAL"}</div>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {[["cgu",fr?"Conditions d'utilisation":"Terms of Use"],["privacy",fr?"Politique de confidentialité":"Privacy Policy"],["disclaimer",fr?"Avertissement sur les risques":"Risk Disclaimer"]].map(([k,label])=>(
+          {[["mentions",fr?"Mentions légales":"Legal Notice"],["cgu",fr?"Conditions d'utilisation":"Terms of Use"],["privacy",fr?"Politique de confidentialité":"Privacy Policy"],["disclaimer",fr?"Avertissement sur les risques":"Risk Disclaimer"]].map(([k,label])=>(
             <button key={k} onClick={()=>setShowLegal(k)} className="btn" style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#131318",border:"1px solid #ffffff10",color:"#ffffffcc",borderRadius:10,padding:"12px 14px",fontSize:12,fontFamily:MONO}}>
               <span style={{display:"flex",alignItems:"center",gap:9}}><Icon name="insight" size={14} color={neon}/>{label}</span>
               <span style={{color:"#ffffff44"}}>›</span>
