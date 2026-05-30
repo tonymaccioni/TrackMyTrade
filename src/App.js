@@ -2543,34 +2543,47 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
 
       {/* ══ ONGLET RÉGLAGES ══ */}
       {tab==="reglages"&&<div>
-        <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
-          <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.langLabel}</div>
-          <div style={{display:"flex",gap:8}}>{[["fr","Français"],["en","English"]].map(([l,label])=><button key={l} onClick={()=>onLangChange(l)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:lang===l?`${neonColor}26`:"#131318",border:`1px solid ${lang===l?neonColor:`${neonColor}22`}`,color:lang===l?neonColor:"#ffffffbb"}}>{label}</button>)}</div>
-        </div>
-        <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
-          <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.colorLabel}</div>
+        {/* — APPARENCE — */}
+        <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10,fontFamily:MONO}}>{fr?"APPARENCE":"APPEARANCE"}</div>
+        <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:16,marginBottom:22}}>
+          <div style={{fontSize:9,color:"#ffffff66",letterSpacing:2,marginBottom:10}}>{t.langLabel}</div>
+          <div style={{display:"flex",gap:8,marginBottom:18}}>{[["fr","Français"],["en","English"]].map(([l,label])=><button key={l} onClick={()=>onLangChange(l)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:lang===l?`${neonColor}26`:"#131318",border:`1px solid ${lang===l?neonColor:`${neonColor}22`}`,color:lang===l?neonColor:"#ffffffbb"}}>{label}</button>)}</div>
+          <div style={{fontSize:9,color:"#ffffff66",letterSpacing:2,marginBottom:10}}>{t.colorLabel}</div>
           <div style={{display:"flex",gap:8}}>{NEON_COLORS.map(c=><button key={c.value} onClick={()=>setNeonColor(c.value)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,background:neonColor===c.value?`${c.value}26`:"#131318",border:`2px solid ${neonColor===c.value?c.value:"transparent"}`,cursor:"pointer"}}><div style={{width:16,height:16,borderRadius:"50%",background:c.value,margin:"0 auto",boxShadow:neonColor===c.value?`0 0 8px ${c.value}`:"none"}}/></button>)}</div>
         </div>
-        <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
+
+        {/* — PRÉFÉRENCES — */}
+        <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10,fontFamily:MONO}}>{fr?"PRÉFÉRENCES":"PREFERENCES"}</div>
+        <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:"4px 16px",marginBottom:16}}>
           <Toggle label={t.calendarToggle} val={calendarOn} set={setCalendarOn}/>
           <Toggle label={t.enableNotif} val={notifOn} set={setNotifOn}/>
         </div>
         <SaveBtn/>
-        <div style={{height:1,background:"rgba(255,77,77,0.1)",margin:"14px 0 10px"}}/>
-        <button onClick={onImport} className="btn" style={{width:"100%",background:`${neon}0a`,border:`1px solid ${neon}28`,color:neon,borderRadius:10,padding:12,fontSize:12,fontFamily:MONO,marginBottom:10}}>↑ {fr?"Importer un CSV (MT4/MT5/cTrader)":"Import CSV (MT4/MT5/cTrader)"}</button>
-        <button onClick={onReset} className="btn" style={{width:"100%",background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d88",borderRadius:10,padding:12,fontSize:12,fontFamily:MONO,marginBottom:10}}>{t.resetBtn}</button>
-        <button onClick={onLogout} className="btn" style={{width:"100%",background:"transparent",border:"1px solid rgba(255,77,77,0.1)",color:"#ff4d4d88",borderRadius:10,padding:12,fontSize:11,fontFamily:MONO,marginBottom:18}}>{t.logout}</button>
-        {/* Section Légal */}
-        <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10,fontFamily:MONO}}>{fr?"LÉGAL":"LEGAL"}</div>
-        <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {[["mentions",fr?"Mentions légales":"Legal Notice"],["cgu",fr?"Conditions d'utilisation":"Terms of Use"],["privacy",fr?"Politique de confidentialité":"Privacy Policy"],["disclaimer",fr?"Avertissement sur les risques":"Risk Disclaimer"]].map(([k,label])=>(
-            <button key={k} onClick={()=>setShowLegal(k)} className="btn" style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#131318",border:"1px solid #ffffff10",color:"#ffffffcc",borderRadius:10,padding:"12px 14px",fontSize:12,fontFamily:MONO}}>
-              <span style={{display:"flex",alignItems:"center",gap:9}}><Icon name="insight" size={14} color={neon}/>{label}</span>
-              <span style={{color:"#ffffff44"}}>›</span>
-            </button>
-          ))}
-        </div>
-        <div style={{fontSize:9,color:"#ffffff33",fontFamily:MONO,marginTop:14,textAlign:"center"}}>TrackMyTrade · v1.0</div>
+
+        {/* — DONNÉES — */}
+        <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,margin:"24px 0 10px",fontFamily:MONO}}>{fr?"DONNÉES":"DATA"}</div>
+        <button onClick={onImport} className="btn" style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:`${neon}0a`,border:`1px solid ${neon}28`,color:neon,borderRadius:10,padding:"13px 14px",fontSize:12,fontFamily:MONO,marginBottom:8}}>
+          <span style={{display:"flex",alignItems:"center",gap:9}}><Icon name="swap" size={14} color={neon}/>{fr?"Importer un CSV (MT4/MT5/cTrader)":"Import CSV (MT4/MT5/cTrader)"}</span>
+          <span style={{color:`${neon}66`}}>›</span>
+        </button>
+        <button onClick={onReset} className="btn" style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4daa",borderRadius:10,padding:"13px 14px",fontSize:12,fontFamily:MONO}}>
+          <span style={{display:"flex",alignItems:"center",gap:9}}><Icon name="trash" size={14} color="#ff4d4daa"/>{t.resetBtn.replace("⊘ ","")}</span>
+          <span style={{color:"#ff4d4d55"}}>›</span>
+        </button>
+
+        {/* — LÉGAL — */}
+        <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,margin:"24px 0 10px",fontFamily:MONO}}>{fr?"LÉGAL":"LEGAL"}</div>
+        <button onClick={()=>setShowLegal("mentions")} className="btn" style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#131318",border:"1px solid #ffffff10",color:"#ffffffcc",borderRadius:10,padding:"13px 14px",fontSize:12,fontFamily:MONO}}>
+          <span style={{display:"flex",alignItems:"center",gap:9}}><Icon name="insight" size={14} color={neon}/>{fr?"Informations légales":"Legal information"}</span>
+          <span style={{color:"#ffffff44"}}>›</span>
+        </button>
+        <div style={{fontSize:8,color:"#ffffff33",fontFamily:MONO,marginTop:8,marginBottom:18,lineHeight:1.5}}>{fr?"Mentions légales · CGU · Confidentialité · Risques":"Legal notice · Terms · Privacy · Risk"}</div>
+
+        {/* — COMPTE — */}
+        <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10,fontFamily:MONO}}>{fr?"COMPTE":"ACCOUNT"}</div>
+        <button onClick={onLogout} className="btn" style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:"transparent",border:"1px solid rgba(255,77,77,0.18)",color:"#ff4d4d99",borderRadius:10,padding:13,fontSize:12,fontFamily:MONO}}>{t.logout}</button>
+
+        <div style={{fontSize:9,color:"#ffffff2a",fontFamily:MONO,marginTop:20,marginBottom:8,textAlign:"center",letterSpacing:1}}>TrackMyTrade · v1.0</div>
         {showLegal&&<LegalModal tab={showLegal} lang={lang} neon={neon} onClose={()=>setShowLegal(null)}/>}
       </div>}
 
