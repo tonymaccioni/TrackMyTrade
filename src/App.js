@@ -4007,6 +4007,10 @@ export default function App() {
             {config.calendarOn&&<TradingCalendar trades={trades} neon={neon} lang={lang}/>}
           </>}
           {total===0&&<div style={{textAlign:"center",padding:"40px 20px"}}><div style={{display:"inline-block",marginBottom:20}}><SplashLogo neon={neon}/></div><div style={{fontSize:13,color:"#ffffffbb",marginBottom:8,fontWeight:700}}>{t.journalEmpty}</div><div style={{fontSize:11,color:"#ffffff55",marginBottom:24,lineHeight:1.6}}>{t.journalEmptyDesc}</div><button onClick={()=>setView("log")} className="btn" style={{background:`${neon}1a`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:"12px 28px",fontSize:12,fontFamily:MONO,fontWeight:700}}>{t.firstTrade}</button></div>}
+          {total>0&&<div onClick={()=>{setReviewMilestone(null);setShowReview(true);}} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginTop:28,marginBottom:8,cursor:"pointer",opacity:0.4,transition:"opacity 0.2s"}} onMouseEnter={e=>e.currentTarget.style.opacity=0.75} onMouseLeave={e=>e.currentTarget.style.opacity=0.4}>
+            <svg viewBox="0 0 36 36" width="10" height="10" fill="none"><polygon points="18,3 22.5,13.5 34,14.5 25.5,22.5 28,34 18,28 8,34 10.5,22.5 2,14.5 13.5,13.5" fill="none" stroke={neon} strokeWidth="2" strokeLinejoin="round"/></svg>
+            <span style={{fontSize:10,color:`${neon}cc`,fontFamily:MONO,letterSpacing:0.5}}>{lang==="fr"?"Donner ton avis sur l'app":"Rate the app"}</span>
+          </div>}
         </div>
       )}
 
