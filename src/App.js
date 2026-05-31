@@ -426,6 +426,7 @@ const CSS = ({neon="#00ff9d"}) => (
     @keyframes slideFromRight{0%{opacity:0;transform:translateX(60px)}65%{transform:translateX(-6px)}80%{transform:translateX(2px)}100%{opacity:1;transform:translateX(0)}}
     @keyframes fadeInSlow{0%{opacity:0}100%{opacity:1}}
     @keyframes logoBoxGlow{0%,100%{box-shadow:0 0 8px ${neon}22}50%{box-shadow:0 0 20px ${neon}55,0 0 6px ${neon}33}}
+    input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus,input:-webkit-autofill:active{-webkit-text-fill-color:#ffffff!important;-webkit-box-shadow:0 0 0 1000px #131318 inset!important;box-shadow:0 0 0 1000px #131318 inset!important;caret-color:#ffffff;transition:background-color 9999s ease-in-out 0s;}
     @keyframes dotPulse{0%,40%,100%{width:6px;background:${neon}22}50%{width:22px;background:${neon};box-shadow:0 0 12px ${neon}99}}
     @keyframes icoCheck{from{stroke-dashoffset:30}to{stroke-dashoffset:0}}
     @keyframes icoX{from{stroke-dashoffset:22}to{stroke-dashoffset:0}}
@@ -1467,32 +1468,32 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
 
       <div className="slide-up" style={{width:"100%",maxWidth:340,position:"relative",zIndex:2,display:"flex",flexDirection:"column",alignItems:"center"}}>
         {/* Logo glow + nom + baseline */}
-        <div style={{width:60,height:60,borderRadius:17,background:`linear-gradient(135deg,${neon}22,${neon}06)`,border:`2px solid ${neon}`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 30px ${neon}66,inset 0 0 14px ${neon}22`,marginBottom:18,position:"relative",overflow:"hidden",animation:"logoBoxGlow 3s ease-in-out infinite"}}>
+        <div style={{width:58,height:58,borderRadius:16,background:`linear-gradient(135deg,${neon}22,${neon}06)`,border:`2px solid ${neon}`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 30px ${neon}66,inset 0 0 14px ${neon}22`,marginBottom:15,position:"relative",overflow:"hidden",animation:"logoBoxGlow 3s ease-in-out infinite"}}>
           <div style={{position:"absolute",top:-3,left:-3,width:"55%",height:"55%",background:`linear-gradient(135deg,${neon}28,transparent 70%)`,borderRadius:"0 0 50% 0"}}/>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
             <polygon points="12,2 22,12 12,22 2,12" fill={`${neon}22`} stroke={neon} strokeWidth="1.5" strokeLinejoin="round"/>
             <polygon points="12,7 17,12 12,17 7,12" fill={neon} style={{filter:`drop-shadow(0 0 7px ${neon})`}}/>
           </svg>
         </div>
-        <div style={{fontSize:24,fontWeight:900,letterSpacing:-0.8,lineHeight:1,textShadow:`0 0 40px ${neon}44`,fontFamily:MONO,marginBottom:8}}>
+        <div style={{fontSize:23,fontWeight:900,letterSpacing:-0.8,lineHeight:1,textShadow:`0 0 40px ${neon}44`,fontFamily:MONO,marginBottom:7}}>
           <b style={{color:neon}}>Track</b><span style={{color:"#ffffff22",fontWeight:300}}>My</span><b style={{color:neon}}>Trade</b>
         </div>
-        <div style={{fontSize:10,color:"#ffffff66",fontFamily:MONO,textAlign:"center",lineHeight:1.6,marginBottom:28,maxWidth:240}}>
+        <div style={{fontSize:9.5,color:"#ffffff55",fontFamily:MONO,textAlign:"center",lineHeight:1.6,letterSpacing:0.5,marginBottom:22,maxWidth:230}}>
           {fr?"Le journal qui transforme ta discipline en données concrètes":"The journal that turns your discipline into concrete data"}
         </div>
 
         {/* Champs avec icônes */}
-        <div style={{position:"relative",width:"100%",marginBottom:11}}>
-          <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}><Icon name="mail" size={15} color={`${neon}66`}/></span>
-          <input type="email" value={email} onChange={e=>{setEmail(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={t.loginEmailPlaceholder} style={{...inSt,marginBottom:0,fontSize:14,paddingLeft:40}} autoFocus/>
+        <div style={{position:"relative",width:"100%",marginBottom:10}}>
+          <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",zIndex:1}}><Icon name="mail" size={15} color={`${neon}88`}/></span>
+          <input type="email" value={email} onChange={e=>{setEmail(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={t.loginEmailPlaceholder} style={{...inSt,background:"#131318",color:"#ffffff",marginBottom:0,fontSize:14,paddingLeft:42}} autoFocus/>
         </div>
-        <div style={{position:"relative",width:"100%",marginBottom:11}}>
-          <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}><Icon name="lock" size={15} color={`${neon}66`}/></span>
-          <input type="password" value={pwd} onChange={e=>{setPwd(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={pwdPlaceholder} style={{...inSt,marginBottom:0,fontSize:14,paddingLeft:40}}/>
+        <div style={{position:"relative",width:"100%",marginBottom:10}}>
+          <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",zIndex:1}}><Icon name="lock" size={15} color={`${neon}88`}/></span>
+          <input type="password" value={pwd} onChange={e=>{setPwd(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={pwdPlaceholder} style={{...inSt,background:"#131318",color:"#ffffff",marginBottom:0,fontSize:14,paddingLeft:42}}/>
         </div>
-        {mode==="signup"&&<div style={{position:"relative",width:"100%",marginBottom:11}}>
-          <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}><Icon name="lock" size={15} color={`${neon}66`}/></span>
-          <input type="password" value={confirmPwd} onChange={e=>{setConfirmPwd(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={t.confirmPwdPlaceholder} style={{...inSt,marginBottom:0,fontSize:14,paddingLeft:40}}/>
+        {mode==="signup"&&<div style={{position:"relative",width:"100%",marginBottom:10}}>
+          <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",zIndex:1}}><Icon name="lock" size={15} color={`${neon}88`}/></span>
+          <input type="password" value={confirmPwd} onChange={e=>{setConfirmPwd(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={t.confirmPwdPlaceholder} style={{...inSt,background:"#131318",color:"#ffffff",marginBottom:0,fontSize:14,paddingLeft:42}}/>
         </div>}
         {mode==="signup"&&<div onClick={()=>setAcceptedTerms(v=>!v)} style={{display:"flex",alignItems:"flex-start",gap:9,marginTop:5,marginBottom:6,cursor:"pointer",padding:"2px 2px",width:"100%"}}>
           <div style={{width:18,height:18,borderRadius:5,border:`1.5px solid ${acceptedTerms?neon:"#ffffff33"}`,background:acceptedTerms?`${neon}22`:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1,transition:"all 0.15s"}}>
