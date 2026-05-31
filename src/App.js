@@ -652,6 +652,14 @@ function Icon({name, size=18, color="currentColor", strokeW=1.6, animate=false, 
       <line x1="4" y1="12" x2="20" y2="12" {...common}/>
       <line x1="4" y1="17" x2="14" y2="17" {...common}/>
     </g>,
+    mail: <g>
+      <rect x="3" y="5" width="18" height="14" rx="2.5" {...common}/>
+      <path d="M4 7l8 5.5L20 7" {...common}/>
+    </g>,
+    lock: <g>
+      <rect x="5" y="10.5" width="14" height="9.5" rx="2.5" {...common}/>
+      <path d="M8 10.5V8a4 4 0 018 0v2.5" {...common}/>
+    </g>,
   };
   const content = paths[name] || paths.insight;
   return (
@@ -1449,18 +1457,44 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
     </div>
   );
   return (
-    <div className="app-fade-in" style={{background:"#0c0c12",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:28,fontFamily:MONO,maxWidth:480,margin:"0 auto"}}>
+    <div className="app-fade-in" style={{position:"relative",background:"#0a0a10",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:28,fontFamily:MONO,maxWidth:480,margin:"0 auto",overflow:"hidden"}}>
       <CSS neon={neon}/>
-      <div style={{position:"absolute",top:20,right:20,display:"flex",gap:6}}>
+      {/* Halo d'ambiance derrière le logo (source lumineuse haut-gauche) */}
+      <div style={{position:"absolute",top:-60,left:-40,width:300,height:300,background:`radial-gradient(circle,${neon} 0%,transparent 68%)`,opacity:0.07,pointerEvents:"none"}}/>
+      <div style={{position:"absolute",top:20,right:20,display:"flex",gap:6,zIndex:3}}>
         {["fr","en"].map(l=><button key={l} onClick={()=>setLang(l)} className="btn" style={{background:lang===l?`${neon}26`:"transparent",border:`1px solid ${lang===l?neon:`${neon}33`}`,color:lang===l?neon:"#ffffffaa",borderRadius:6,padding:"4px 10px",fontSize:10,fontWeight:700,fontFamily:MONO}}>{l.toUpperCase()}</button>)}
       </div>
-      <div style={{marginBottom:24}}><SplashLogo neon={neon}/></div>
-      <div className="slide-up" style={{width:"100%",maxWidth:360}}>
-        <div style={{textAlign:"center",fontSize:9,color:"#ffffff44",letterSpacing:4,marginBottom:20,fontFamily:MONO}}>{mode==="login"?t.loginTitle.toUpperCase():t.signupBtn.toUpperCase()}</div>
-        <input type="email" value={email} onChange={e=>{setEmail(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={t.loginEmailPlaceholder} style={{...inSt,marginBottom:10,fontSize:14}} autoFocus/>
-        <input type="password" value={pwd} onChange={e=>{setPwd(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={pwdPlaceholder} style={{...inSt,marginBottom:mode==="signup"?10:error?10:16,fontSize:14}}/>
-        {mode==="signup"&&<input type="password" value={confirmPwd} onChange={e=>{setConfirmPwd(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={t.confirmPwdPlaceholder} style={{...inSt,marginBottom:12,fontSize:14}}/>}
-        {mode==="signup"&&<div onClick={()=>setAcceptedTerms(v=>!v)} style={{display:"flex",alignItems:"flex-start",gap:9,marginBottom:16,cursor:"pointer",padding:"2px 2px"}}>
+
+      <div className="slide-up" style={{width:"100%",maxWidth:340,position:"relative",zIndex:2,display:"flex",flexDirection:"column",alignItems:"center"}}>
+        {/* Logo glow + nom + baseline */}
+        <div style={{width:60,height:60,borderRadius:17,background:`linear-gradient(135deg,${neon}22,${neon}06)`,border:`2px solid ${neon}`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 30px ${neon}66,inset 0 0 14px ${neon}22`,marginBottom:18,position:"relative",overflow:"hidden",animation:"logoBoxGlow 3s ease-in-out infinite"}}>
+          <div style={{position:"absolute",top:-3,left:-3,width:"55%",height:"55%",background:`linear-gradient(135deg,${neon}28,transparent 70%)`,borderRadius:"0 0 50% 0"}}/>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <polygon points="12,2 22,12 12,22 2,12" fill={`${neon}22`} stroke={neon} strokeWidth="1.5" strokeLinejoin="round"/>
+            <polygon points="12,7 17,12 12,17 7,12" fill={neon} style={{filter:`drop-shadow(0 0 7px ${neon})`}}/>
+          </svg>
+        </div>
+        <div style={{fontSize:24,fontWeight:900,letterSpacing:-0.8,lineHeight:1,textShadow:`0 0 40px ${neon}44`,fontFamily:MONO,marginBottom:8}}>
+          <b style={{color:neon}}>Track</b><span style={{color:"#ffffff22",fontWeight:300}}>My</span><b style={{color:neon}}>Trade</b>
+        </div>
+        <div style={{fontSize:10,color:"#ffffff66",fontFamily:MONO,textAlign:"center",lineHeight:1.6,marginBottom:28,maxWidth:240}}>
+          {fr?"Le journal qui transforme ta discipline en données concrètes":"The journal that turns your discipline into concrete data"}
+        </div>
+
+        {/* Champs avec icônes */}
+        <div style={{position:"relative",width:"100%",marginBottom:11}}>
+          <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}><Icon name="mail" size={15} color={`${neon}66`}/></span>
+          <input type="email" value={email} onChange={e=>{setEmail(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={t.loginEmailPlaceholder} style={{...inSt,marginBottom:0,fontSize:14,paddingLeft:40}} autoFocus/>
+        </div>
+        <div style={{position:"relative",width:"100%",marginBottom:11}}>
+          <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}><Icon name="lock" size={15} color={`${neon}66`}/></span>
+          <input type="password" value={pwd} onChange={e=>{setPwd(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={pwdPlaceholder} style={{...inSt,marginBottom:0,fontSize:14,paddingLeft:40}}/>
+        </div>
+        {mode==="signup"&&<div style={{position:"relative",width:"100%",marginBottom:11}}>
+          <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}><Icon name="lock" size={15} color={`${neon}66`}/></span>
+          <input type="password" value={confirmPwd} onChange={e=>{setConfirmPwd(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder={t.confirmPwdPlaceholder} style={{...inSt,marginBottom:0,fontSize:14,paddingLeft:40}}/>
+        </div>}
+        {mode==="signup"&&<div onClick={()=>setAcceptedTerms(v=>!v)} style={{display:"flex",alignItems:"flex-start",gap:9,marginTop:5,marginBottom:6,cursor:"pointer",padding:"2px 2px",width:"100%"}}>
           <div style={{width:18,height:18,borderRadius:5,border:`1.5px solid ${acceptedTerms?neon:"#ffffff33"}`,background:acceptedTerms?`${neon}22`:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1,transition:"all 0.15s"}}>
             {acceptedTerms&&<Icon name="check" size={12} color={neon}/>}
           </div>
@@ -1473,28 +1507,31 @@ function LoginScreen({onLogin,lang,setLang,neon="#00ff9d"}) {
             <span onClick={e=>{e.stopPropagation();setShowLegal("disclaimer");}} style={{color:neon,textDecoration:"underline",cursor:"pointer"}}>{fr?"avertissement sur les risques":"Risk Disclaimer"}</span>.
           </div>
         </div>}
-        {error&&<div style={{fontSize:11,color:"#ff4d4d",marginBottom:14,padding:"8px 12px",background:"rgba(255,77,77,0.08)",borderRadius:8,border:"1px solid rgba(255,77,77,0.2)"}}>{error}</div>}
+        {error&&<div style={{width:"100%",boxSizing:"border-box",fontSize:11,color:"#ff4d4d",margin:"8px 0 4px",padding:"8px 12px",background:"rgba(255,77,77,0.08)",borderRadius:8,border:"1px solid rgba(255,77,77,0.2)"}}>{error}</div>}
+
+        {/* CTA plein */}
         <button onClick={submit} disabled={loading} className="btn"
-          style={{width:"100%",background:`${neon}22`,border:`1px solid ${neon}`,color:neon,borderRadius:10,padding:16,fontSize:14,fontWeight:700,fontFamily:MONO,marginBottom:20,letterSpacing:2}}>
+          style={{width:"100%",background:loading?`${neon}33`:`linear-gradient(135deg,${neon},${neon}cc)`,border:"none",color:"#06120d",borderRadius:11,padding:15,fontSize:13,fontWeight:800,fontFamily:MONO,marginTop:8,marginBottom:18,letterSpacing:1.5,boxShadow:`0 0 20px ${neon}55`}}>
           {loading?"...":(mode==="login"?(fr?"SE CONNECTER":"SIGN IN"):(fr?"CRÉER UN COMPTE":"CREATE ACCOUNT"))}
         </button>
-        <div style={{textAlign:"center",display:"flex",flexDirection:"column",gap:10}}>
+
+        <div style={{textAlign:"center",display:"flex",flexDirection:"column",gap:10,width:"100%"}}>
           {mode==="login"&&(
           resetSent
             ?<div style={{fontSize:11,color:neon,fontFamily:MONO}}>{fr?"Email de réinitialisation envoyé ✓":"Reset email sent ✓"}</div>
-            :<button onClick={async()=>{if(!email.trim()){setError(fr?"Entrez votre email d'abord":"Enter your email first");return;}setResetLoading(true);try{await sendPasswordResetEmail(auth,email.trim().toLowerCase());setResetSent(true);}catch(e){setError(fr?"Email introuvable":"Email not found");}finally{setResetLoading(false);}}} style={{background:"transparent",border:"none",color:`${neon}55`,fontSize:11,cursor:"pointer",fontFamily:MONO,textDecoration:"underline"}}>
+            :<button onClick={async()=>{if(!email.trim()){setError(fr?"Entrez votre email d'abord":"Enter your email first");return;}setResetLoading(true);try{await sendPasswordResetEmail(auth,email.trim().toLowerCase());setResetSent(true);}catch(e){setError(fr?"Email introuvable":"Email not found");}finally{setResetLoading(false);}}} style={{background:"transparent",border:"none",color:`${neon}66`,fontSize:11,cursor:"pointer",fontFamily:MONO,textDecoration:"underline"}}>
               {resetLoading?(fr?"Envoi…":"Sending…"):(fr?"Mot de passe oublié ?":"Forgot password?")}
             </button>
         )}
-          <div style={{fontSize:11,color:"#ffffff44",fontFamily:MONO}}>
+          <div style={{fontSize:11,color:"#ffffff55",fontFamily:MONO}}>
             {mode==="login"?t.loginSwitch:t.signupSwitch}{" "}
-            <button onClick={()=>{setMode(mode==="login"?"signup":"login");setError("");setConfirmPwd("");}} style={{background:"transparent",border:"none",color:neon,fontSize:11,cursor:"pointer",fontFamily:MONO,textDecoration:"underline"}}>{mode==="login"?t.signupBtn:t.loginTitle}</button>
+            <button onClick={()=>{setMode(mode==="login"?"signup":"login");setError("");setConfirmPwd("");}} style={{background:"transparent",border:"none",color:neon,fontSize:11,cursor:"pointer",fontFamily:MONO,textDecoration:"underline",fontWeight:700}}>{mode==="login"?t.signupBtn:t.loginTitle}</button>
           </div>
-          {mode==="login"&&<div style={{fontSize:10,color:"#ffffff55",fontFamily:MONO,marginTop:4}}>
+          <div style={{fontSize:10,color:"#ffffff44",fontFamily:MONO,marginTop:4}}>
             <span onClick={()=>setShowLegal("cgu")} style={{cursor:"pointer",textDecoration:"underline"}}>{fr?"CGU":"Terms"}</span>{" · "}
             <span onClick={()=>setShowLegal("privacy")} style={{cursor:"pointer",textDecoration:"underline"}}>{fr?"Confidentialité":"Privacy"}</span>{" · "}
             <span onClick={()=>setShowLegal("disclaimer")} style={{cursor:"pointer",textDecoration:"underline"}}>{fr?"Risques":"Risk"}</span>
-          </div>}
+          </div>
         </div>
       </div>
       {showLegal&&<LegalModal tab={showLegal} lang={lang} neon={neon} onClose={()=>setShowLegal(null)}/>}
