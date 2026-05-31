@@ -3957,13 +3957,17 @@ export default function App() {
             const pnlRound=Math.round(totalPnl*10)/10;
             return <div id="tut-kpi" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
               {/* Win Rate */}
-              <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${wrColor}22`,borderRadius:14,padding:"14px 16px",boxShadow:`0 4px 24px ${wrColor}18, inset 0 1px 0 ${wrColor}15`}}>
+              <div style={{position:"relative",overflow:"hidden",background:"linear-gradient(160deg,#191922,#101019)",border:`1px solid ${wrColor}22`,borderRadius:14,padding:"14px 16px",boxShadow:`0 6px 24px rgba(0,0,0,0.5), 0 4px 24px ${wrColor}14, inset 0 1px 0 ${wrColor}15`}}>
+                <div style={{position:"absolute",top:0,left:14,right:14,height:1,background:`linear-gradient(90deg,transparent,${wrColor},transparent)`,opacity:0.55}}/>
+                <div style={{position:"absolute",top:-30,right:-30,width:90,height:90,background:`radial-gradient(circle,${wrColor} 0%,transparent 70%)`,opacity:0.1,pointerEvents:"none"}}/>
                 <div style={{fontSize:9,color:"#ffffffbb",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>{t.winRate}</div>
                 <div style={{fontSize:32,fontWeight:900,fontFamily:MONO,lineHeight:1,textShadow:`0 0 32px ${wrColor}aa`,color:"#ffffff"}}>{winRate}%</div>
                 <div style={{fontSize:10,color:"#ffffff44",marginTop:6,fontFamily:MONO}}>{wins}W · {losses}L · {total} {t.trades}</div>
               </div>
               {/* P&L */}
-              <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:`1px solid ${pnlColor}22`,borderRadius:14,padding:"14px 16px",boxShadow:`0 4px 24px ${pnlColor}18, inset 0 1px 0 ${pnlColor}15`}}>
+              <div style={{position:"relative",overflow:"hidden",background:"linear-gradient(160deg,#191922,#101019)",border:`1px solid ${pnlColor}22`,borderRadius:14,padding:"14px 16px",boxShadow:`0 6px 24px rgba(0,0,0,0.5), 0 4px 24px ${pnlColor}14, inset 0 1px 0 ${pnlColor}15`}}>
+                <div style={{position:"absolute",top:0,left:14,right:14,height:1,background:`linear-gradient(90deg,transparent,${pnlColor},transparent)`,opacity:0.55}}/>
+                <div style={{position:"absolute",top:-30,right:-30,width:90,height:90,background:`radial-gradient(circle,${pnlColor} 0%,transparent 70%)`,opacity:0.1,pointerEvents:"none"}}/>
                 <div style={{fontSize:9,color:"#ffffffbb",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:MONO}}>{t.totalPnl}</div>
                 <div style={{fontSize:32,fontWeight:900,fontFamily:MONO,lineHeight:1,textShadow:`0 0 32px ${pnlColor}aa`,color:"#ffffff"}}>{pnlRound>=0?"+":""}{pnlRound}%</div>
                 {gain!==null?<div style={{fontSize:10,marginTop:5,display:"flex",alignItems:"baseline",gap:5,flexWrap:"wrap"}}>
@@ -3977,7 +3981,9 @@ export default function App() {
           {/* (rendu plus bas, après la Discipline) */}
           {/* === Discipline pleine largeur (gros) === */}
           {total>=2&&discScore!==null&&(
-            <div id="tut-discipline" style={{background:`linear-gradient(145deg,${scoreColor}12,${scoreColor}05)`,border:`1px solid ${scoreColor}30`,borderRadius:14,padding:"16px 18px",marginBottom:12,boxShadow:`0 8px 32px ${scoreColor}12,inset 0 1px 0 ${scoreColor}18`}}>
+            <div id="tut-discipline" style={{position:"relative",overflow:"hidden",background:`linear-gradient(160deg,${scoreColor}14,${scoreColor}04)`,border:`1px solid ${scoreColor}30`,borderRadius:14,padding:"16px 18px",marginBottom:12,boxShadow:`0 8px 30px rgba(0,0,0,0.5),0 6px 32px ${scoreColor}10,inset 0 1px 0 ${scoreColor}18`}}>
+              <div style={{position:"absolute",top:0,left:18,right:18,height:1,background:`linear-gradient(90deg,transparent,${scoreColor},transparent)`,opacity:0.6}}/>
+              <div style={{position:"absolute",top:-40,right:-40,width:120,height:120,background:`radial-gradient(circle,${scoreColor} 0%,transparent 70%)`,opacity:0.12,pointerEvents:"none"}}/>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div>
                   <div style={{fontSize:9,color:"#ffffffaa",letterSpacing:2,fontFamily:MONO,marginBottom:4}}>{t.disciplineLabel}</div>
@@ -4496,7 +4502,9 @@ function ReviewModal({onClose, lang, neon, userEmail, milestone}) {
 
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(6,6,10,0.92)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-      <div style={{background:"#0f0f18",borderRadius:20,padding:"28px 24px 32px",width:"100%",maxWidth:420,border:`1px solid ${neon}22`,boxShadow:`0 8px 40px rgba(0,0,0,0.6),0 0 24px ${neon}11`}}>
+      <div style={{position:"relative",overflow:"hidden",background:"linear-gradient(160deg,#16161f,#0e0e16)",borderRadius:20,padding:"28px 24px 32px",width:"100%",maxWidth:420,border:`1px solid ${neon}22`,boxShadow:`0 12px 48px rgba(0,0,0,0.65),0 0 24px ${neon}11`}}>
+        <div style={{position:"absolute",top:0,left:24,right:24,height:1,background:`linear-gradient(90deg,transparent,${neon},transparent)`,opacity:0.6}}/>
+        <div style={{position:"absolute",top:-40,right:-40,width:120,height:120,background:`radial-gradient(circle,${neon} 0%,transparent 70%)`,opacity:0.1,pointerEvents:"none"}}/>
         {sent ? (
           <div style={{textAlign:"center",padding:"24px 0"}}>
             <div style={{fontSize:30,marginBottom:12,filter:`drop-shadow(0 0 10px ${neon})`}}>✦</div>
