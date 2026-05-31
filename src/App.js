@@ -3,6 +3,24 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceL
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from "firebase/auth";
+import emailjs from "@emailjs/browser";
+
+// ── Config EmailJS (avis utilisateurs → boîte mail) ──
+const EMAILJS_SERVICE = "service_hbaqcm4";
+const EMAILJS_TEMPLATE = "template_8jovjbs";
+const EMAILJS_PUBLIC_KEY = "4F9swiSnMhGSkaOtO";
+const sendReviewEmail = async ({note, message, userEmail, lang, context}) => {
+  try {
+    await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
+      note: "★".repeat(note) + "☆".repeat(5-note) + ` (${note}/5)`,
+      message: message || (lang==="fr"?"(aucun commentaire)":"(no comment)"),
+      name: userEmail || "Utilisateur anonyme",
+      email: userEmail || "no-reply@trackmytrade.app",
+      time: new Date().toLocaleString(lang==="fr"?"fr-FR":"en-US") + (context?` · ${context}`:""),
+    }, EMAILJS_PUBLIC_KEY);
+    return true;
+  } catch(e) { console.error("EmailJS error:", e); return false; }
+};
 
 const firebaseConfig = {
   apiKey: "AIzaSyA6SLYL7Ep451nu6edynUeBbPROtgRucv8",
@@ -2307,7 +2325,7 @@ function GuidedSetup({onDone,lang}) {
   );
 }
 
-function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChange,neon,phases,onPhasesChange,onObjectifChange,onImport,accounts,activeAccountId,onSwitchAccount,onAccountsChange,onCreateAccount}) {
+function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChange,neon,phases,onPhasesChange,onObjectifChange,onImport,onRate,accounts,activeAccountId,onSwitchAccount,onAccountsChange,onCreateAccount}) {
   const t=T[lang];const inSt=mkInput(neon);
   const [showLegal,setShowLegal]=useState(null);
   const [items,setItems]=useState([...config.items]);const [threshold,setThreshold]=useState(config.threshold);
@@ -2582,6 +2600,11 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
         {/* — COMPTE — */}
         <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10,fontFamily:MONO}}>{fr?"COMPTE":"ACCOUNT"}</div>
         <button onClick={onLogout} className="btn" style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:"transparent",border:"1px solid rgba(255,77,77,0.18)",color:"#ff4d4d99",borderRadius:10,padding:13,fontSize:12,fontFamily:MONO}}>{t.logout}</button>
+
+        <button onClick={onRate} className="btn" style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:"transparent",border:`1px solid ${neon}20`,color:`${neon}aa`,borderRadius:10,padding:11,fontSize:11,fontFamily:MONO,marginTop:18,letterSpacing:0.5}}>
+          <svg viewBox="0 0 36 36" width="13" height="13" fill="none"><polygon points="18,3 22.5,13.5 34,14.5 25.5,22.5 28,34 18,28 8,34 10.5,22.5 2,14.5 13.5,13.5" fill={`${neon}88`} stroke={neon} strokeWidth="1.5" strokeLinejoin="round"/></svg>
+          {fr?"Donner mon avis sur l'app":"Rate the app"}
+        </button>
 
         <div style={{fontSize:9,color:"#ffffff2a",fontFamily:MONO,marginTop:20,marginBottom:8,textAlign:"center",letterSpacing:1}}>TrackMyTrade · v1.0</div>
         {showLegal&&<LegalModal tab={showLegal} lang={lang} neon={neon} onClose={()=>setShowLegal(null)}/>}
@@ -3323,6 +3346,8 @@ export default function App() {
   const [showStats,setShowStats]=useState(false);
   const [showTutorial,setShowTutorial]=useState(false);
   const [showImport,setShowImport]=useState(false);
+  const [showReview,setShowReview]=useState(false);       // modal d'avis (étoiles néon)
+  const [reviewMilestone,setReviewMilestone]=useState(null); // 10 ou 100 (ou null = manuel via réglages)
   const [inAppNotifs,setInAppNotifs]=useState([]);
   const [histSearch,setHistSearch]=useState("");
   const [phaseEditIndex,setPhaseEditIndex]=useState(null);  // which phase is being renamed
@@ -3525,6 +3550,19 @@ export default function App() {
       }
     }
     setSaved(true);setTimeout(()=>setSaved(false),2000);
+    // Demande d'avis aux jalons 10 et 100 trades (une seule fois chacun, flag persisté dans config)
+    if(ut){
+      const reviewedMs = config.reviewedMilestones || [];
+      const ms = updated.length===10 ? 10 : updated.length===100 ? 100 : null;
+      if(ms && !reviewedMs.includes(ms)){
+        setReviewMilestone(ms);
+        setShowReview(true);
+        const newReviewed=[...reviewedMs, ms];
+        const cfg2={...config,reviewedMilestones:newReviewed};
+        setConfig(cfg2);
+        if(currentUserRef.current?.email)saveUserData(uidNow(),{config:cfg2});
+      }
+    }
     setView(editingId!==null?"history":"dashboard");scrollToTop();
   };
 
@@ -4282,6 +4320,7 @@ export default function App() {
         setLang(l);
         if(currentUserRef.current?.email) saveUserData(uidNow(),{lang:l});
       }} neon={neon} phases={phases} onPhasesChange={np=>{setPhases(np);if(currentUserRef.current?.email)saveUserData(uidNow(),{phases:np});}} onObjectifChange={obj=>{setObjectif(obj);if(currentUserRef.current?.email)saveUserData(uidNow(),{objectif:obj});}} onImport={()=>setShowImport(true)}
+      onRate={()=>{setReviewMilestone(null);setShowReview(true);}}
       accounts={accounts} activeAccountId={activeAccountId} onSwitchAccount={switchAccount}
       onAccountsChange={(newAccs,newActiveId)=>{
         setAccounts(newAccs);
@@ -4322,8 +4361,91 @@ export default function App() {
         }}/>}
       {showShare&&<ShareModal trade={shareTarget} trades={trades} lang={lang} neon={neon} config={config} onClose={()=>{setShowShare(false);setShareTarget(null);}}/> }
       {showReset&&<ResetModal trades={trades} onReset={handleReset} onClose={()=>setShowReset(false)} lang={lang} neon={neon}/>}
+      {showReview&&<ReviewModal onClose={()=>{setShowReview(false);setReviewMilestone(null);}} lang={lang} neon={neon} userEmail={currentUserRef.current?.email} milestone={reviewMilestone}/>}
       {showNewPhase&&<NewPhaseModal onConfirm={data=>{handleNewPhase(data);setShowNewPhase(false);}} onClose={()=>setShowNewPhase(false)} lang={lang} neon={neon} phases={phases} config={config}/>}
       </div>
+      </div>
+    </div>
+  );
+}
+
+function ReviewModal({onClose, lang, neon, userEmail, milestone}) {
+  const MONO="'Geist Mono','IBM Plex Mono',monospace";
+  const fr = lang==="fr";
+  const [note,setNote]=useState(0);
+  const [hovered,setHovered]=useState(0);
+  const [message,setMessage]=useState("");
+  const [sent,setSent]=useState(false);
+  const [sending,setSending]=useState(false);
+
+  const NeonStar=({filled})=>(
+    <svg viewBox="0 0 36 36" width="36" height="36" fill="none" style={{transition:"all 0.15s",filter:filled?`drop-shadow(0 0 6px ${neon})`:"none"}}>
+      <polygon points="18,3 22.5,13.5 34,14.5 25.5,22.5 28,34 18,28 8,34 10.5,22.5 2,14.5 13.5,13.5"
+        fill={filled?neon:"#ffffff10"} stroke={filled?neon:"#ffffff20"} strokeWidth="1.5" strokeLinejoin="round"/>
+    </svg>
+  );
+
+  const handleSend=async()=>{
+    if(note===0) return;
+    setSending(true);
+    await sendReviewEmail({note, message, userEmail, lang, context: milestone?`${milestone} trades`:""});
+    setSent(true);
+    setSending(false);
+    setTimeout(onClose, 2000);
+  };
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(6,6,10,0.92)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+      <div style={{background:"#0f0f18",borderRadius:"24px 24px 0 0",padding:"28px 24px 40px",width:"100%",maxWidth:480,border:"1px solid #ffffff0f",borderBottom:"none"}}>
+        {sent ? (
+          <div style={{textAlign:"center",padding:"24px 0"}}>
+            <div style={{fontSize:30,marginBottom:12,filter:`drop-shadow(0 0 10px ${neon})`}}>✦</div>
+            <div style={{fontSize:15,fontWeight:800,color:"#ffffff",fontFamily:MONO}}>{fr?"Merci !":"Thank you!"}</div>
+            <div style={{fontSize:11,color:"#ffffff55",marginTop:6}}>{fr?"Ton avis a bien été envoyé.":"Your feedback was sent."}</div>
+          </div>
+        ) : (
+          <>
+            <div style={{textAlign:"center",marginBottom:22}}>
+              <div style={{fontSize:13,fontWeight:800,color:"#ffffff",fontFamily:MONO,marginBottom:6,lineHeight:1.4}}>
+                {milestone===100
+                  ? (fr?"✦ 100 trades sur TrackMyTrade":"✦ 100 trades on TrackMyTrade")
+                  : (fr?"✦ Tu utilises TrackMyTrade depuis 10 trades":"✦ You've logged 10 trades")}
+              </div>
+              <div style={{fontSize:11,color:"#ffffff55"}}>
+                {milestone===100
+                  ? (fr?"Avec le recul, qu'est-ce que tu en penses ?":"Looking back, what do you think?")
+                  : (fr?"Qu'est-ce que tu en penses ?":"What do you think so far?")}
+              </div>
+            </div>
+
+            <div style={{display:"flex",justifyContent:"center",gap:16,marginBottom:22}}>
+              {[1,2,3,4,5].map(i=>{
+                const filled=(hovered||note)>=i;
+                return(
+                  <span key={i}
+                    onMouseEnter={()=>setHovered(i)} onMouseLeave={()=>setHovered(0)}
+                    onClick={()=>setNote(i)}
+                    style={{cursor:"pointer",transition:"transform 0.12s",transform:filled?"scale(1.15)":"scale(1)",lineHeight:0}}>
+                    <NeonStar filled={filled}/>
+                  </span>
+                );
+              })}
+            </div>
+
+            <textarea value={message} onChange={e=>setMessage(e.target.value)}
+              placeholder={fr?"Un commentaire ? (optionnel)":"Any comment? (optional)"} rows={3}
+              style={{width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:10,color:"#ffffff",padding:"12px 14px",fontSize:12,fontFamily:MONO,outline:"none",resize:"none",marginBottom:16,boxSizing:"border-box"}}/>
+
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={onClose} className="btn" style={{flex:1,background:"transparent",border:"1px solid #ffffff15",borderRadius:12,padding:"13px 0",fontSize:11,color:"#ffffff44",fontFamily:MONO,cursor:"pointer"}}>
+                {fr?"Plus tard":"Later"}
+              </button>
+              <button onClick={handleSend} disabled={note===0||sending} className="btn" style={{flex:2,background:"transparent",border:`1.5px solid ${note>0?neon:"#ffffff15"}`,borderRadius:12,padding:"13px 0",fontSize:12,fontWeight:800,color:note>0?"#ffffff":"#ffffff33",fontFamily:MONO,cursor:note>0?"pointer":"default",boxShadow:note>0?`0 0 12px ${neon}44`:"none",transition:"all 0.2s"}}>
+                {sending?"...":(fr?"✓ Envoyer":"✓ Send")}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
