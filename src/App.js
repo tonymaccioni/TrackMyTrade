@@ -135,6 +135,30 @@ const inKillzone = (time, kz) => {
   return a<=b ? (t>=a&&t<=b) : (t>=a||t<=b);
 };
 const activeKillzone = (time, killzones) => (killzones||[]).find(kz=>inKillzone(time,kz)) || null;
+// ── Détection de patterns comportementaux dans les notes (analyse locale, mots-clés) ──
+const BEHAVIOR_PATTERNS = [
+  {key:"early",   fr:"entrer trop tôt / avant confirmation", en:"entering too early / before confirmation", kw:["trop tot","trop tôt","avant confirmation","pas attendu","pas confirme","precipit","anticip","entree rapide","too early","didn't wait","no confirmation","jumped in","premature"]},
+  {key:"fomo",    fr:"FOMO / peur de rater",                 en:"FOMO / fear of missing out",               kw:["fomo","peur de rater","peur de louper","rater le move","manquer le","fear of missing","chasing","chase the","afraid to miss"]},
+  {key:"revenge", fr:"revenge trading",                      en:"revenge trading",                          kw:["revenge","me refaire","reprendre ma perte","venger","recuperer","tilt","revenge trade","get back","make it back","on tilt"]},
+  {key:"movesl",  fr:"déplacer le stop loss",               en:"moving the stop loss",                     kw:["deplace mon sl","deplacé le sl","recule le sl","elargi le sl","bouge le stop","move my sl","moved sl","widen","moved my stop","removed sl","enleve le sl"]},
+  {key:"exit",    fr:"sortir trop tôt",                      en:"exiting too early",                         kw:["sorti trop tot","sorti trop tôt","ferme trop tot","coupe trop tot","pas laisse courir","cut too early","closed too early","exited early","didn't let it run","took profit too"]},
+  {key:"over",    fr:"surtrading",                           en:"overtrading",                              kw:["surtrading","trop de trade","trop trade","overtrad","too many trades","over traded","forced a trade","force le trade"]},
+  {key:"boredom", fr:"trade par ennui",                      en:"boredom trading",                          kw:["ennui","par ennui","m'ennuyais","rien a faire","boredom","bored","nothing to do"]},
+  {key:"hesit",   fr:"hésitation / manque de conviction",   en:"hesitation / low conviction",              kw:["hesit","hésit","pas sur","doute","manque de conviction","hesitat","unsure","second guess","doubted"]},
+  {key:"counter", fr:"trade à contre-tendance",             en:"counter-trend trading",                    kw:["contre tendance","contre-tendance","contre le trend","contre la tendance","counter trend","against the trend","against trend"]},
+  {key:"tired",   fr:"fatigue / distraction",               en:"fatigue / distraction",                    kw:["fatigue","fatigué","distrait","pas concentre","epuise","tired","distracted","not focused","exhausted","sleepy"]},
+];
+const normalizeTxt = (s) => (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+const analyzeBehavior = (trades) => {
+  const withNotes = trades.filter(t=>t.notes&&t.notes.trim().length>3);
+  if(withNotes.length<3) return [];
+  const counts = BEHAVIOR_PATTERNS.map(p=>{
+    const matched = withNotes.filter(t=>{const n=normalizeTxt(t.notes); return p.kw.some(k=>n.includes(normalizeTxt(k)));});
+    const losses = matched.filter(t=>t.result==="LOSS").length;
+    return {...p, count:matched.length, losses};
+  }).filter(p=>p.count>=2).sort((a,b)=>b.count-a.count);
+  return counts;
+};
 const today = () => new Date().toISOString().split("T")[0];
 const rc = (r, neon="#00ff9d") => r==="WIN"?neon:r==="LOSS"?"#ff4d4d":"#f0b429";
 const fmtPct = v => { if(v===""||v===null||v===undefined) return "—"; const n=Number(v),abs=Math.abs(n); const s=abs%1===0?abs.toFixed(0):abs*10%1===0?abs.toFixed(1):abs*100%1===0?abs.toFixed(2):abs.toFixed(3); return `${n>=0?"+":""}${n<0?"-":""}${s}%`; };
@@ -1820,6 +1844,8 @@ function StatsInsightsModal({trades:tradesProp,lang,neon,onClose,accounts,active
     if(humeurStats.length>=2) insights.push({type:humeurStats[humeurStats.length-1].wr<40?"warn":"mood",icon:"humeur",txt:`En état "${humeurStats[0].h}" : ${humeurStats[0].wr}% WR. En état "${humeurStats[humeurStats.length-1].h}" : ${humeurStats[humeurStats.length-1].wr}%.${humeurStats[humeurStats.length-1].wr<40?" Ne trade pas dans cet état.":""}`});
     if(highRWR!==null&&lowRWR!==null) insights.push({type:highRWR>lowRWR?"good":"neutral",icon:"star",txt:`Rejet ≥8 : ${highRWR}% WR vs ${lowRWR}% avec rejet <8.${highRWR-lowRWR>15?" La qualité du rejet change tout.":""}`});
     if(revs.length>0) insights.push({type:"danger",icon:"flame",txt:`${revs.length} revenge trade${revs.length>1?"s":""} — ${Math.round(revs.filter(x=>x.result==="LOSS").length/revs.length*100)}% de pertes. Stop.`});
+    const behFr=analyzeBehavior(trades);
+    if(behFr.length){const top=behFr[0];const lossPct=top.count?Math.round(top.losses/top.count*100):0;insights.push({type:"warn",icon:"flame",txt:`Dans tes notes, tu mentionnes ${top.count}× le fait de ${top.fr}${lossPct>=50?` — et ${lossPct}% de ces trades sont perdants`:""}. C'est ton pattern comportemental le plus récurrent : cible-le en priorité.${behFr[1]?` Vient ensuite : ${behFr[1].fr} (${behFr[1].count}×).`:""}`});}
   } else {
     insights.push({type:"global",icon:"diamond",txt:`Over ${trades.length} trades, ${wr}% WR for ${fmtP(totalPnl)} P&L. ${wr>=55?"Your edge is real.":wr>=45?"Near breakeven.":"Work on setup selection."} R/R: ${ratio.toFixed(2)} · Profit Factor: ${pfStr}. Discipline: ${disc}/10.`});
     if(conf.length>=2&&nconf.length>=2) insights.push({type:confWR-nconfWR>10?"good":"warn",icon:confWR-nconfWR>10?"check":"warn",txt:`Compliant: ${confWR}% WR vs ${nconfWR}% non-compliant.${confWR-nconfWR>10?` +${confWR-nconfWR}% when following rules.`:""}`});
@@ -1829,6 +1855,8 @@ function StatsInsightsModal({trades:tradesProp,lang,neon,onClose,accounts,active
     if(humeurStats.length>=2) insights.push({type:humeurStats[humeurStats.length-1].wr<40?"warn":"mood",icon:"humeur",txt:`"${humeurStats[0].h}": ${humeurStats[0].wr}% WR. "${humeurStats[humeurStats.length-1].h}": ${humeurStats[humeurStats.length-1].wr}%.${humeurStats[humeurStats.length-1].wr<40?" Don't trade in that state.":""}`});
     if(highRWR!==null&&lowRWR!==null) insights.push({type:highRWR>lowRWR?"good":"neutral",icon:"star",txt:`Rejection ≥8: ${highRWR}% WR vs ${lowRWR}% with lower rejection.${highRWR-lowRWR>15?" Quality rejection matters.":""}`});
     if(revs.length>0) insights.push({type:"danger",icon:"flame",txt:`${revs.length} revenge trade${revs.length>1?"s":""} — ${Math.round(revs.filter(x=>x.result==="LOSS").length/revs.length*100)}% loss rate. Stop.`});
+    const behEn=analyzeBehavior(trades);
+    if(behEn.length){const top=behEn[0];const lossPct=top.count?Math.round(top.losses/top.count*100):0;insights.push({type:"warn",icon:"flame",txt:`In your notes, you mention ${top.en} ${top.count}×${lossPct>=50?` — and ${lossPct}% of those trades lose`:""}. This is your most recurring behavioral pattern: target it first.${behEn[1]?` Next: ${behEn[1].en} (${behEn[1].count}×).`:""}`});}
   }
 
   const typeColor={global:neon,good:neon,warn:"#f0b429",danger:"#ff4d4d",asset:neon,day:"#f0b429",hour:neon,mood:"#f0b429",neutral:neon};
@@ -2499,104 +2527,127 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
       })()}
 
       {/* ══ ONGLET STRATÉGIE ══ */}
-      {tab==="strategie"&&<div>
-        <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.strategyName}</div>
-        <input value={stratName} onChange={e=>setStratName(e.target.value)} style={inSt}/>
-        <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
-          <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.maxTradesLabel}</div>
-          <div style={{display:"flex",gap:6}}>
-            {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setMaxTrades(n)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:maxTrades===n?`${neonColor}26`:"#131318",border:`1px solid ${maxTrades===n?neonColor:`${neonColor}22`}`,color:maxTrades===n?neonColor:"#ffffffbb"}}>{n}</button>)}
-            <button onClick={()=>setMaxTrades(0)} className="btn" style={{flex:1.4,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:maxTrades===0?`${neonColor}26`:"#131318",border:`1px solid ${maxTrades===0?neonColor:`${neonColor}22`}`,color:maxTrades===0?neonColor:"#ffffffaa"}}>∞</button>
-          </div>
-        </div>
-        <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>ACTIFS</div>
-        <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
-          {assets.map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4,background:"#131318",border:`1px solid ${neon}26`,borderRadius:6,padding:"4px 8px"}}>
-            <span style={{fontSize:11,color:"#ffffff",fontFamily:MONO}}>{a}</span>
-            {!PRESET_ASSETS.includes(a)&&<button onClick={()=>setAssets(assets.filter(x=>x!==a))} style={{background:"transparent",border:"none",color:"#ff4d4d",fontSize:10,cursor:"pointer"}}>✕</button>}
-          </div>)}
-        </div>
-        <div style={{display:"flex",gap:8,marginBottom:14}}>
-          <input value={customAsset} onChange={e=>setCustomAsset(e.target.value)} placeholder={t.customAsset} onKeyDown={e=>{if(e.key==="Enter"&&customAsset.trim()){setAssets([...assets,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} style={{...inSt,marginBottom:0,flex:1}}/>
-          <button onClick={()=>{if(customAsset.trim()){setAssets([...assets,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} className="btn" style={{background:`${neonColor}1a`,border:`1px solid ${neonColor}55`,color:neonColor,borderRadius:8,padding:"0 14px",fontSize:18}}>+</button>
-        </div>
-        {/* ── Modules activables ── */}
-        <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
-          <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:4}}>{fr?"MODULES DU FORMULAIRE":"FORM MODULES"}</div>
-          <div style={{fontSize:9,color:"#ffffff44",marginBottom:8,lineHeight:1.5}}>{fr?"Active ou masque des champs à la saisie. Les données déjà enregistrées sont conservées.":"Show or hide fields when logging. Existing data is kept."}</div>
-          {[["rejet",fr?"Qualité du rejet (1-10)":"Rejection quality (1-10)"],["checkin",fr?"Check-in (humeur / biais)":"Check-in (mood / bias)"],["postSl",fr?"Direction post-SL":"Post-SL direction"],["revenge",fr?"Revenge trade":"Revenge trade"],["timeframe",fr?"Timeframe":"Timeframe"]].map(([key,label])=>(()=>{
-            const val=modules[key]!==false;
-            return <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${neonColor}0d`}}>
-              <span style={{fontSize:12,color:"#ffffff",fontFamily:MONO}}>{label}</span>
-              <button onClick={()=>setModules(m=>({...m,[key]:!val}))} className="btn" style={{width:44,height:24,borderRadius:12,background:val?`${neonColor}33`:"#ffffff12",border:`1px solid ${val?neonColor:`${neonColor}30`}`,position:"relative",transition:"all 0.2s"}}>
-                <div style={{width:16,height:16,borderRadius:"50%",background:val?neonColor:"#ffffffaa",position:"absolute",top:3,left:val?24:4,transition:"all 0.2s"}}/>
-              </button>
-            </div>;
-          })())}
-        </div>
-        {/* ── Timeframes visibles + défaut ── */}
-        {modules.timeframe!==false&&<div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
-          <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:4}}>{fr?"TIMEFRAMES AFFICHÉS":"VISIBLE TIMEFRAMES"}</div>
-          <div style={{fontSize:9,color:"#ffffff44",marginBottom:8}}>{fr?"Coche ceux que tu utilises (min. 1).":"Tick the ones you use (min. 1)."}</div>
-          <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:14}}>
-            {ALL_TIMEFRAMES.map(tf=>{
-              const on=timeframes.includes(tf);
-              return <button key={tf} onClick={()=>toggleTf(tf)} className="btn" style={{flex:"1 0 13%",minWidth:42,padding:"9px 0",borderRadius:8,fontSize:10,fontWeight:700,fontFamily:MONO,background:on?`${neonColor}26`:"#131318",border:`1px solid ${on?neonColor:"#ffffff0d"}`,color:on?neonColor:"#ffffff55"}}>{tf}</button>;
-            })}
-          </div>
-          <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:8}}>{fr?"TIMEFRAME PAR DÉFAUT":"DEFAULT TIMEFRAME"}</div>
-          <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-            {timeframes.map(tf=>(
-              <button key={tf} onClick={()=>setDefaultTf(tf)} className="btn"
-                style={{flex:"1 0 13%",minWidth:42,padding:"9px 0",borderRadius:8,fontSize:9,fontWeight:700,fontFamily:MONO,
-                  background:defaultTf===tf?`${neonColor}18`:"#131318",
-                  border:`1px solid ${defaultTf===tf?neonColor:"#ffffff0d"}`,
-                  color:defaultTf===tf?neonColor:"#ffffffbb"}}>
-                {tf}
-              </button>
-            ))}
-          </div>
-        </div>}
-        {/* ── Killzones (ICT) ── */}
-        <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
-          <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:4}}>{fr?"KILLZONES (ICT)":"KILLZONES (ICT)"}</div>
-          <div style={{fontSize:9,color:"#ffffff44",marginBottom:10,lineHeight:1.5}}>{fr?"Tes fenêtres horaires. Un badge s'affiche à la saisie si l'heure d'entrée tombe dedans.":"Your time windows. A badge shows when logging if the entry time falls inside."}</div>
-          {killzones.map((kz,i)=>(
-            <div key={i} style={{display:"flex",gap:6,marginBottom:8,alignItems:"center"}}>
-              <input value={kz.name} onChange={e=>{const n=[...killzones];n[i]={...n[i],name:e.target.value};setKillzones(n);}} placeholder={fr?"Nom (ex: London KZ)":"Name (e.g. London KZ)"} style={{...inSt,marginBottom:0,flex:2}}/>
-              <input type="time" value={kz.start} onChange={e=>{const n=[...killzones];n[i]={...n[i],start:e.target.value};setKillzones(n);}} style={{...inSt,marginBottom:0,flex:1,colorScheme:"dark",color:"#ffffffcc",minWidth:0}}/>
-              <input type="time" value={kz.end} onChange={e=>{const n=[...killzones];n[i]={...n[i],end:e.target.value};setKillzones(n);}} style={{...inSt,marginBottom:0,flex:1,colorScheme:"dark",color:"#ffffffcc",minWidth:0}}/>
-              <button onClick={()=>setKillzones(killzones.filter((_,idx)=>idx!==i))} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d",borderRadius:6,padding:"8px 10px",cursor:"pointer",flexShrink:0}}>✕</button>
+      {tab==="strategie"&&(()=>{
+        const Block=({icon,title,sub,children})=>(
+          <div style={{marginBottom:20}}>
+            <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:13}}>
+              <div style={{width:28,height:28,borderRadius:9,background:`${neonColor}12`,border:`1px solid ${neonColor}33`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,color:neonColor,flexShrink:0}}>{icon}</div>
+              <div><div style={{fontSize:12,color:"#fff",fontWeight:700,letterSpacing:0.3}}>{title}</div><div style={{fontSize:8.5,color:"#ffffff44",marginTop:1}}>{sub}</div></div>
             </div>
-          ))}
-          <button onClick={()=>setKillzones([...killzones,{name:"",start:"08:00",end:"11:00"}])} style={{width:"100%",background:"transparent",border:`1px dashed ${neonColor}35`,color:"#ffffff66",borderRadius:8,padding:9,fontSize:11,cursor:"pointer",fontFamily:MONO}}>{fr?"+ Ajouter une killzone":"+ Add a killzone"}</button>
-        </div>
-        <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.thresholdLabel}</div>
-        <div style={{display:"flex",gap:6,marginBottom:16}}>
-          {[4,5,6,7,8].map(n=><button key={n} onClick={()=>setThreshold(n)} className="btn" style={{flex:1,padding:8,borderRadius:8,fontSize:13,fontWeight:700,fontFamily:MONO,background:threshold===n?`${neonColor}33`:"#131318",border:`1px solid ${threshold===n?neonColor:`${neonColor}22`}`,color:threshold===n?neonColor:"#ffffffbb"}}>{n}</button>)}
-        </div>
-        <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.criteriaLabel} ({items.length})</div>
-        {items.map((item,i)=>{
-          const isE=(eliminatoires||[]).includes(i);
-          return <div key={i} style={{display:"flex",gap:6,marginBottom:8,alignItems:"center"}}>
-            <input value={item} onChange={e=>{const n=[...items];n[i]=e.target.value;setItems(n);}} style={{...inSt,marginBottom:0,flex:1}}/>
-            <button onClick={()=>setEliminatoires(p=>isE?p.filter(x=>x!==i):[...p,i])} title={isE?"Retirer éliminatoire":"Marquer éliminatoire"} style={{background:isE?"rgba(255,77,77,0.15)":"transparent",border:`1px solid ${isE?"#ff4d4d":"rgba(255,77,77,0.25)"}`,color:isE?"#ff4d4d":"#ffffff44",borderRadius:6,padding:"6px 8px",cursor:"pointer",flexShrink:0,display:"inline-flex",alignItems:"center"}}><Icon name="bolt" size={13} color={isE?"#ff4d4d":"#ffffff44"}/></button>
-            <button onClick={()=>setItems(items.filter((_,idx)=>idx!==i))} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d",borderRadius:6,padding:"8px 10px",cursor:"pointer",flexShrink:0}}>✕</button>
-          </div>;
-        })}
-        <div style={{fontSize:9,color:`${neonColor}99`,letterSpacing:1.5,marginBottom:8}}>{fr?"✦ AJOUTS ICT SUGGÉRÉS":"✦ SUGGESTED ICT ADD-ONS"}</div>
-        <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
-          {ICT_PRESETS[fr?"fr":"en"].map(preset=>{
-            const already=items.includes(preset);
-            return <button key={preset} onClick={()=>{if(!already)setItems([...items,preset]);}} disabled={already}
-              style={{background:already?`${neonColor}1a`:"transparent",border:`1px solid ${already?neonColor:`${neonColor}33`}`,color:already?neonColor:"#ffffffaa",borderRadius:7,padding:"6px 10px",fontSize:10,fontFamily:MONO,cursor:already?"default":"pointer",opacity:already?0.7:1}}>
-              {already?"✓ ":"+ "}{preset}
-            </button>;
-          })}
-        </div>
-        <button onClick={()=>setItems([...items,""])} style={{width:"100%",background:"transparent",border:`1px dashed ${neon}35`,color:"#ffffff44",borderRadius:8,padding:10,fontSize:12,cursor:"pointer",fontFamily:MONO,marginBottom:16}}>{t.addCriteria}</button>
-        <SaveBtn/>
-      </div>}
+            {children}
+          </div>
+        );
+        const Divider=()=><div style={{height:1,background:`linear-gradient(90deg,transparent,${neonColor}22,transparent)`,margin:"4px 0 20px"}}/>;
+        const FLbl=({children})=><div style={{fontSize:8.5,color:"#ffffff66",letterSpacing:1.5,marginBottom:7}}>{children}</div>;
+        return <div>
+          {/* ── BLOC 1 : IDENTITÉ ── */}
+          <Block icon="◈" title={fr?"Identité":"Identity"} sub={fr?"Ce que tu trades":"What you trade"}>
+            <FLbl>{t.strategyName}</FLbl>
+            <input value={stratName} onChange={e=>setStratName(e.target.value)} style={{...inSt,marginBottom:12}}/>
+            <FLbl>{fr?"ACTIFS":"ASSETS"}</FLbl>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
+              {assets.map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4,background:"#131318",border:`1px solid ${neonColor}26`,borderRadius:6,padding:"4px 8px"}}>
+                <span style={{fontSize:11,color:"#ffffff",fontFamily:MONO}}>{a}</span>
+                {!PRESET_ASSETS.includes(a)&&<button onClick={()=>setAssets(assets.filter(x=>x!==a))} style={{background:"transparent",border:"none",color:"#ff4d4d",fontSize:10,cursor:"pointer"}}>✕</button>}
+              </div>)}
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <input value={customAsset} onChange={e=>setCustomAsset(e.target.value)} placeholder={t.customAsset} onKeyDown={e=>{if(e.key==="Enter"&&customAsset.trim()){setAssets([...assets,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} style={{...inSt,marginBottom:0,flex:1}}/>
+              <button onClick={()=>{if(customAsset.trim()){setAssets([...assets,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} className="btn" style={{background:`${neonColor}1a`,border:`1px solid ${neonColor}55`,color:neonColor,borderRadius:8,padding:"0 14px",fontSize:18}}>+</button>
+            </div>
+          </Block>
+
+          <Divider/>
+
+          {/* ── BLOC 2 : RÈGLES D'ENTRÉE ── */}
+          <Block icon="✓" title={fr?"Règles d'entrée":"Entry rules"} sub={fr?"Ce qui définit un setup valide":"What makes a setup valid"}>
+            <FLbl>{fr?"SEUIL DE CONFORMITÉ — MIN. CRITÈRES VALIDÉS":"COMPLIANCE THRESHOLD — MIN. CRITERIA MET"}</FLbl>
+            <div style={{display:"flex",gap:6,marginBottom:16}}>
+              {[4,5,6,7,8].map(n=><button key={n} onClick={()=>setThreshold(n)} className="btn" style={{flex:1,padding:9,borderRadius:8,fontSize:13,fontWeight:700,fontFamily:MONO,background:threshold===n?`${neonColor}33`:"#131318",border:`1px solid ${threshold===n?neonColor:`${neonColor}22`}`,color:threshold===n?neonColor:"#ffffffbb"}}>{n}</button>)}
+            </div>
+            <FLbl>{t.criteriaLabel} ({items.length})</FLbl>
+            {items.map((item,i)=>{
+              const isE=(eliminatoires||[]).includes(i);
+              return <div key={i} style={{display:"flex",gap:6,marginBottom:8,alignItems:"center"}}>
+                <input value={item} onChange={e=>{const n=[...items];n[i]=e.target.value;setItems(n);}} style={{...inSt,marginBottom:0,flex:1}}/>
+                <button onClick={()=>setEliminatoires(p=>isE?p.filter(x=>x!==i):[...p,i])} title={isE?"Retirer éliminatoire":"Marquer éliminatoire"} style={{background:isE?"rgba(255,77,77,0.15)":"transparent",border:`1px solid ${isE?"#ff4d4d":"rgba(255,77,77,0.25)"}`,color:isE?"#ff4d4d":"#ffffff44",borderRadius:6,padding:"6px 8px",cursor:"pointer",flexShrink:0,display:"inline-flex",alignItems:"center"}}><Icon name="bolt" size={13} color={isE?"#ff4d4d":"#ffffff44"}/></button>
+                <button onClick={()=>setItems(items.filter((_,idx)=>idx!==i))} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d",borderRadius:6,padding:"8px 10px",cursor:"pointer",flexShrink:0}}>✕</button>
+              </div>;
+            })}
+            <button onClick={()=>setItems([...items,""])} style={{width:"100%",background:"transparent",border:`1px dashed ${neonColor}35`,color:"#ffffff66",borderRadius:8,padding:10,fontSize:12,cursor:"pointer",fontFamily:MONO,marginBottom:10}}>{t.addCriteria}</button>
+            <div style={{fontSize:8.5,color:"#ffffff44",marginBottom:7}}>{fr?"Suggestions courantes :":"Common suggestions:"}</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {ICT_PRESETS[fr?"fr":"en"].map(preset=>{
+                const already=items.includes(preset);
+                return <button key={preset} onClick={()=>{if(!already)setItems([...items,preset]);}} disabled={already}
+                  style={{background:already?`${neonColor}1a`:"transparent",border:`1px solid ${already?neonColor:`${neonColor}2a`}`,color:already?neonColor:"#ffffff88",borderRadius:7,padding:"6px 9px",fontSize:9.5,fontFamily:MONO,cursor:already?"default":"pointer",opacity:already?0.7:1}}>
+                  {already?"✓ ":"+ "}{preset}
+                </button>;
+              })}
+            </div>
+          </Block>
+
+          <Divider/>
+
+          {/* ── BLOC 3 : CADRE DE TRADING ── */}
+          <Block icon="⏱" title={fr?"Cadre de trading":"Trading frame"} sub={fr?"Quand et combien":"When and how much"}>
+            <FLbl>{t.maxTradesLabel}</FLbl>
+            <div style={{display:"flex",gap:6,marginBottom:16}}>
+              {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setMaxTrades(n)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:maxTrades===n?`${neonColor}26`:"#131318",border:`1px solid ${maxTrades===n?neonColor:`${neonColor}22`}`,color:maxTrades===n?neonColor:"#ffffffbb"}}>{n}</button>)}
+              <button onClick={()=>setMaxTrades(0)} className="btn" style={{flex:1.3,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:maxTrades===0?`${neonColor}26`:"#131318",border:`1px solid ${maxTrades===0?neonColor:`${neonColor}22`}`,color:maxTrades===0?neonColor:"#ffffffaa"}}>∞</button>
+            </div>
+            <FLbl>{fr?"KILLZONES (ICT)":"KILLZONES (ICT)"}</FLbl>
+            <div style={{fontSize:8.5,color:"#ffffff44",marginBottom:9,lineHeight:1.5}}>{fr?"Fenêtres horaires. Un badge s'affiche à la saisie si l'heure tombe dedans.":"Time windows. A badge shows when logging if the time falls inside."}</div>
+            {killzones.map((kz,i)=>(
+              <div key={i} style={{display:"flex",gap:5,marginBottom:7,alignItems:"center"}}>
+                <input value={kz.name} onChange={e=>{const n=[...killzones];n[i]={...n[i],name:e.target.value};setKillzones(n);}} placeholder={fr?"Nom":"Name"} style={{...inSt,marginBottom:0,flex:2,padding:"9px 10px",minWidth:0}}/>
+                <input type="time" value={kz.start} onChange={e=>{const n=[...killzones];n[i]={...n[i],start:e.target.value};setKillzones(n);}} style={{...inSt,marginBottom:0,flex:1,colorScheme:"dark",color:"#ffffffcc",minWidth:0,padding:"9px 4px"}}/>
+                <input type="time" value={kz.end} onChange={e=>{const n=[...killzones];n[i]={...n[i],end:e.target.value};setKillzones(n);}} style={{...inSt,marginBottom:0,flex:1,colorScheme:"dark",color:"#ffffffcc",minWidth:0,padding:"9px 4px"}}/>
+                <button onClick={()=>setKillzones(killzones.filter((_,idx)=>idx!==i))} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.25)",color:"#ff4d4d",borderRadius:6,padding:"7px 8px",cursor:"pointer",flexShrink:0}}>✕</button>
+              </div>
+            ))}
+            <button onClick={()=>setKillzones([...killzones,{name:"",start:"08:00",end:"11:00"}])} style={{width:"100%",background:"transparent",border:`1px dashed ${neonColor}35`,color:"#ffffff66",borderRadius:8,padding:9,fontSize:11,cursor:"pointer",fontFamily:MONO,marginBottom:16}}>{fr?"+ Ajouter une killzone":"+ Add a killzone"}</button>
+            {modules.timeframe!==false&&<>
+              <FLbl>{fr?"TIMEFRAMES AFFICHÉS":"VISIBLE TIMEFRAMES"}</FLbl>
+              <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:14}}>
+                {ALL_TIMEFRAMES.map(tf=>{
+                  const on=timeframes.includes(tf);
+                  return <button key={tf} onClick={()=>toggleTf(tf)} className="btn" style={{flex:"1 0 13%",minWidth:42,padding:"9px 0",borderRadius:8,fontSize:10,fontWeight:700,fontFamily:MONO,background:on?`${neonColor}26`:"#131318",border:`1px solid ${on?neonColor:"#ffffff0d"}`,color:on?neonColor:"#ffffff55"}}>{tf}</button>;
+                })}
+              </div>
+              <FLbl>{fr?"TIMEFRAME PAR DÉFAUT":"DEFAULT TIMEFRAME"}</FLbl>
+              <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                {timeframes.map(tf=>(
+                  <button key={tf} onClick={()=>setDefaultTf(tf)} className="btn"
+                    style={{flex:"1 0 13%",minWidth:42,padding:"9px 0",borderRadius:8,fontSize:9,fontWeight:700,fontFamily:MONO,
+                      background:defaultTf===tf?`${neonColor}18`:"#131318",
+                      border:`1px solid ${defaultTf===tf?neonColor:"#ffffff0d"}`,
+                      color:defaultTf===tf?neonColor:"#ffffffbb"}}>
+                    {tf}
+                  </button>
+                ))}
+              </div>
+            </>}
+          </Block>
+
+          <Divider/>
+
+          {/* ── BLOC 4 : CHAMPS DU JOURNAL ── */}
+          <Block icon="▤" title={fr?"Champs du journal":"Journal fields"} sub={fr?"Ce que tu notes à la saisie":"What you log per trade"}>
+            {[["rejet",fr?"Qualité du rejet (1-10)":"Rejection quality (1-10)"],["checkin",fr?"Check-in (humeur / biais)":"Check-in (mood / bias)"],["postSl",fr?"Direction post-SL":"Post-SL direction"],["revenge",fr?"Revenge trade":"Revenge trade"],["timeframe",fr?"Timeframe":"Timeframe"]].map(([key,label],idx,arr)=>{
+              const val=modules[key]!==false;
+              return <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:idx<arr.length-1?`1px solid ${neonColor}0d`:"none"}}>
+                <span style={{fontSize:12,color:"#ffffff",fontFamily:MONO}}>{label}</span>
+                <button onClick={()=>setModules(m=>({...m,[key]:!val}))} className="btn" style={{width:44,height:24,borderRadius:12,background:val?`${neonColor}33`:"#ffffff12",border:`1px solid ${val?neonColor:`${neonColor}30`}`,position:"relative",transition:"all 0.2s"}}>
+                  <div style={{width:16,height:16,borderRadius:"50%",background:val?neonColor:"#ffffffaa",position:"absolute",top:3,left:val?24:4,transition:"all 0.2s"}}/>
+                </button>
+              </div>;
+            })}
+          </Block>
+
+          <SaveBtn/>
+        </div>;
+      })()}
 
       {/* ══ ONGLET RÉGLAGES ══ */}
       {tab==="reglages"&&<div>
