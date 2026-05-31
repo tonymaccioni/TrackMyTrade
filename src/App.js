@@ -2405,6 +2405,21 @@ function GuidedSetup({onDone,lang}) {
   );
 }
 
+// Composants stables (hors rendu) pour éviter la perte de focus dans les champs
+function StratBlock({icon,title,sub,neon,children}){
+  return (
+    <div style={{marginBottom:20}}>
+      <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:13}}>
+        <div style={{width:28,height:28,borderRadius:9,background:`${neon}12`,border:`1px solid ${neon}33`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,color:neon,flexShrink:0}}>{icon}</div>
+        <div><div style={{fontSize:12,color:"#fff",fontWeight:700,letterSpacing:0.3}}>{title}</div><div style={{fontSize:8.5,color:"#ffffff44",marginTop:1}}>{sub}</div></div>
+      </div>
+      {children}
+    </div>
+  );
+}
+function StratDivider({neon}){return <div style={{height:1,background:`linear-gradient(90deg,transparent,${neon}22,transparent)`,margin:"4px 0 20px"}}/>;}
+function StratFLbl({children}){return <div style={{fontSize:8.5,color:"#ffffff66",letterSpacing:1.5,marginBottom:7}}>{children}</div>;}
+
 function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChange,neon,phases,onPhasesChange,onObjectifChange,onImport,onRate,accounts,activeAccountId,onSwitchAccount,onAccountsChange,onCreateAccount}) {
   const t=T[lang];const inSt=mkInput(neon);
   const [showLegal,setShowLegal]=useState(null);
@@ -2566,23 +2581,12 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
 
       {/* ══ ONGLET STRATÉGIE ══ */}
       {tab==="strategie"&&(()=>{
-        const Block=({icon,title,sub,children})=>(
-          <div style={{marginBottom:20}}>
-            <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:13}}>
-              <div style={{width:28,height:28,borderRadius:9,background:`${neonColor}12`,border:`1px solid ${neonColor}33`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,color:neonColor,flexShrink:0}}>{icon}</div>
-              <div><div style={{fontSize:12,color:"#fff",fontWeight:700,letterSpacing:0.3}}>{title}</div><div style={{fontSize:8.5,color:"#ffffff44",marginTop:1}}>{sub}</div></div>
-            </div>
-            {children}
-          </div>
-        );
-        const Divider=()=><div style={{height:1,background:`linear-gradient(90deg,transparent,${neonColor}22,transparent)`,margin:"4px 0 20px"}}/>;
-        const FLbl=({children})=><div style={{fontSize:8.5,color:"#ffffff66",letterSpacing:1.5,marginBottom:7}}>{children}</div>;
         return <div>
           {/* ── BLOC 1 : IDENTITÉ ── */}
-          <Block icon="◈" title={fr?"Identité":"Identity"} sub={fr?"Ce que tu trades":"What you trade"}>
-            <FLbl>{t.strategyName}</FLbl>
+          <StratBlock neon={neonColor} icon="◈" title={fr?"Identité":"Identity"} sub={fr?"Ce que tu trades":"What you trade"}>
+            <StratFLbl>{t.strategyName}</StratFLbl>
             <input value={stratName} onChange={e=>setStratName(e.target.value)} style={{...inSt,marginBottom:12}}/>
-            <FLbl>{fr?"ACTIFS":"ASSETS"}</FLbl>
+            <StratFLbl>{fr?"ACTIFS":"ASSETS"}</StratFLbl>
             <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
               {assets.map(a=><div key={a} style={{display:"flex",alignItems:"center",gap:4,background:"#131318",border:`1px solid ${neonColor}26`,borderRadius:6,padding:"4px 8px"}}>
                 <span style={{fontSize:11,color:"#ffffff",fontFamily:MONO}}>{a}</span>
@@ -2593,17 +2597,17 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
               <input value={customAsset} onChange={e=>setCustomAsset(e.target.value)} placeholder={t.customAsset} onKeyDown={e=>{if(e.key==="Enter"&&customAsset.trim()){setAssets([...assets,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} style={{...inSt,marginBottom:0,flex:1}}/>
               <button onClick={()=>{if(customAsset.trim()){setAssets([...assets,customAsset.trim().toUpperCase()]);setCustomAsset("");}}} className="btn" style={{background:`${neonColor}1a`,border:`1px solid ${neonColor}55`,color:neonColor,borderRadius:8,padding:"0 14px",fontSize:18}}>+</button>
             </div>
-          </Block>
+          </StratBlock>
 
-          <Divider/>
+          <StratDivider neon={neonColor}/>
 
           {/* ── BLOC 2 : RÈGLES D'ENTRÉE ── */}
-          <Block icon="✓" title={fr?"Règles d'entrée":"Entry rules"} sub={fr?"Ce qui définit un setup valide":"What makes a setup valid"}>
-            <FLbl>{fr?"SEUIL DE CONFORMITÉ — MIN. CRITÈRES VALIDÉS":"COMPLIANCE THRESHOLD — MIN. CRITERIA MET"}</FLbl>
+          <StratBlock neon={neonColor} icon="✓" title={fr?"Règles d'entrée":"Entry rules"} sub={fr?"Ce qui définit un setup valide":"What makes a setup valid"}>
+            <StratFLbl>{fr?"SEUIL DE CONFORMITÉ — MIN. CRITÈRES VALIDÉS":"COMPLIANCE THRESHOLD — MIN. CRITERIA MET"}</StratFLbl>
             <div style={{display:"flex",gap:6,marginBottom:16}}>
               {[4,5,6,7,8].map(n=><button key={n} onClick={()=>setThreshold(n)} className="btn" style={{flex:1,padding:9,borderRadius:8,fontSize:13,fontWeight:700,fontFamily:MONO,background:threshold===n?`${neonColor}33`:"#131318",border:`1px solid ${threshold===n?neonColor:`${neonColor}22`}`,color:threshold===n?neonColor:"#ffffffbb"}}>{n}</button>)}
             </div>
-            <FLbl>{t.criteriaLabel} ({items.length})</FLbl>
+            <StratFLbl>{t.criteriaLabel} ({items.length})</StratFLbl>
             {items.map((item,i)=>{
               const isE=(eliminatoires||[]).includes(i);
               return <div key={i} style={{display:"flex",gap:6,marginBottom:8,alignItems:"center"}}>
@@ -2623,18 +2627,18 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
                 </button>;
               })}
             </div>
-          </Block>
+          </StratBlock>
 
-          <Divider/>
+          <StratDivider neon={neonColor}/>
 
           {/* ── BLOC 3 : CADRE DE TRADING ── */}
-          <Block icon="⏱" title={fr?"Cadre de trading":"Trading frame"} sub={fr?"Quand et combien":"When and how much"}>
-            <FLbl>{t.maxTradesLabel}</FLbl>
+          <StratBlock neon={neonColor} icon="⏱" title={fr?"Cadre de trading":"Trading frame"} sub={fr?"Quand et combien":"When and how much"}>
+            <StratFLbl>{t.maxTradesLabel}</StratFLbl>
             <div style={{display:"flex",gap:6,marginBottom:16}}>
               {[1,2,3,4,5].map(n=><button key={n} onClick={()=>setMaxTrades(n)} className="btn" style={{flex:1,padding:"10px 0",borderRadius:8,fontSize:14,fontWeight:700,fontFamily:MONO,background:maxTrades===n?`${neonColor}26`:"#131318",border:`1px solid ${maxTrades===n?neonColor:`${neonColor}22`}`,color:maxTrades===n?neonColor:"#ffffffbb"}}>{n}</button>)}
               <button onClick={()=>setMaxTrades(0)} className="btn" style={{flex:1.3,padding:"10px 0",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:MONO,background:maxTrades===0?`${neonColor}26`:"#131318",border:`1px solid ${maxTrades===0?neonColor:`${neonColor}22`}`,color:maxTrades===0?neonColor:"#ffffffaa"}}>∞</button>
             </div>
-            <FLbl>{fr?"KILLZONES (ICT)":"KILLZONES (ICT)"}</FLbl>
+            <StratFLbl>{fr?"KILLZONES (ICT)":"KILLZONES (ICT)"}</StratFLbl>
             <div style={{fontSize:8.5,color:"#ffffff44",marginBottom:9,lineHeight:1.5}}>{fr?"Fenêtres horaires. Un badge s'affiche à la saisie si l'heure tombe dedans.":"Time windows. A badge shows when logging if the time falls inside."}</div>
             {killzones.map((kz,i)=>(
               <div key={i} style={{display:"flex",gap:5,marginBottom:7,alignItems:"center"}}>
@@ -2646,14 +2650,14 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
             ))}
             <button onClick={()=>setKillzones([...killzones,{name:"",start:"08:00",end:"11:00"}])} style={{width:"100%",background:"transparent",border:`1px dashed ${neonColor}35`,color:"#ffffff66",borderRadius:8,padding:9,fontSize:11,cursor:"pointer",fontFamily:MONO,marginBottom:16}}>{fr?"+ Ajouter une killzone":"+ Add a killzone"}</button>
             {modules.timeframe!==false&&<>
-              <FLbl>{fr?"TIMEFRAMES AFFICHÉS":"VISIBLE TIMEFRAMES"}</FLbl>
+              <StratFLbl>{fr?"TIMEFRAMES AFFICHÉS":"VISIBLE TIMEFRAMES"}</StratFLbl>
               <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:14}}>
                 {ALL_TIMEFRAMES.map(tf=>{
                   const on=timeframes.includes(tf);
                   return <button key={tf} onClick={()=>toggleTf(tf)} className="btn" style={{flex:"1 0 13%",minWidth:42,padding:"9px 0",borderRadius:8,fontSize:10,fontWeight:700,fontFamily:MONO,background:on?`${neonColor}26`:"#131318",border:`1px solid ${on?neonColor:"#ffffff0d"}`,color:on?neonColor:"#ffffff55"}}>{tf}</button>;
                 })}
               </div>
-              <FLbl>{fr?"TIMEFRAME PAR DÉFAUT":"DEFAULT TIMEFRAME"}</FLbl>
+              <StratFLbl>{fr?"TIMEFRAME PAR DÉFAUT":"DEFAULT TIMEFRAME"}</StratFLbl>
               <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
                 {timeframes.map(tf=>(
                   <button key={tf} onClick={()=>setDefaultTf(tf)} className="btn"
@@ -2666,12 +2670,12 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
                 ))}
               </div>
             </>}
-          </Block>
+          </StratBlock>
 
-          <Divider/>
+          <StratDivider neon={neonColor}/>
 
           {/* ── BLOC 4 : CHAMPS DU JOURNAL ── */}
-          <Block icon="▤" title={fr?"Champs du journal":"Journal fields"} sub={fr?"Ce que tu notes à la saisie":"What you log per trade"}>
+          <StratBlock neon={neonColor} icon="▤" title={fr?"Champs du journal":"Journal fields"} sub={fr?"Ce que tu notes à la saisie":"What you log per trade"}>
             {[["rejet",fr?"Qualité du rejet (1-10)":"Rejection quality (1-10)"],["checkin",fr?"Check-in (humeur / biais)":"Check-in (mood / bias)"],["postSl",fr?"Direction post-SL":"Post-SL direction"],["revenge",fr?"Revenge trade":"Revenge trade"],["timeframe",fr?"Timeframe":"Timeframe"]].map(([key,label],idx,arr)=>{
               const val=modules[key]!==false;
               return <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:idx<arr.length-1?`1px solid ${neonColor}0d`:"none"}}>
@@ -2681,7 +2685,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
                 </button>
               </div>;
             })}
-          </Block>
+          </StratBlock>
 
           <SaveBtn/>
         </div>;
