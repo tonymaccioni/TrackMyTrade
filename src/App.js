@@ -121,6 +121,20 @@ const NEON_COLORS = [{name:"Vert",value:"#00ff9d"},{name:"Bleu",value:"#00d4ff"}
 const HUMEUR_PILLS = {fr:["◎ Focus","◌ Neutre","△ Tendu","◷ Fatigué"],en:["◎ Focus","◌ Neutral","△ Tense","◷ Tired"]};
 const BIAIS_PILLS = {fr:["↑ Haussier","→ Range","↓ Baissier"],en:["↑ Bullish","→ Range","↓ Bearish"]};
 const NTR = {fr:["Pas de setup valide","Hors fenêtre","Marché difficile","Journée chargée","Jour de repos","Jour férié"],en:["No valid setup","Out of window","Difficult market","Busy day","Rest day","Holiday"]};
+// ── Presets ICT (à ajouter à la checklist en un tap) ──
+const ICT_PRESETS = {
+  fr:["Prise de liquidité avant entrée","FVG (imbalance) présent","Changement de structure (MSS/CHoCH)","Entrée dans la killzone","Zone premium/discount alignée"],
+  en:["Liquidity sweep before entry","FVG (imbalance) present","Market structure shift (MSS/CHoCH)","Entry within killzone","Premium/discount aligned"]
+};
+const DEFAULT_KILLZONES = [{name:"London KZ",start:"08:00",end:"11:00"},{name:"New York KZ",start:"14:00",end:"18:00"}];
+// "HH:MM" -> minutes ; gère les plages qui passent minuit
+const hmToMin = (s) => { if(!s||!/^\d{1,2}:\d{2}$/.test(s)) return null; const [h,m]=s.split(":").map(Number); return h*60+m; };
+const inKillzone = (time, kz) => {
+  const t=hmToMin(time), a=hmToMin(kz.start), b=hmToMin(kz.end);
+  if(t===null||a===null||b===null) return false;
+  return a<=b ? (t>=a&&t<=b) : (t>=a||t<=b);
+};
+const activeKillzone = (time, killzones) => (killzones||[]).find(kz=>inKillzone(time,kz)) || null;
 const today = () => new Date().toISOString().split("T")[0];
 const rc = (r, neon="#00ff9d") => r==="WIN"?neon:r==="LOSS"?"#ff4d4d":"#f0b429";
 const fmtPct = v => { if(v===""||v===null||v===undefined) return "—"; const n=Number(v),abs=Math.abs(n); const s=abs%1===0?abs.toFixed(0):abs*10%1===0?abs.toFixed(1):abs*100%1===0?abs.toFixed(2):abs.toFixed(3); return `${n>=0?"+":""}${n<0?"-":""}${s}%`; };
@@ -2351,10 +2365,11 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
   const [archOpen,setArchOpen]=useState(false);
   const [modules,setModules]=useState({rejet:modOn(config,"rejet"),checkin:modOn(config,"checkin"),postSl:modOn(config,"postSl"),revenge:modOn(config,"revenge"),timeframe:modOn(config,"timeframe")});
   const [timeframes,setTimeframes]=useState(getTimeframes(config));
+  const [killzones,setKillzones]=useState(Array.isArray(config.killzones)?config.killzones:DEFAULT_KILLZONES);
   const toggleTf=(tf)=>setTimeframes(prev=>{const has=prev.includes(tf);if(has&&prev.length<=1)return prev;const next=has?prev.filter(x=>x!==tf):[...prev,tf];return ALL_TIMEFRAMES.filter(x=>next.includes(x));});
   const save=()=>{
     const dft=timeframes.includes(defaultTf)?defaultTf:timeframes[0];
-    onSave({items,threshold,strategyName:stratName,maxTrades,neonColor,calendarOn,notifOn,customAssets:assets,eliminatoires,defaultTimeframe:dft,modules,timeframes});
+    onSave({items,threshold,strategyName:stratName,maxTrades,neonColor,calendarOn,notifOn,customAssets:assets,eliminatoires,defaultTimeframe:dft,modules,timeframes,killzones});
     setSavedOk(true);setTimeout(()=>setSavedOk(false),2000);};
   const doSaveAcct=(idx)=>{
     const name=acctEditName.trim()||"Phase";
@@ -2542,6 +2557,20 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
             ))}
           </div>
         </div>}
+        {/* ── Killzones (ICT) ── */}
+        <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:14}}>
+          <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:4}}>{fr?"KILLZONES (ICT)":"KILLZONES (ICT)"}</div>
+          <div style={{fontSize:9,color:"#ffffff44",marginBottom:10,lineHeight:1.5}}>{fr?"Tes fenêtres horaires. Un badge s'affiche à la saisie si l'heure d'entrée tombe dedans.":"Your time windows. A badge shows when logging if the entry time falls inside."}</div>
+          {killzones.map((kz,i)=>(
+            <div key={i} style={{display:"flex",gap:6,marginBottom:8,alignItems:"center"}}>
+              <input value={kz.name} onChange={e=>{const n=[...killzones];n[i]={...n[i],name:e.target.value};setKillzones(n);}} placeholder={fr?"Nom (ex: London KZ)":"Name (e.g. London KZ)"} style={{...inSt,marginBottom:0,flex:2}}/>
+              <input type="time" value={kz.start} onChange={e=>{const n=[...killzones];n[i]={...n[i],start:e.target.value};setKillzones(n);}} style={{...inSt,marginBottom:0,flex:1,colorScheme:"dark",color:"#ffffffcc",minWidth:0}}/>
+              <input type="time" value={kz.end} onChange={e=>{const n=[...killzones];n[i]={...n[i],end:e.target.value};setKillzones(n);}} style={{...inSt,marginBottom:0,flex:1,colorScheme:"dark",color:"#ffffffcc",minWidth:0}}/>
+              <button onClick={()=>setKillzones(killzones.filter((_,idx)=>idx!==i))} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d",borderRadius:6,padding:"8px 10px",cursor:"pointer",flexShrink:0}}>✕</button>
+            </div>
+          ))}
+          <button onClick={()=>setKillzones([...killzones,{name:"",start:"08:00",end:"11:00"}])} style={{width:"100%",background:"transparent",border:`1px dashed ${neonColor}35`,color:"#ffffff66",borderRadius:8,padding:9,fontSize:11,cursor:"pointer",fontFamily:MONO}}>{fr?"+ Ajouter une killzone":"+ Add a killzone"}</button>
+        </div>
         <div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.thresholdLabel}</div>
         <div style={{display:"flex",gap:6,marginBottom:16}}>
           {[4,5,6,7,8].map(n=><button key={n} onClick={()=>setThreshold(n)} className="btn" style={{flex:1,padding:8,borderRadius:8,fontSize:13,fontWeight:700,fontFamily:MONO,background:threshold===n?`${neonColor}33`:"#131318",border:`1px solid ${threshold===n?neonColor:`${neonColor}22`}`,color:threshold===n?neonColor:"#ffffffbb"}}>{n}</button>)}
@@ -2555,6 +2584,16 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
             <button onClick={()=>setItems(items.filter((_,idx)=>idx!==i))} style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4d",borderRadius:6,padding:"8px 10px",cursor:"pointer",flexShrink:0}}>✕</button>
           </div>;
         })}
+        <div style={{fontSize:9,color:`${neonColor}99`,letterSpacing:1.5,marginBottom:8}}>{fr?"✦ AJOUTS ICT SUGGÉRÉS":"✦ SUGGESTED ICT ADD-ONS"}</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
+          {ICT_PRESETS[fr?"fr":"en"].map(preset=>{
+            const already=items.includes(preset);
+            return <button key={preset} onClick={()=>{if(!already)setItems([...items,preset]);}} disabled={already}
+              style={{background:already?`${neonColor}1a`:"transparent",border:`1px solid ${already?neonColor:`${neonColor}33`}`,color:already?neonColor:"#ffffffaa",borderRadius:7,padding:"6px 10px",fontSize:10,fontFamily:MONO,cursor:already?"default":"pointer",opacity:already?0.7:1}}>
+              {already?"✓ ":"+ "}{preset}
+            </button>;
+          })}
+        </div>
         <button onClick={()=>setItems([...items,""])} style={{width:"100%",background:"transparent",border:`1px dashed ${neon}35`,color:"#ffffff44",borderRadius:8,padding:10,fontSize:12,cursor:"pointer",fontFamily:MONO,marginBottom:16}}>{t.addCriteria}</button>
         <SaveBtn/>
       </div>}
@@ -4064,6 +4103,12 @@ export default function App() {
           <div style={{marginBottom:14}}>
             <div style={{display:"flex",gap:8}}><input type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} style={{...inSt,marginBottom:0,flex:2,colorScheme:"dark",color:"#ffffffcc"}}/><input type="time" value={form.time} onChange={e=>setForm({...form,time:e.target.value})} style={{...inSt,marginBottom:0,flex:1,colorScheme:"dark",color:form.time?"#ffffffcc":"#ffffff66"}}/></div>
             <div style={{fontSize:9,color:"#ffffffaa",marginTop:5}}>{t.entryTime}</div>
+            {form.time&&(()=>{
+              const kz=activeKillzone(form.time,config.killzones||DEFAULT_KILLZONES);
+              return kz
+                ? <div style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:6,background:`${neon}12`,border:`1px solid ${neon}40`,borderRadius:7,padding:"4px 9px"}}><span style={{fontSize:9,color:neon,fontFamily:MONO,fontWeight:700}}>✓ {lang==="fr"?"Dans":"In"} {kz.name||(lang==="fr"?"killzone":"killzone")}</span></div>
+                : <div style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:6,background:"#ffffff08",border:"1px solid #ffffff15",borderRadius:7,padding:"4px 9px"}}><span style={{fontSize:9,color:"#ffffff66",fontFamily:MONO}}>○ {lang==="fr"?"Hors killzone":"Outside killzone"}</span></div>;
+            })()}
           </div>
           <div style={{display:"flex",gap:8,marginBottom:10}}>
             <select value={form.asset} onChange={e=>setForm({...form,asset:e.target.value})} style={{flex:2,background:"#131318",border:`1px solid ${neon}35`,borderRadius:8,color:"#ffffff",padding:"12px",fontSize:12,fontFamily:MONO,outline:"none"}}>{allAssets.map(a=><option key={a}>{a}</option>)}</select>
@@ -4399,8 +4444,8 @@ function ReviewModal({onClose, lang, neon, userEmail, milestone}) {
   };
 
   return(
-    <div style={{position:"fixed",inset:0,background:"rgba(6,6,10,0.92)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
-      <div style={{background:"#0f0f18",borderRadius:"24px 24px 0 0",padding:"28px 24px 40px",width:"100%",maxWidth:480,border:"1px solid #ffffff0f",borderBottom:"none"}}>
+    <div style={{position:"fixed",inset:0,background:"rgba(6,6,10,0.92)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div style={{background:"#0f0f18",borderRadius:20,padding:"28px 24px 32px",width:"100%",maxWidth:420,border:`1px solid ${neon}22`,boxShadow:`0 8px 40px rgba(0,0,0,0.6),0 0 24px ${neon}11`}}>
         {sent ? (
           <div style={{textAlign:"center",padding:"24px 0"}}>
             <div style={{fontSize:30,marginBottom:12,filter:`drop-shadow(0 0 10px ${neon})`}}>✦</div>
