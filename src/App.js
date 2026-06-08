@@ -245,7 +245,7 @@ const T = {
     checklistSetup:"CHECKLIST SETUP",conform:"✓ Conforme",missing:"critère(s) manquant(s)",
     rejectQuality:"QUALITÉ DU REJET",optional:"(optionnel)",pnl:"P&L %",manualPnl:"Autre…",
     notesPlaceholder:"Notes comportementales, erreurs, observations...",
-    addScreenshot:"Ajouter une capture (optionnel)",screenshotAdded:"Capture ajoutée ✓",rrLabel:"RR",rrPh:"ex: 2",
+    addScreenshot:"Ajouter une capture (optionnel)",screenshotAdded:"Capture ajoutée ✓",rrLabel:"RR visé",rrPh:"ex: 2",
     saveConform:"✓ ENREGISTRER — Conforme",saveNonConform:"⚠ ENREGISTRER — Non-conforme",
     updateBtn:"✓ METTRE À JOUR",tradeSaved:"✓ Trade enregistré",tradeUpdated:"✓ Trade modifié",
     noTradeToday:"Pas de trade aujourd'hui",noTradeReason:"RAISON (OPTIONNEL)",confirmBtn:"⊘ Confirmer",
@@ -266,7 +266,7 @@ const T = {
     lastTrade:"Dernier trade",rejectStat:"rejet",highStd:"Standard élevé",balanced:"Équilibré",lowStd:"Standard faible",
     inconsistent:"incohérent avec",maxTradesLabel:"TRADES MAX PAR JOUR",
     revengeLabel:"Revenge trade",revengeWarning:"⚠ Limite atteinte — tagué Revenge trade",
-    statsTitle:"STATISTIQUES",expectancy:"Expectancy",bestAsset:"Meilleur actif",avgWin:"Gain moyen",avgLoss:"Perte moyenne",avgRR:"RR moyen",
+    statsTitle:"STATISTIQUES",expectancy:"Expectancy",bestAsset:"Meilleur actif",avgWin:"Gain moyen",avgLoss:"Perte moyenne",
     calendarTitle:"CALENDRIER",calendarToggle:"Afficher le calendrier",enableNotif:"Activer les conseils",
     addAsset:"+ Ajouter un actif",customAsset:"Nom de l'actif…",
     slDirectionLabel:"DIRECTION POST-SL",slWith:"Dans le bon sens ✓",slAgainst:"Contre moi ✗",ratio:"Ratio G/P",
@@ -306,7 +306,7 @@ const T = {
     checklistSetup:"SETUP CHECKLIST",conform:"✓ Compliant",missing:"criterion missing",
     rejectQuality:"REJECTION QUALITY",optional:"(optional)",pnl:"P&L %",manualPnl:"Other…",
     notesPlaceholder:"Behavioral notes, mistakes, observations...",
-    addScreenshot:"Add screenshot (optional)",screenshotAdded:"Screenshot added ✓",rrLabel:"RR",rrPh:"e.g. 2",
+    addScreenshot:"Add screenshot (optional)",screenshotAdded:"Screenshot added ✓",rrLabel:"Target RR",rrPh:"e.g. 2",
     saveConform:"✓ SAVE — Compliant",saveNonConform:"⚠ SAVE — Non-compliant",
     updateBtn:"✓ UPDATE",tradeSaved:"✓ Trade saved",tradeUpdated:"✓ Trade updated",
     noTradeToday:"No trade today",noTradeReason:"REASON (OPTIONAL)",confirmBtn:"⊘ Confirm",
@@ -327,7 +327,7 @@ const T = {
     lastTrade:"Last trade",rejectStat:"reject",highStd:"High standard",balanced:"Balanced",lowStd:"Low standard",
     inconsistent:"inconsistent with",maxTradesLabel:"MAX TRADES PER DAY",
     revengeLabel:"Revenge trade",revengeWarning:"⚠ Limit reached — tagged as Revenge trade",
-    statsTitle:"STATISTICS",expectancy:"Expectancy",bestAsset:"Best asset",avgWin:"Avg win",avgLoss:"Avg loss",avgRR:"Avg RR",
+    statsTitle:"STATISTICS",expectancy:"Expectancy",bestAsset:"Best asset",avgWin:"Avg win",avgLoss:"Avg loss",
     calendarTitle:"CALENDAR",calendarToggle:"Show calendar",enableNotif:"Enable tips",
     addAsset:"+ Add asset",customAsset:"Asset name…",
     slDirectionLabel:"POST-SL DIRECTION",slWith:"Went my way ✓",slAgainst:"Against me ✗",ratio:"Win/Loss ratio",
@@ -498,8 +498,6 @@ function AdvancedStats({trades,neon,lang}) {
   trades.forEach(x=>{if(!aMap[x.asset])aMap[x.asset]={w:0,t:0};aMap[x.asset].t++;if(x.result==="WIN")aMap[x.asset].w++;});
   const best=Object.entries(aMap).filter(([,v])=>v.t>=2).sort((a,b)=>(b[1].w/b[1].t)-(a[1].w/a[1].t))[0];
   const revs=trades.filter(x=>x.isRevenge);
-  const rrVals=trades.map(x=>parseFloat(x.rr)).filter(v=>!isNaN(v)&&v>0);
-  const avgRR=rrVals.length?rrVals.reduce((s,v)=>s+v,0)/rrVals.length:null;
   return (
     <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:16,marginBottom:12}}>
       <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>{t.statsTitle}</div>
@@ -508,7 +506,6 @@ function AdvancedStats({trades,neon,lang}) {
         {best&&<div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{t.bestAsset}</div><div style={{fontSize:14,fontWeight:700,color:neon,fontFamily:MONO}}>{best[0]}</div><div style={{fontSize:10,color:"#ffffffaa"}}>{Math.round(best[1].w/best[1].t*100)}% WR</div></div>}
         <div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{t.avgWin}</div><div style={{fontSize:16,fontWeight:700,color:neon,fontFamily:MONO,textShadow:`0 0 14px ${neon}99`}}>{fmtPct(avgWin)}</div></div>
         <div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{t.avgLoss}</div><div style={{fontSize:16,fontWeight:700,color:"#ff4d4d",fontFamily:MONO,textShadow:"0 0 14px #ff4d4d99"}}>-{avgLoss%1===0?avgLoss.toFixed(0):avgLoss.toFixed(1)}%</div></div>
-        {avgRR!==null&&<div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{t.avgRR}</div><div style={{fontSize:16,fontWeight:700,color:neon,fontFamily:MONO,textShadow:`0 0 14px ${neon}99`}}>1:{avgRR.toFixed(2)}</div></div>}
         {wins.length>0&&losses.length>0&&(()=>{const r=avgWin/avgLoss;return<div style={{background:`${neon}08`,borderRadius:8,padding:10,gridColumn:"1/-1"}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{t.ratio}</div><div style={{fontSize:16,fontWeight:700,color:r>=1?neon:"#f0b429",fontFamily:MONO}}>{r.toFixed(2)}</div></div>;})()}
         {revs.length>0&&<div style={{background:"rgba(255,77,77,0.06)",border:"1px solid rgba(255,77,77,0.15)",borderRadius:8,padding:10,gridColumn:"1/-1"}}><div style={{fontSize:9,color:"#ff4d4d",marginBottom:4}}>REVENGE TRADES</div><div style={{fontSize:14,fontWeight:700,color:"#ff4d4d",fontFamily:MONO}}>{revs.length} · {Math.round(revs.filter(x=>x.result==="LOSS").length/revs.length*100)}% LOSS</div></div>}
       </div>
@@ -1011,7 +1008,7 @@ function TradeDetailModal({trade,config,onClose,onEdit,onShare,lang,neon,account
           ))}
         </div>
         {trade.screenshot&&<div style={{marginBottom:14}}><div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.screenshotLabel}</div><img src={trade.screenshot} alt="" style={{width:"100%",borderRadius:8,border:`1px solid ${neon}26`}}/></div>}
-        {trade.rr&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}><span style={{fontSize:9,color:"#ffffffbb",letterSpacing:2}}>RR</span><span style={{fontSize:13,fontWeight:700,color:neon,fontFamily:MONO}}>1:{trade.rr}</span></div>}
+        {trade.rr&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}><span style={{fontSize:9,color:"#ffffffbb",letterSpacing:2}}>{t.rrLabel}</span><span style={{fontSize:13,fontWeight:700,color:neon,fontFamily:MONO}}>1:{trade.rr}</span></div>}
         {trade.notes&&<div style={{background:`${neon}04`,border:`1px solid ${neon}10`,borderRadius:8,padding:12}}><div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:6}}>{t.notesLabel}</div><div style={{fontSize:12,color:"#ffffffaa",lineHeight:1.6,fontStyle:"italic"}}>"{trade.notes}"</div></div>}
       </div>
     </div>
