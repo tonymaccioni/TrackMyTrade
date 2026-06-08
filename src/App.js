@@ -224,6 +224,19 @@ const ensureAccountsData = (ud) => {
   const migrated = trades.some(t=>!t.accountId) || accounts.length!==savedAccs.length;
   return {accounts, activeAccountId, trades: tagged, migrated};
 };
+// ── STRATÉGIES ──
+const ensureStrategies = (config, savedStrats, savedActiveId, trades) => {
+  let strats = Array.isArray(savedStrats) ? savedStrats.filter(s=>s&&s.id) : [];
+  if(strats.length===0){
+    strats=[{id:"st_0", name:(config&&config.strategyName)||"Ma Stratégie", items:(config&&config.items&&config.items.length)?config.items:DEFAULT_CRITERIA, threshold:(config&&config.threshold)||6, eliminatoires:(config&&config.eliminatoires)||[], color:(config&&config.neonColor)||"#00ff9d"}];
+  }
+  const ids = new Set(strats.map(s=>s.id));
+  let activeId = (savedActiveId && ids.has(savedActiveId)) ? savedActiveId : strats[0].id;
+  const needTag = (trades||[]).some(t=>!t.strategyId || !ids.has(t.strategyId));
+  const tagged = (trades||[]).map(t=> (t.strategyId && ids.has(t.strategyId)) ? t : {...t, strategyId:"st_0"});
+  const migrated = !Array.isArray(savedStrats) || savedStrats.length===0 || needTag;
+  return {strategies:strats, activeStrategyId:activeId, trades:tagged, migrated};
+};
 const compressImage = (file, maxW=1280, quality=0.7) => new Promise(resolve=>{
   const reader=new FileReader();
   reader.onload=e=>{
@@ -2439,7 +2452,7 @@ function StratBlock({icon,title,sub,neon,children}){
 function StratDivider({neon}){return <div style={{height:1,background:`linear-gradient(90deg,transparent,${neon}22,transparent)`,margin:"4px 0 20px"}}/>;}
 function StratFLbl({children}){return <div style={{fontSize:8.5,color:"#ffffff66",letterSpacing:1.5,marginBottom:7}}>{children}</div>;}
 
-function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChange,neon,phases,onPhasesChange,onObjectifChange,onImport,onRate,accounts,activeAccountId,onSwitchAccount,onAccountsChange,onCreateAccount}) {
+function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChange,neon,phases,onPhasesChange,onObjectifChange,onImport,onRate,accounts,activeAccountId,onSwitchAccount,onAccountsChange,onCreateAccount,strategies,activeStrategyId,onSwitchStrategy,onCreateStrategy,onDeleteStrategy}) {
   const t=T[lang];const inSt=mkInput(neon);
   const [showLegal,setShowLegal]=useState(null);
   const [items,setItems]=useState([...config.items]);const [threshold,setThreshold]=useState(config.threshold);
@@ -2462,6 +2475,9 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
   const [acctEditName,setAcctEditName]=useState("");
   const [acctEditDate,setAcctEditDate]=useState("");
   const [acctDelConfirm,setAcctDelConfirm]=useState(null);
+  const [stratDelConfirm,setStratDelConfirm]=useState(null);
+  // Resynchronise l'éditeur de checklist quand on change de stratégie active (sans démonter l'onglet)
+  useEffect(()=>{setItems([...(config.items||[])]);setThreshold(config.threshold);setStratName(config.strategyName||"");setEliminatoires(config.eliminatoires||[]);},[activeStrategyId]);
   const [archOpen,setArchOpen]=useState(false);
   const [modules,setModules]=useState({rejet:modOn(config,"rejet"),checkin:modOn(config,"checkin"),postSl:modOn(config,"postSl"),revenge:modOn(config,"revenge"),timeframe:modOn(config,"timeframe")});
   const [timeframes,setTimeframes]=useState(getTimeframes(config));
@@ -2601,6 +2617,24 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
       {/* ══ ONGLET STRATÉGIE ══ */}
       {tab==="strategie"&&(()=>{
         return <div>
+          {/* ── SÉLECTEUR DE STRATÉGIES ── */}
+          <StratBlock neon={neonColor} icon="⌗" title={fr?"Mes stratégies":"My strategies"} sub={fr?"Stats comparées séparément":"Stats tracked separately"}>
+            {(strategies||[]).map(s=>{
+              const isAct=s.id===activeStrategyId;const c=s.color||neonColor;const isDel=stratDelConfirm===s.id;
+              return <div key={s.id} style={{display:"flex",alignItems:"center",gap:6,marginBottom:6,background:isAct?`${c}10`:"#131318",border:`1px solid ${isAct?c+"35":"#ffffff0a"}`,borderRadius:8,padding:"8px 10px"}}>
+                <div style={{width:8,height:8,borderRadius:"50%",background:c,flexShrink:0}}/>
+                <span style={{flex:1,fontSize:12,color:"#ffffff",fontFamily:MONO,fontWeight:isAct?700:400,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.name}</span>
+                {isAct
+                  ?<span style={{fontSize:8,color:c,background:`${c}18`,padding:"2px 7px",borderRadius:4,fontFamily:MONO,flexShrink:0}}>{fr?"ACTIVE":"ACTIVE"}</span>
+                  :<button onClick={()=>onSwitchStrategy&&onSwitchStrategy(s.id)} className="btn" style={{background:`${c}14`,border:`1px solid ${c}30`,color:c,borderRadius:6,padding:"4px 10px",fontSize:9,fontWeight:700,fontFamily:MONO,flexShrink:0}}>{fr?"ACTIVER":"SWITCH"}</button>}
+                {(strategies||[]).length>1&&(isDel
+                  ?<button onClick={()=>{onDeleteStrategy&&onDeleteStrategy(s.id);setStratDelConfirm(null);}} className="btn" style={{background:"rgba(255,77,77,0.2)",border:"1px solid #ff4d4d",color:"#ff4d4d",borderRadius:6,padding:"4px 8px",fontSize:9,fontWeight:700,fontFamily:MONO,flexShrink:0}}>{fr?"Sûr ?":"Sure?"}</button>
+                  :<button onClick={()=>setStratDelConfirm(s.id)} className="btn" style={{background:"transparent",border:"1px solid rgba(255,77,77,0.2)",borderRadius:6,padding:"4px 7px",display:"inline-flex",alignItems:"center",flexShrink:0}}><Icon name="trash" size={12} color="#ff4d4d"/></button>)}
+              </div>;
+            })}
+            <button onClick={()=>onCreateStrategy&&onCreateStrategy()} className="btn" style={{width:"100%",marginTop:4,background:`${neonColor}10`,border:`1px dashed ${neonColor}40`,color:neonColor,borderRadius:8,padding:"9px 0",fontSize:11,fontWeight:700,fontFamily:MONO}}>+ {fr?"Nouvelle stratégie":"New strategy"}</button>
+            <div style={{fontSize:9,color:"#ffffff55",fontFamily:MONO,marginTop:8,lineHeight:1.5}}>{fr?"La checklist ci-dessous édite la stratégie ACTIVE. Renomme via le champ \"Nom\" puis Enregistre.":"The checklist below edits the ACTIVE strategy. Rename via the \"Name\" field then Save."}</div>
+          </StratBlock>
           {/* ── BLOC 1 : IDENTITÉ ── */}
           <StratBlock neon={neonColor} icon="◈" title={fr?"Identité":"Identity"} sub={fr?"Ce que tu trades":"What you trade"}>
             <StratFLbl>{t.strategyName}</StratFLbl>
@@ -3487,6 +3521,8 @@ export default function App() {
   const [phases,setPhases]=useState([]);
   const [accounts,setAccounts]=useState([]);
   const [activeAccountId,setActiveAccountId]=useState(null);
+  const [strategies,setStrategies]=useState([]);
+  const [activeStrategyId,setActiveStrategyId]=useState(null);
   const [showWeeklyRecap,setShowWeeklyRecap]=useState(false);
   const [showExport,setShowExport]=useState(false);
   const [showReset,setShowReset]=useState(false);
@@ -3582,7 +3618,30 @@ export default function App() {
     const uid=uidNow();
     if(currentUserRef.current?.email)saveUserData(uid,{accounts,activeAccountId:id,trades});
   };
-  // Phase uses trade.id (timestamp) not date — trades before phase creation excluded even if date is today
+  // ── Stratégies ──
+  const activeStrategy=strategies.find(s=>s.id===activeStrategyId)||strategies[0]||null;
+  const loadStrategyIntoConfig=(s)=>setConfig(c=>({...c,items:s.items,threshold:s.threshold,strategyName:s.name,eliminatoires:s.eliminatoires||[]}));
+  const switchStrategy=(id)=>{
+    const s=strategies.find(x=>x.id===id);if(!s)return;
+    setActiveStrategyId(id);
+    loadStrategyIntoConfig(s);
+    if(currentUserRef.current?.email)saveUserData(uidNow(),{strategies,activeStrategyId:id});
+  };
+  const createStrategy=()=>{
+    const id="st_"+Date.now();
+    const ns={id,name:(lang==="fr"?"Stratégie ":"Strategy ")+(strategies.length+1),items:[...(config.items||DEFAULT_CRITERIA)],threshold:config.threshold||6,eliminatoires:[],color:neon};
+    const newStrats=[...strategies,ns];
+    setStrategies(newStrats);setActiveStrategyId(id);loadStrategyIntoConfig(ns);
+    if(currentUserRef.current?.email)saveUserData(uidNow(),{strategies:newStrats,activeStrategyId:id});
+  };
+  const deleteStrategy=(id)=>{
+    if(strategies.length<=1)return;
+    const newStrats=strategies.filter(s=>s.id!==id);
+    const newActive=id===activeStrategyId?newStrats[0].id:activeStrategyId;
+    setStrategies(newStrats);
+    if(id===activeStrategyId){setActiveStrategyId(newActive);loadStrategyIntoConfig(newStrats[0]);}
+    if(currentUserRef.current?.email)saveUserData(uidNow(),{strategies:newStrats,activeStrategyId:newActive});
+  }; // Phase uses trade.id (timestamp) not date — trades before phase creation excluded even if date is today
   const currentPhaseTs=phases.length>0?phases[phases.length-1].id:0;
   const getPhaseKey=useCallback(tradeId=>{if(phases.length===0)return 0;for(let i=phases.length-1;i>=0;i--){if(tradeId>phases[i].id)return i+1;}return 0;},[phases]);
   const handleNewPhase=(phaseData={})=>{
@@ -3646,7 +3705,9 @@ export default function App() {
   };
 
   const currentPhaseName=activeAccount?activeAccount.name:(config.phaseName||"PHASE");
-  const accountTrades=trades.filter(x=>activeAccount?(x.accountId||"ph_0")===activeAccount.id:true);
+  const stratId=activeStrategyId||"st_0";
+  const strategyTrades=trades.filter(x=>(x.strategyId||"st_0")===stratId);
+  const accountTrades=strategyTrades.filter(x=>activeAccount?(x.accountId||"ph_0")===activeAccount.id:true);
   // Filtre période : "week"/"month" restreignent le compte actif à la semaine (lundi→) ou au mois courant.
   const periodStart=(()=>{
     if(statsMode!=="week"&&statsMode!=="month") return null;
@@ -3655,7 +3716,7 @@ export default function App() {
     const d=new Date(n); const dow=(d.getDay()+6)%7; d.setDate(d.getDate()-dow); // lundi de la semaine en cours
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   })();
-  const pfBase=statsMode==="all"?trades:accountTrades;
+  const pfBase=statsMode==="all"?strategyTrades:accountTrades;
   const pf=periodStart?pfBase.filter(x=>x.date>=periodStart):pfBase;
   const total=pf.length,wins=pf.filter(x=>x.result==="WIN").length,losses=pf.filter(x=>x.result==="LOSS").length;
   const winRate=total?Math.round(wins/total*100):0;
@@ -3686,7 +3747,7 @@ export default function App() {
       const conforming=isRevenge?false:elimFail?false:score>=config.threshold;
     let updated,ut=null;
     if(editingId!==null){updated=trades.map(x=>x.id===editingId?{...x,...form,pnlPct:pnl,setupScore:score,conforming,isRevenge,checklistMax:config.items.length}:x);}
-    else{const trade={...form,pnlPct:pnl,id:Date.now(),setupScore:score,conforming,isRevenge,checklistMax:config.items.length,accountId:form.accountId||activeAccountId};ut=trade;updated=[trade,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);}
+    else{const trade={...form,pnlPct:pnl,id:Date.now(),setupScore:score,conforming,isRevenge,checklistMax:config.items.length,accountId:form.accountId||activeAccountId,strategyId:activeStrategyId||"st_0"};ut=trade;updated=[trade,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);}
     setTrades(updated);
     if(currentUserRef.current?.email) saveUserData(uidNow(),{trades:updated,accounts,activeAccountId});
     const newCfgAfterSave={...config,lastPnlMode:form.pnlMode||"eur"};setConfig(newCfgAfterSave);if(currentUserRef.current?.email)saveUserData(uidNow(),{config:newCfgAfterSave});
@@ -3726,7 +3787,7 @@ export default function App() {
     setView(editingId!==null?"history":"dashboard");scrollToTop();
   };
 
-  const startEdit=x=>{setForm({date:x.date,asset:x.asset,direction:x.direction,checklist:[...x.checklist],result:x.result,pnlPreset:PNL_PRESETS.includes(x.pnlPct)?x.pnlPct:"",pnlManual:PNL_PRESETS.includes(x.pnlPct)?"":x.pnlPct,pnlMode:"pct",pnlEurManual:"",notes:x.notes||"",rejetScore:x.rejetScore||0,time:x.time||"",screenshots:getShots(x),rr:x.rr||"",isRevenge:x.isRevenge||false,slDirection:x.slDirection||"",checkin:x.checkin||{humeur:"",biais:""},accountId:x.accountId||activeAccountId});setEditingId(x.id);setView("log");};
+  const startEdit=x=>{if(x.strategyId&&x.strategyId!==activeStrategyId&&strategies.some(s=>s.id===x.strategyId))switchStrategy(x.strategyId);setForm({date:x.date,asset:x.asset,direction:x.direction,checklist:[...x.checklist],result:x.result,pnlPreset:PNL_PRESETS.includes(x.pnlPct)?x.pnlPct:"",pnlManual:PNL_PRESETS.includes(x.pnlPct)?"":x.pnlPct,pnlMode:"pct",pnlEurManual:"",notes:x.notes||"",rejetScore:x.rejetScore||0,time:x.time||"",screenshots:getShots(x),rr:x.rr||"",isRevenge:x.isRevenge||false,slDirection:x.slDirection||"",checkin:x.checkin||{humeur:"",biais:""},accountId:x.accountId||activeAccountId});setEditingId(x.id);setView("log");};
   // Réaffecter un trade à un autre compte
   const reassignTrade=(tradeId,accId)=>{
     const updated=trades.map(x=>x.id===tradeId?{...x,accountId:accId}:x);
@@ -3802,11 +3863,14 @@ export default function App() {
       // Comptes (migration auto si nécessaire)
       const normalized={...userData,trades,phases,config};
       const {accounts:accs,activeAccountId:aid,trades:tgTrades,migrated}=ensureAccountsData(normalized);
-      setAccounts(accs);setActiveAccountId(aid);setTrades(tgTrades);
+      const {strategies:strats,activeStrategyId:sid,trades:tgTrades2,migrated:sMig}=ensureStrategies(config,userData.strategies,userData.activeStrategyId,tgTrades);
+      setAccounts(accs);setActiveAccountId(aid);setStrategies(strats);setActiveStrategyId(sid);setTrades(tgTrades2);
       const act=accs.find(a=>a.id===aid)||accs[0];
       if(act)setConfig(c=>({...c,capital:act.capital,devise:act.devise,accountType:act.accountType}));
       if(act)setObjectif(o=>({...o,pnl:act.objPnl,drawdown:act.objDrawdown}));
-      if(migrated)saveUserData(uid,{accounts:accs,activeAccountId:aid,trades:tgTrades});
+      const actStrat=strats.find(s=>s.id===sid)||strats[0];
+      if(actStrat)setConfig(c=>({...c,items:actStrat.items,threshold:actStrat.threshold,strategyName:actStrat.name,eliminatoires:actStrat.eliminatoires||[]}));
+      if(migrated||sMig)saveUserData(uid,{accounts:accs,activeAccountId:aid,strategies:strats,activeStrategyId:sid,trades:tgTrades2});
       setPhase("app");
       // Vérifications bannières in-app
       setTimeout(()=>{
@@ -4227,6 +4291,19 @@ export default function App() {
               })}
             </div>
           </div>}
+
+          {strategies.length>1&&<div style={{marginBottom:12}}>
+            <div style={{fontSize:8,color:"#ffffff33",letterSpacing:2,marginBottom:6}}>{lang==="fr"?"STRATÉGIE":"STRATEGY"}</div>
+            <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+              {strategies.map(s=>{
+                const sel=activeStrategyId===s.id;const c=s.color||neon;
+                return <button key={s.id} onClick={()=>switchStrategy(s.id)} className="btn"
+                  style={{display:"flex",alignItems:"center",gap:5,padding:"8px 12px",background:sel?`${c}18`:"#131318",border:`1px solid ${sel?c:`${c}22`}`,borderRadius:8,fontSize:11,fontWeight:sel?700:400,color:sel?c:"#ffffffaa",fontFamily:MONO}}>
+                  <div style={{width:7,height:7,borderRadius:"50%",background:c,flexShrink:0}}/>{s.name}
+                </button>;
+              })}
+            </div>
+          </div>}
           <div style={{marginBottom:14}}>
             <div style={{display:"flex",gap:8}}><input type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} style={{...inSt,marginBottom:0,flex:2,colorScheme:"dark",color:"#ffffffcc"}}/><input type="time" value={form.time} onChange={e=>setForm({...form,time:e.target.value})} style={{...inSt,marginBottom:0,flex:1,colorScheme:"dark",color:form.time?"#ffffffcc":"#ffffff66"}}/></div>
             <div style={{fontSize:9,color:"#ffffffaa",marginTop:5}}>{t.entryTime}</div>
@@ -4493,18 +4570,24 @@ export default function App() {
       {view==="settings"&&<SettingsView config={config} onSave={cfg=>{
         const newCfg={...config,...cfg};
         setConfig(newCfg);
-        if(currentUserRef.current?.email) saveUserData(uidNow(),{config:newCfg});
+        let stratsToSave=strategies;
+        if(activeStrategyId && (cfg.items!==undefined||cfg.threshold!==undefined||cfg.strategyName!==undefined||cfg.eliminatoires!==undefined)){
+          stratsToSave=strategies.map(s=>s.id===activeStrategyId?{...s,name:cfg.strategyName??s.name,items:cfg.items??s.items,threshold:cfg.threshold??s.threshold,eliminatoires:cfg.eliminatoires??s.eliminatoires}:s);
+          setStrategies(stratsToSave);
+        }
+        if(currentUserRef.current?.email) saveUserData(uidNow(),{config:newCfg,strategies:stratsToSave,activeStrategyId});
       }} onLogout={async()=>{
         currentUserRef.current=null;
         try{localStorage.removeItem("tmt_user");}catch(e){}
         if(auth) try{ await signOut(auth); }catch(e){}
-        setTrades([]);setNoTrades([]);setPhases([]);setAccounts([]);setActiveAccountId(null);setPhase("onboarding");
+        setTrades([]);setNoTrades([]);setPhases([]);setAccounts([]);setActiveAccountId(null);setStrategies([]);setActiveStrategyId(null);setPhase("onboarding");
       }} onReset={()=>setShowReset(true)} onNewPhase={handleNewPhase} lang={lang} onLangChange={l=>{
         setLang(l);
         if(currentUserRef.current?.email) saveUserData(uidNow(),{lang:l});
       }} neon={neon} phases={phases} onPhasesChange={np=>{setPhases(np);if(currentUserRef.current?.email)saveUserData(uidNow(),{phases:np});}} onObjectifChange={obj=>{setObjectif(obj);if(currentUserRef.current?.email)saveUserData(uidNow(),{objectif:obj});}} onImport={()=>setShowImport(true)}
       onRate={()=>{setReviewMilestone(null);setShowReview(true);}}
       accounts={accounts} activeAccountId={activeAccountId} onSwitchAccount={switchAccount}
+      strategies={strategies} activeStrategyId={activeStrategyId} onSwitchStrategy={switchStrategy} onCreateStrategy={createStrategy} onDeleteStrategy={deleteStrategy}
       onAccountsChange={(newAccs,newActiveId)=>{
         setAccounts(newAccs);
         const aid=newActiveId!==undefined?newActiveId:activeAccountId;
