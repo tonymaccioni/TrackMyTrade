@@ -224,7 +224,7 @@ const ensureAccountsData = (ud) => {
   const migrated = trades.some(t=>!t.accountId) || accounts.length!==savedAccs.length;
   return {accounts, activeAccountId, trades: tagged, migrated};
 };
-const emptyForm = (asset="XAU/USD", tf="M5", mode="eur", accountId=null) => ({date:today(),asset,direction:"BUY",checklist:[],result:"WIN",pnlPreset:"",pnlManual:"",pnlMode:mode,pnlEurManual:"",notes:"",rejetScore:0,time:"",timeframe:tf,screenshot:"",isRevenge:false,slDirection:"",checkin:{humeur:"",biais:""},accountId});
+const emptyForm = (asset="XAU/USD", tf="M5", mode="eur", accountId=null) => ({date:today(),asset,direction:"BUY",checklist:[],result:"WIN",pnlPreset:"",pnlManual:"",pnlMode:mode,pnlEurManual:"",notes:"",rejetScore:0,time:"",timeframe:tf,screenshot:"",rr:"",isRevenge:false,slDirection:"",checkin:{humeur:"",biais:""},accountId});
 const mkInput = neon => ({width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:8,color:"#ffffff",padding:"12px 14px",fontSize:13,fontFamily:MONO,marginBottom:10,outline:"none"});
 // Auth handled by Firebase Auth
 
@@ -245,7 +245,7 @@ const T = {
     checklistSetup:"CHECKLIST SETUP",conform:"✓ Conforme",missing:"critère(s) manquant(s)",
     rejectQuality:"QUALITÉ DU REJET",optional:"(optionnel)",pnl:"P&L %",manualPnl:"Autre…",
     notesPlaceholder:"Notes comportementales, erreurs, observations...",
-    addScreenshot:"Ajouter une capture (optionnel)",screenshotAdded:"Capture ajoutée ✓",
+    addScreenshot:"Ajouter une capture (optionnel)",screenshotAdded:"Capture ajoutée ✓",rrLabel:"RR",rrPh:"ex: 2",
     saveConform:"✓ ENREGISTRER — Conforme",saveNonConform:"⚠ ENREGISTRER — Non-conforme",
     updateBtn:"✓ METTRE À JOUR",tradeSaved:"✓ Trade enregistré",tradeUpdated:"✓ Trade modifié",
     noTradeToday:"Pas de trade aujourd'hui",noTradeReason:"RAISON (OPTIONNEL)",confirmBtn:"⊘ Confirmer",
@@ -266,7 +266,7 @@ const T = {
     lastTrade:"Dernier trade",rejectStat:"rejet",highStd:"Standard élevé",balanced:"Équilibré",lowStd:"Standard faible",
     inconsistent:"incohérent avec",maxTradesLabel:"TRADES MAX PAR JOUR",
     revengeLabel:"Revenge trade",revengeWarning:"⚠ Limite atteinte — tagué Revenge trade",
-    statsTitle:"STATISTIQUES",expectancy:"Expectancy",bestAsset:"Meilleur actif",avgWin:"Gain moyen",avgLoss:"Perte moyenne",
+    statsTitle:"STATISTIQUES",expectancy:"Expectancy",bestAsset:"Meilleur actif",avgWin:"Gain moyen",avgLoss:"Perte moyenne",avgRR:"RR moyen",
     calendarTitle:"CALENDRIER",calendarToggle:"Afficher le calendrier",enableNotif:"Activer les conseils",
     addAsset:"+ Ajouter un actif",customAsset:"Nom de l'actif…",
     slDirectionLabel:"DIRECTION POST-SL",slWith:"Dans le bon sens ✓",slAgainst:"Contre moi ✗",ratio:"Ratio G/P",
@@ -276,7 +276,7 @@ const T = {
     loginEmailPlaceholder:"ton@email.com",loginPasswordPlaceholder:"········",confirmPwdPlaceholder:"Confirmer le mot de passe",confirmPwdError:"Les mots de passe ne correspondent pas",
     disciplineLabel:"DISCIPLINE",disciplineExcellent:"Excellent",disciplineGood:"Bon",disciplineWork:"À améliorer",disciplinePoor:"Insuffisant",
     conformiteLabel:"Conformité",sansRevengeLabel:"Sans revenge",
-    phaseEnCours:"Phase en cours",toutHistorique:"Tout",
+    phaseEnCours:"Phase en cours",toutHistorique:"Tout",semaine:"Semaine",mois:"Mois",
     newPhaseBtn:"▶ Nouvelle phase",newPhaseConfirmQ:"Démarrer une nouvelle phase ?",
     newPhaseDesc:"Les stats repartent à zéro à partir d'aujourd'hui. L'historique est conservé.",
     newPhaseConfirmBtn:"✓ Confirmer",phaseSince:"depuis",
@@ -306,7 +306,7 @@ const T = {
     checklistSetup:"SETUP CHECKLIST",conform:"✓ Compliant",missing:"criterion missing",
     rejectQuality:"REJECTION QUALITY",optional:"(optional)",pnl:"P&L %",manualPnl:"Other…",
     notesPlaceholder:"Behavioral notes, mistakes, observations...",
-    addScreenshot:"Add screenshot (optional)",screenshotAdded:"Screenshot added ✓",
+    addScreenshot:"Add screenshot (optional)",screenshotAdded:"Screenshot added ✓",rrLabel:"RR",rrPh:"e.g. 2",
     saveConform:"✓ SAVE — Compliant",saveNonConform:"⚠ SAVE — Non-compliant",
     updateBtn:"✓ UPDATE",tradeSaved:"✓ Trade saved",tradeUpdated:"✓ Trade updated",
     noTradeToday:"No trade today",noTradeReason:"REASON (OPTIONAL)",confirmBtn:"⊘ Confirm",
@@ -327,7 +327,7 @@ const T = {
     lastTrade:"Last trade",rejectStat:"reject",highStd:"High standard",balanced:"Balanced",lowStd:"Low standard",
     inconsistent:"inconsistent with",maxTradesLabel:"MAX TRADES PER DAY",
     revengeLabel:"Revenge trade",revengeWarning:"⚠ Limit reached — tagged as Revenge trade",
-    statsTitle:"STATISTICS",expectancy:"Expectancy",bestAsset:"Best asset",avgWin:"Avg win",avgLoss:"Avg loss",
+    statsTitle:"STATISTICS",expectancy:"Expectancy",bestAsset:"Best asset",avgWin:"Avg win",avgLoss:"Avg loss",avgRR:"Avg RR",
     calendarTitle:"CALENDAR",calendarToggle:"Show calendar",enableNotif:"Enable tips",
     addAsset:"+ Add asset",customAsset:"Asset name…",
     slDirectionLabel:"POST-SL DIRECTION",slWith:"Went my way ✓",slAgainst:"Against me ✗",ratio:"Win/Loss ratio",
@@ -337,7 +337,7 @@ const T = {
     loginEmailPlaceholder:"your@email.com",loginPasswordPlaceholder:"········",confirmPwdPlaceholder:"Confirm password",confirmPwdError:"Passwords do not match",
     disciplineLabel:"DISCIPLINE",disciplineExcellent:"Excellent",disciplineGood:"Good",disciplineWork:"Needs work",disciplinePoor:"Poor",
     conformiteLabel:"Compliance",sansRevengeLabel:"Revenge-free",
-    phaseEnCours:"Current phase",toutHistorique:"All",
+    phaseEnCours:"Current phase",toutHistorique:"All",semaine:"Week",mois:"Month",
     newPhaseBtn:"▶ New phase",newPhaseConfirmQ:"Start a new phase?",
     newPhaseDesc:"Dashboard stats reset from today. Full history is kept.",
     newPhaseConfirmBtn:"✓ Confirm",phaseSince:"since",
@@ -498,6 +498,8 @@ function AdvancedStats({trades,neon,lang}) {
   trades.forEach(x=>{if(!aMap[x.asset])aMap[x.asset]={w:0,t:0};aMap[x.asset].t++;if(x.result==="WIN")aMap[x.asset].w++;});
   const best=Object.entries(aMap).filter(([,v])=>v.t>=2).sort((a,b)=>(b[1].w/b[1].t)-(a[1].w/a[1].t))[0];
   const revs=trades.filter(x=>x.isRevenge);
+  const rrVals=trades.map(x=>parseFloat(x.rr)).filter(v=>!isNaN(v)&&v>0);
+  const avgRR=rrVals.length?rrVals.reduce((s,v)=>s+v,0)/rrVals.length:null;
   return (
     <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:16,marginBottom:12}}>
       <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>{t.statsTitle}</div>
@@ -506,6 +508,7 @@ function AdvancedStats({trades,neon,lang}) {
         {best&&<div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{t.bestAsset}</div><div style={{fontSize:14,fontWeight:700,color:neon,fontFamily:MONO}}>{best[0]}</div><div style={{fontSize:10,color:"#ffffffaa"}}>{Math.round(best[1].w/best[1].t*100)}% WR</div></div>}
         <div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{t.avgWin}</div><div style={{fontSize:16,fontWeight:700,color:neon,fontFamily:MONO,textShadow:`0 0 14px ${neon}99`}}>{fmtPct(avgWin)}</div></div>
         <div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{t.avgLoss}</div><div style={{fontSize:16,fontWeight:700,color:"#ff4d4d",fontFamily:MONO,textShadow:"0 0 14px #ff4d4d99"}}>-{avgLoss%1===0?avgLoss.toFixed(0):avgLoss.toFixed(1)}%</div></div>
+        {avgRR!==null&&<div style={{background:`${neon}08`,borderRadius:10,padding:10,boxShadow:`inset 0 1px 0 ${neon}15`}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{t.avgRR}</div><div style={{fontSize:16,fontWeight:700,color:neon,fontFamily:MONO,textShadow:`0 0 14px ${neon}99`}}>1:{avgRR.toFixed(2)}</div></div>}
         {wins.length>0&&losses.length>0&&(()=>{const r=avgWin/avgLoss;return<div style={{background:`${neon}08`,borderRadius:8,padding:10,gridColumn:"1/-1"}}><div style={{fontSize:9,color:"#ffffffaa",marginBottom:4}}>{t.ratio}</div><div style={{fontSize:16,fontWeight:700,color:r>=1?neon:"#f0b429",fontFamily:MONO}}>{r.toFixed(2)}</div></div>;})()}
         {revs.length>0&&<div style={{background:"rgba(255,77,77,0.06)",border:"1px solid rgba(255,77,77,0.15)",borderRadius:8,padding:10,gridColumn:"1/-1"}}><div style={{fontSize:9,color:"#ff4d4d",marginBottom:4}}>REVENGE TRADES</div><div style={{fontSize:14,fontWeight:700,color:"#ff4d4d",fontFamily:MONO}}>{revs.length} · {Math.round(revs.filter(x=>x.result==="LOSS").length/revs.length*100)}% LOSS</div></div>}
       </div>
@@ -1008,6 +1011,7 @@ function TradeDetailModal({trade,config,onClose,onEdit,onShare,lang,neon,account
           ))}
         </div>
         {trade.screenshot&&<div style={{marginBottom:14}}><div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.screenshotLabel}</div><img src={trade.screenshot} alt="" style={{width:"100%",borderRadius:8,border:`1px solid ${neon}26`}}/></div>}
+        {trade.rr&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}><span style={{fontSize:9,color:"#ffffffbb",letterSpacing:2}}>RR</span><span style={{fontSize:13,fontWeight:700,color:neon,fontFamily:MONO}}>1:{trade.rr}</span></div>}
         {trade.notes&&<div style={{background:`${neon}04`,border:`1px solid ${neon}10`,borderRadius:8,padding:12}}><div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:6}}>{t.notesLabel}</div><div style={{fontSize:12,color:"#ffffffaa",lineHeight:1.6,fontStyle:"italic"}}>"{trade.notes}"</div></div>}
       </div>
     </div>
@@ -3628,7 +3632,16 @@ export default function App() {
 
   const currentPhaseName=activeAccount?activeAccount.name:(config.phaseName||"PHASE");
   const accountTrades=trades.filter(x=>activeAccount?(x.accountId||"ph_0")===activeAccount.id:true);
-  const pf=statsMode==="all"?trades:accountTrades;
+  // Filtre période : "week"/"month" restreignent le compte actif à la semaine (lundi→) ou au mois courant.
+  const periodStart=(()=>{
+    if(statsMode!=="week"&&statsMode!=="month") return null;
+    const n=new Date();
+    if(statsMode==="month") return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-01`;
+    const d=new Date(n); const dow=(d.getDay()+6)%7; d.setDate(d.getDate()-dow); // lundi de la semaine en cours
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  })();
+  const pfBase=statsMode==="all"?trades:accountTrades;
+  const pf=periodStart?pfBase.filter(x=>x.date>=periodStart):pfBase;
   const total=pf.length,wins=pf.filter(x=>x.result==="WIN").length,losses=pf.filter(x=>x.result==="LOSS").length;
   const winRate=total?Math.round(wins/total*100):0;
   const totalPnl=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
@@ -3698,7 +3711,7 @@ export default function App() {
     setView(editingId!==null?"history":"dashboard");scrollToTop();
   };
 
-  const startEdit=x=>{setForm({date:x.date,asset:x.asset,direction:x.direction,checklist:[...x.checklist],result:x.result,pnlPreset:PNL_PRESETS.includes(x.pnlPct)?x.pnlPct:"",pnlManual:PNL_PRESETS.includes(x.pnlPct)?"":x.pnlPct,pnlMode:"pct",pnlEurManual:"",notes:x.notes||"",rejetScore:x.rejetScore||0,time:x.time||"",screenshot:x.screenshot||"",isRevenge:x.isRevenge||false,slDirection:x.slDirection||"",checkin:x.checkin||{humeur:"",biais:""},accountId:x.accountId||activeAccountId});setEditingId(x.id);setView("log");};
+  const startEdit=x=>{setForm({date:x.date,asset:x.asset,direction:x.direction,checklist:[...x.checklist],result:x.result,pnlPreset:PNL_PRESETS.includes(x.pnlPct)?x.pnlPct:"",pnlManual:PNL_PRESETS.includes(x.pnlPct)?"":x.pnlPct,pnlMode:"pct",pnlEurManual:"",notes:x.notes||"",rejetScore:x.rejetScore||0,time:x.time||"",screenshot:x.screenshot||"",rr:x.rr||"",isRevenge:x.isRevenge||false,slDirection:x.slDirection||"",checkin:x.checkin||{humeur:"",biais:""},accountId:x.accountId||activeAccountId});setEditingId(x.id);setView("log");};
   // Réaffecter un trade à un autre compte
   const reassignTrade=(tradeId,accId)=>{
     const updated=trades.map(x=>x.id===tradeId?{...x,accountId:accId}:x);
@@ -3982,7 +3995,7 @@ export default function App() {
           {trades.length>0&&(
             <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
               <div style={{flex:1,display:"flex",gap:4,background:"#0f0f14",borderRadius:8,padding:3}}>
-                {[["phase",t.phaseEnCours],["all",t.toutHistorique]].map(([m,l])=>(
+                {[["phase","Phase"],["week",t.semaine],["month",t.mois],["all",t.toutHistorique]].map(([m,l])=>(
                   <button key={m} onClick={()=>setStatsMode(m)} className="btn" style={{flex:1,padding:"7px 0",borderRadius:6,fontSize:10,fontWeight:700,fontFamily:MONO,background:statsMode===m?neon:"transparent",color:statsMode===m?"#131318":"#ffffffaa",border:"none",transition:"all 0.2s"}}>{l}</button>
                 ))}
               </div>
@@ -4321,6 +4334,13 @@ export default function App() {
             )}
           </div>
           {pnlIncoherent&&<div style={{fontSize:10,color:"#f0b429",background:"rgba(240,180,41,0.08)",border:"1px solid rgba(240,180,41,0.2)",borderRadius:6,padding:"6px 10px",marginBottom:10}}>⚠ P&L {t.inconsistent} {form.result}</div>}
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+            <span style={{fontSize:9,color:"#ffffffbb",letterSpacing:2}}>{t.rrLabel}</span>
+            <div style={{display:"flex",alignItems:"center",gap:4}}>
+              <span style={{fontSize:12,color:"#ffffff66",fontFamily:MONO}}>1:</span>
+              <input type="number" step="0.1" min="0" placeholder={t.rrPh} value={form.rr} onChange={e=>setForm({...form,rr:e.target.value})} style={{width:72,background:"#131318",border:`1px solid ${form.rr?`${neon}66`:`${neon}26`}`,borderRadius:8,color:form.rr?neon:"#ffffffaa",padding:"10px 12px",fontSize:13,fontFamily:MONO,outline:"none",textAlign:"center"}}/>
+            </div>
+          </div>
           <textarea placeholder={t.notesPlaceholder} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} rows={3} style={{width:"100%",background:"#131318",border:`1px solid ${neon}26`,borderRadius:8,color:"#ffffff",padding:"12px",fontSize:12,fontFamily:MONO,resize:"none",marginBottom:10,outline:"none"}}/>
           <div style={{marginBottom:16}}>
             <input type="file" ref={fileRef} accept="image/*" onChange={e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setForm(fm=>({...fm,screenshot:ev.target.result}));r.readAsDataURL(f);}}/>
