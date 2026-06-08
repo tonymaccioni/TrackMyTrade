@@ -224,7 +224,25 @@ const ensureAccountsData = (ud) => {
   const migrated = trades.some(t=>!t.accountId) || accounts.length!==savedAccs.length;
   return {accounts, activeAccountId, trades: tagged, migrated};
 };
-const emptyForm = (asset="XAU/USD", tf="M5", mode="eur", accountId=null) => ({date:today(),asset,direction:"BUY",checklist:[],result:"WIN",pnlPreset:"",pnlManual:"",pnlMode:mode,pnlEurManual:"",notes:"",rejetScore:0,time:"",timeframe:tf,screenshot:"",rr:"",isRevenge:false,slDirection:"",checkin:{humeur:"",biais:""},accountId});
+const compressImage = (file, maxW=1280, quality=0.7) => new Promise(resolve=>{
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const scale=Math.min(1, maxW/img.width);
+      const canvas=document.createElement("canvas");
+      canvas.width=Math.round(img.width*scale); canvas.height=Math.round(img.height*scale);
+      canvas.getContext("2d").drawImage(img,0,0,canvas.width,canvas.height);
+      resolve(canvas.toDataURL("image/jpeg",quality));
+    };
+    img.onerror=()=>resolve(null);
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+const getShots = x => x.screenshots || (x.screenshot ? [x.screenshot] : []);
+const MAX_SHOTS = 3;
+const emptyForm = (asset="XAU/USD", tf="M5", mode="eur", accountId=null) => ({date:today(),asset,direction:"BUY",checklist:[],result:"WIN",pnlPreset:"",pnlManual:"",pnlMode:mode,pnlEurManual:"",notes:"",rejetScore:0,time:"",timeframe:tf,screenshots:[],rr:"",isRevenge:false,slDirection:"",checkin:{humeur:"",biais:""},accountId});
 const mkInput = neon => ({width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:8,color:"#ffffff",padding:"12px 14px",fontSize:13,fontFamily:MONO,marginBottom:10,outline:"none"});
 // Auth handled by Firebase Auth
 
@@ -1007,7 +1025,7 @@ function TradeDetailModal({trade,config,onClose,onEdit,onShare,lang,neon,account
             </div>
           ))}
         </div>
-        {trade.screenshot&&<div style={{marginBottom:14}}><div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.screenshotLabel}</div><img src={trade.screenshot} alt="" style={{width:"100%",borderRadius:8,border:`1px solid ${neon}26`}}/></div>}
+        {getShots(trade).length>0&&<div style={{marginBottom:14}}><div style={{fontSize:9,color:"#ffffffbb",letterSpacing:2,marginBottom:8}}>{t.screenshotLabel}</div><div style={{display:"flex",flexDirection:"column",gap:8}}>{getShots(trade).map((src,i)=><img key={i} src={src} alt="" style={{width:"100%",borderRadius:8,border:`1px solid ${neon}26`}}/>)}</div></div>}
         {trade.rr&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}><span style={{fontSize:9,color:"#ffffffbb",letterSpacing:2}}>{t.rrLabel}</span><span style={{fontSize:13,fontWeight:700,color:neon,fontFamily:MONO}}>1:{trade.rr}</span></div>}
         {trade.notes&&<div style={{background:`${neon}04`,border:`1px solid ${neon}10`,borderRadius:8,padding:12}}><div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:6}}>{t.notesLabel}</div><div style={{fontSize:12,color:"#ffffffaa",lineHeight:1.6,fontStyle:"italic"}}>"{trade.notes}"</div></div>}
       </div>
@@ -3708,7 +3726,7 @@ export default function App() {
     setView(editingId!==null?"history":"dashboard");scrollToTop();
   };
 
-  const startEdit=x=>{setForm({date:x.date,asset:x.asset,direction:x.direction,checklist:[...x.checklist],result:x.result,pnlPreset:PNL_PRESETS.includes(x.pnlPct)?x.pnlPct:"",pnlManual:PNL_PRESETS.includes(x.pnlPct)?"":x.pnlPct,pnlMode:"pct",pnlEurManual:"",notes:x.notes||"",rejetScore:x.rejetScore||0,time:x.time||"",screenshot:x.screenshot||"",rr:x.rr||"",isRevenge:x.isRevenge||false,slDirection:x.slDirection||"",checkin:x.checkin||{humeur:"",biais:""},accountId:x.accountId||activeAccountId});setEditingId(x.id);setView("log");};
+  const startEdit=x=>{setForm({date:x.date,asset:x.asset,direction:x.direction,checklist:[...x.checklist],result:x.result,pnlPreset:PNL_PRESETS.includes(x.pnlPct)?x.pnlPct:"",pnlManual:PNL_PRESETS.includes(x.pnlPct)?"":x.pnlPct,pnlMode:"pct",pnlEurManual:"",notes:x.notes||"",rejetScore:x.rejetScore||0,time:x.time||"",screenshots:getShots(x),rr:x.rr||"",isRevenge:x.isRevenge||false,slDirection:x.slDirection||"",checkin:x.checkin||{humeur:"",biais:""},accountId:x.accountId||activeAccountId});setEditingId(x.id);setView("log");};
   // Réaffecter un trade à un autre compte
   const reassignTrade=(tradeId,accId)=>{
     const updated=trades.map(x=>x.id===tradeId?{...x,accountId:accId}:x);
@@ -4340,9 +4358,9 @@ export default function App() {
           </div>
           <textarea placeholder={t.notesPlaceholder} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} rows={3} style={{width:"100%",background:"#131318",border:`1px solid ${neon}26`,borderRadius:8,color:"#ffffff",padding:"12px",fontSize:12,fontFamily:MONO,resize:"none",marginBottom:10,outline:"none"}}/>
           <div style={{marginBottom:16}}>
-            <input type="file" ref={fileRef} accept="image/*" onChange={e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setForm(fm=>({...fm,screenshot:ev.target.result}));r.readAsDataURL(f);}}/>
-            <button onClick={()=>fileRef.current&&fileRef.current.click()} style={{width:"100%",display:"flex",alignItems:"center",gap:8,cursor:"pointer",padding:"8px 12px",borderRadius:8,border:`1px dashed ${neon}26`,color:form.screenshot?neon:"#ffffffaa",fontSize:11,fontFamily:MONO,background:"transparent"}}>{form.screenshot?t.screenshotAdded:t.addScreenshot}</button>
-            {form.screenshot&&<div style={{display:"flex",gap:8,alignItems:"center",marginTop:8}}><img src={form.screenshot} alt="" style={{height:40,borderRadius:4,border:`1px solid ${neon}26`}}/><button onClick={()=>setForm({...form,screenshot:""})} style={{background:"transparent",border:"none",color:"#ff4d4d",fontSize:12,cursor:"pointer"}}>✕</button></div>}
+            <input type="file" ref={fileRef} accept="image/*" multiple onChange={async e=>{const files=Array.from(e.target.files).slice(0,MAX_SHOTS-form.screenshots.length);const out=(await Promise.all(files.map(f=>compressImage(f)))).filter(Boolean);setForm(fm=>({...fm,screenshots:[...fm.screenshots,...out].slice(0,MAX_SHOTS)}));e.target.value="";}}/>
+            <button onClick={()=>fileRef.current&&fileRef.current.click()} disabled={form.screenshots.length>=MAX_SHOTS} style={{width:"100%",display:"flex",alignItems:"center",gap:8,cursor:form.screenshots.length>=MAX_SHOTS?"default":"pointer",padding:"8px 12px",borderRadius:8,border:`1px dashed ${neon}26`,color:form.screenshots.length?neon:"#ffffffaa",fontSize:11,fontFamily:MONO,background:"transparent",opacity:form.screenshots.length>=MAX_SHOTS?0.5:1}}>{form.screenshots.length?`${form.screenshots.length}/${MAX_SHOTS} ✓`:t.addScreenshot}</button>
+            {form.screenshots.length>0&&<div style={{display:"flex",gap:8,alignItems:"center",marginTop:8,flexWrap:"wrap"}}>{form.screenshots.map((src,i)=><div key={i} style={{position:"relative"}}><img src={src} alt="" style={{height:48,borderRadius:4,border:`1px solid ${neon}26`}}/><button onClick={()=>setForm(fm=>({...fm,screenshots:fm.screenshots.filter((_,j)=>j!==i)}))} style={{position:"absolute",top:-6,right:-6,background:"#1a0d0d",border:"1px solid #ff4d4d",color:"#ff4d4d",borderRadius:"50%",width:18,height:18,fontSize:10,lineHeight:1,cursor:"pointer",fontFamily:MONO,padding:0}}>✕</button></div>)}</div>}
           </div>
           <button onClick={saveTrade} className="btn" style={{width:"100%",background:editingId!==null?"rgba(240,180,41,0.18)":(isRevengeNow||form.isRevenge?"rgba(255,77,77,0.15)":form.checklist.length>=config.threshold?`${neon}2a`:"rgba(255,77,77,0.1)"),border:`1px solid ${editingId!==null?"#f0b429":(isRevengeNow||form.isRevenge?"#ff4d4d":form.checklist.length>=config.threshold?neon:"#ff4d4d")}`,color:editingId!==null?"#f0b429":(isRevengeNow||form.isRevenge?"#ff4d4d":form.checklist.length>=config.threshold?neon:"#ff4d4d"),borderRadius:10,padding:14,fontSize:13,fontWeight:700,fontFamily:MONO,letterSpacing:1}}>
             {editingId!==null?t.updateBtn:isRevengeNow||form.isRevenge?"⚠ REVENGE — Non-conforme":form.checklist.length>=config.threshold?t.saveConform:`${t.saveNonConform} — ${form.checklist.length}/${config.items.length}`}
