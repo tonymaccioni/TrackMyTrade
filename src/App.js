@@ -2439,7 +2439,7 @@ function StratBlock({icon,title,sub,neon,children}){
 function StratDivider({neon}){return <div style={{height:1,background:`linear-gradient(90deg,transparent,${neon}22,transparent)`,margin:"4px 0 20px"}}/>;}
 function StratFLbl({children}){return <div style={{fontSize:8.5,color:"#ffffff66",letterSpacing:1.5,marginBottom:7}}>{children}</div>;}
 
-function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChange,neon,phases,onPhasesChange,onObjectifChange,onImport,onRate,accounts,activeAccountId,onSwitchAccount,onAccountsChange,onCreateAccount}) {
+function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChange,neon,phases,onPhasesChange,onObjectifChange,onImport,onImportJson,onRate,accounts,activeAccountId,onSwitchAccount,onAccountsChange,onCreateAccount}) {
   const t=T[lang];const inSt=mkInput(neon);
   const [showLegal,setShowLegal]=useState(null);
   const [items,setItems]=useState([...config.items]);const [threshold,setThreshold]=useState(config.threshold);
@@ -2735,6 +2735,27 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
           <span style={{display:"flex",alignItems:"center",gap:9}}><Icon name="swap" size={14} color={neon}/>{fr?"Importer un CSV (MT4/MT5/cTrader)":"Import CSV (MT4/MT5/cTrader)"}</span>
           <span style={{color:`${neon}66`}}>›</span>
         </button>
+        <label className="btn" style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:`${neon}0a`,border:`1px solid ${neon}28`,color:neon,borderRadius:10,padding:"13px 14px",fontSize:12,fontFamily:MONO,marginBottom:8,cursor:"pointer"}}>
+          <span style={{display:"flex",alignItems:"center",gap:9}}><Icon name="swap" size={14} color={neon}/>{fr?"Importer un backup JSON":"Import JSON backup"}</span>
+          <span style={{color:`${neon}66`}}>›</span>
+          <input type="file" accept=".json,application/json" style={{display:"none"}} onChange={e=>{
+            const file=e.target.files&&e.target.files[0]; if(!file)return;
+            const reader=new FileReader();
+            reader.onload=()=>{
+              let data; try{ data=JSON.parse(reader.result); }catch(err){ alert(fr?"Fichier JSON invalide.":"Invalid JSON file."); return; }
+              let arr=null;
+              if(Array.isArray(data)) arr=data;
+              else if(data&&Array.isArray(data.trades)) arr=data.trades;
+              if(!arr){ alert(fr?"Format non reconnu : le fichier doit contenir une liste de trades.":"Unrecognized format: file must contain a list of trades."); return; }
+              const clean=arr.filter(x=>x&&typeof x==="object").map(x=>({...x,id:x.id!=null?x.id:(Date.now()+Math.floor(Math.random()*1e6))}));
+              if(!clean.length){ alert(fr?"Aucun trade trouvé dans le fichier.":"No trades found in the file."); return; }
+              if(!window.confirm(fr?`${clean.length} trade(s) trouvé(s). Les ajouter à ton journal ? Les doublons (même id) sont ignorés.`:`${clean.length} trade(s) found. Add them to your journal? Duplicates (same id) are skipped.`)) return;
+              onImportJson&&onImportJson(clean);
+            };
+            reader.readAsText(file);
+            e.target.value="";
+          }}/>
+        </label>
         <button onClick={onReset} className="btn" style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"transparent",border:"1px solid rgba(255,77,77,0.2)",color:"#ff4d4daa",borderRadius:10,padding:"13px 14px",fontSize:12,fontFamily:MONO}}>
           <span style={{display:"flex",alignItems:"center",gap:9}}><Icon name="trash" size={14} color="#ff4d4daa"/>{t.resetBtn.replace("⊘ ","")}</span>
           <span style={{color:"#ff4d4d55"}}>›</span>
@@ -4502,7 +4523,14 @@ export default function App() {
       }} onReset={()=>setShowReset(true)} onNewPhase={handleNewPhase} lang={lang} onLangChange={l=>{
         setLang(l);
         if(currentUserRef.current?.email) saveUserData(uidNow(),{lang:l});
-      }} neon={neon} phases={phases} onPhasesChange={np=>{setPhases(np);if(currentUserRef.current?.email)saveUserData(uidNow(),{phases:np});}} onObjectifChange={obj=>{setObjectif(obj);if(currentUserRef.current?.email)saveUserData(uidNow(),{objectif:obj});}} onImport={()=>setShowImport(true)}
+      }} neon={neon} phases={phases} onPhasesChange={np=>{setPhases(np);if(currentUserRef.current?.email)saveUserData(uidNow(),{phases:np});}} onObjectifChange={obj=>{setObjectif(obj);if(currentUserRef.current?.email)saveUserData(uidNow(),{objectif:obj});}} onImport={()=>setShowImport(true)} onImportJson={imported=>{
+        const ids=new Set(trades.map(x=>x.id));
+        const toAdd=imported.filter(x=>!ids.has(x.id));
+        const merged=[...toAdd,...trades].sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.id||0)-(a.id||0));
+        setTrades(merged);
+        if(currentUserRef.current?.email)saveUserData(uidNow(),{trades:merged});
+        alert(toAdd.length?(lang==="fr"?`${toAdd.length} trade(s) restauré(s).`:`${toAdd.length} trade(s) restored.`):(lang==="fr"?"Tous ces trades étaient déjà présents.":"All these trades were already present."));
+      }}
       onRate={()=>{setReviewMilestone(null);setShowReview(true);}}
       accounts={accounts} activeAccountId={activeAccountId} onSwitchAccount={switchAccount}
       onAccountsChange={(newAccs,newActiveId)=>{
