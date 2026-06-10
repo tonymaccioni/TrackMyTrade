@@ -179,6 +179,12 @@ const today = () => new Date().toISOString().split("T")[0];
 const rc = (r, neon="#00ff9d") => r==="WIN"?neon:r==="LOSS"?"#ff4d4d":"#f0b429";
 const fmtPct = v => { if(v===""||v===null||v===undefined) return "—"; const n=Number(v),abs=Math.abs(n); const s=abs%1===0?abs.toFixed(0):abs*10%1===0?abs.toFixed(1):abs*100%1===0?abs.toFixed(2):abs.toFixed(3); return `${n>=0?"+":""}${n<0?"-":""}${s}%`; };
 const calcDisc = list => { if(!list||!list.length) return null; return Math.round((list.filter(x=>x.conforming).length/list.length*0.6+list.filter(x=>!x.isRevenge).length/list.length*0.4)*10); };
+// ── Stratégies multiples ──
+const stratList = cfg => (cfg&&Array.isArray(cfg.strategies)&&cfg.strategies.length) ? cfg.strategies : [{id:"st_legacy",name:(cfg&&cfg.strategyName)||"Ma Stratégie",items:(cfg&&cfg.items)||DEFAULT_CRITERIA,threshold:(cfg&&cfg.threshold!=null)?cfg.threshold:6,eliminatoires:(cfg&&cfg.eliminatoires)||[]}];
+const firstStratId = cfg => stratList(cfg)[0].id;
+const activeStratId = cfg => (cfg&&cfg.activeStrategyId&&stratList(cfg).some(s=>s.id===cfg.activeStrategyId)) ? cfg.activeStrategyId : firstStratId(cfg);
+const getStrat = (cfg,id) => { const L=stratList(cfg); return L.find(s=>s.id===id) || L.find(s=>s.id===activeStratId(cfg)) || L[0]; };
+const tradeStratId = (t,cfg) => t.strategyId || firstStratId(cfg);
 // ── MODULES & TIMEFRAMES ──
 const ALL_TIMEFRAMES = ["M1","M5","M15","M30","H1","H4","D1"];
 const DEFAULT_TIMEFRAMES = ["M1","M5","M15","M30","H1","H4","D1"];
@@ -258,7 +264,7 @@ const compressImage = (file, maxW=1280, quality=0.7) => new Promise(resolve=>{
 });
 const getShots = x => x.screenshots || (x.screenshot ? [x.screenshot] : []);
 const MAX_SHOTS = 3;
-const emptyForm = (asset="XAU/USD", tf="M5", mode="eur", accountId=null) => ({date:today(),asset,direction:"BUY",checklist:[],result:"WIN",pnlPreset:"",pnlManual:"",pnlMode:mode,pnlEurManual:"",notes:"",rejetScore:0,time:"",timeframe:tf,screenshots:[],rr:"",isRevenge:false,slDirection:"",checkin:{humeur:"",biais:""},accountId});
+const emptyForm = (asset="XAU/USD", tf="M5", mode="eur", accountId=null, strategyId=null) => ({date:today(),asset,direction:"BUY",checklist:[],result:"WIN",pnlPreset:"",pnlManual:"",pnlMode:mode,pnlEurManual:"",notes:"",rejetScore:0,time:"",timeframe:tf,screenshots:[],rr:"",isRevenge:false,slDirection:"",checkin:{humeur:"",biais:""},accountId,strategyId});
 const mkInput = neon => ({width:"100%",background:"#131318",border:`1px solid ${neon}33`,borderRadius:8,color:"#ffffff",padding:"12px 14px",fontSize:13,fontFamily:MONO,marginBottom:10,outline:"none"});
 // Auth handled by Firebase Auth
 
@@ -954,6 +960,7 @@ function TradeDetailModal({trade,config,onClose,onEdit,onShare,lang,neon,account
   const hasCI=ci&&(ci.humeur||ci.biais);
   const fr=lang==="fr";
   const currentAcc=(accounts||[]).find(a=>a.id===(trade.accountId||"ph_0"))||(accounts||[])[0];
+  const dStrat=getStrat(config, trade.strategyId);
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={onClose}>
       <div className="slide-up" style={{background:"#131318",border:`1px solid ${neon}35`,borderRadius:16,width:"100%",maxWidth:480,maxHeight:"88vh",overflow:"auto",padding:20}} onClick={e=>e.stopPropagation()}>
@@ -1018,7 +1025,7 @@ function TradeDetailModal({trade,config,onClose,onEdit,onShare,lang,neon,account
         </div>
         <div style={{display:"flex",gap:10,marginBottom:14}}>
           <div style={{flex:1,background:`${neon}0a`,border:`1px solid ${neon}1a`,borderRadius:8,padding:12,display:"flex",alignItems:"center",gap:10}}>
-            <ScoreRing score={trade.setupScore} max={trade.checklistMax||config.items.length} size={44} threshold={config.threshold} neon={neon}/>
+            <ScoreRing score={trade.setupScore} max={trade.checklistMax||dStrat.items.length} size={44} threshold={dStrat.threshold} neon={neon}/>
             <div>
               <div style={{fontSize:10,color:"#ffffffbb",letterSpacing:1}}>{t.setupScore}</div>
               <div style={{fontSize:12,color:trade.conforming?neon:"#ff4d4d",fontWeight:700,marginTop:3}}>{trade.conforming?t.conformLabel:t.nonConformLabel}</div>
@@ -1034,7 +1041,7 @@ function TradeDetailModal({trade,config,onClose,onEdit,onShare,lang,neon,account
         </div>
         <div style={{background:"#131318",border:`1px solid ${neon}14`,borderRadius:8,padding:12,marginBottom:14}}>
           <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:10}}>{t.checklistDetail}</div>
-          {config.items.map((item,i)=>(
+          {dStrat.items.map((item,i)=>(
             <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:"1px solid #ffffff06"}}>
               <span style={{fontSize:13,color:(trade.checklist||[]).includes(i)?neon:"#ffffff44"}}>{(trade.checklist||[]).includes(i)?"✓":"✗"}</span>
               <span style={{fontSize:11,color:(trade.checklist||[]).includes(i)?"#ffffff":"#ffffffaa"}}>{item}</span>
@@ -1235,30 +1242,59 @@ function PerformanceChart({trades, neon, lang}) {
 
 function TradingCalendar({trades,neon,lang}) {
   const t=T[lang];
+  const fr=lang==="fr";
   const now=new Date();
-  const year=now.getFullYear(),month=now.getMonth();
-  const firstDay=new Date(year,month,1).getDay();
-  const dIM=new Date(year,month+1,0).getDate();
+  const [vy,setVy]=useState(now.getFullYear());
+  const [vm,setVm]=useState(now.getMonth());
+  const [selDay,setSelDay]=useState(null);
+  const touchX=useRef(null);
   const mN={fr:["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"],en:["January","February","March","April","May","June","July","August","September","October","November","December"]};
   const dN={fr:["L","M","M","J","V","S","D"],en:["M","T","W","T","F","S","S"]};
+  const firstDay=new Date(vy,vm,1).getDay();
+  const dIM=new Date(vy,vm+1,0).getDate();
   const byDay={};
-  trades.forEach(tr=>{const d=new Date(tr.date);if(d.getMonth()===month&&d.getFullYear()===year){const k=d.getDate();if(!byDay[k])byDay[k]={w:0,l:0,c:0,t:0};byDay[k].t++;if(tr.result==="WIN")byDay[k].w++;else if(tr.result==="LOSS")byDay[k].l++;if(tr.conforming)byDay[k].c++;}});
+  trades.forEach(tr=>{const d=new Date(tr.date);if(d.getMonth()===vm&&d.getFullYear()===vy){const k=d.getDate();if(!byDay[k])byDay[k]={w:0,l:0,c:0,t:0,pnl:0};byDay[k].t++;if(tr.result==="WIN")byDay[k].w++;else if(tr.result==="LOSS")byDay[k].l++;if(tr.conforming)byDay[k].c++;byDay[k].pnl+=(parseFloat(tr.pnlPct)||0);}});
   const cells=[];const sD=(firstDay+6)%7;
   for(let i=0;i<sD;i++)cells.push(null);
   for(let d=1;d<=dIM;d++)cells.push(d);
+  const go=(delta)=>{setSelDay(null);let m=vm+delta,y=vy;if(m<0){m=11;y--;}if(m>11){m=0;y++;}setVm(m);setVy(y);};
+  const onTouchStart=e=>{touchX.current=e.touches[0].clientX;};
+  const onTouchEnd=e=>{if(touchX.current==null)return;const dx=e.changedTouches[0].clientX-touchX.current;if(Math.abs(dx)>45)go(dx<0?1:-1);touchX.current=null;};
+  const isCurMonth=vy===now.getFullYear()&&vm===now.getMonth();
+  const sel=selDay!=null?byDay[selDay]:null;
   return (
     <div style={{background:"linear-gradient(145deg,#1a1a24,#131318)",border:"1px solid #ffffff0e",borderRadius:14,padding:14,marginBottom:12}}>
-      <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,marginBottom:12,textTransform:"uppercase"}}>{t.calendarTitle} · {mN[lang][month]} {year}</div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:6}}>{dN[lang].map((d,i)=><div key={i} style={{fontSize:8,color:"#ffffff44",textAlign:"center"}}>{d}</div>)}</div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
-        {cells.map((d,i)=>{
-          if(!d) return <div key={i}/>;
-          const data=byDay[d];const isToday=d===now.getDate();
-          const bg=data?(data.l>data.w?"rgba(255,77,77,0.2)":`${neon}20`):"transparent";
-          const tc=data?(data.l>data.w?"#ff4d4d":neon):"#ffffffaa";
-          return <div key={i} style={{background:bg,border:isToday?`1px solid ${neon}`:"1px solid transparent",borderRadius:4,padding:"4px 2px",textAlign:"center"}}><div style={{fontSize:10,color:tc,fontFamily:MONO}}>{d}</div></div>;
-        })}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+        <button onClick={()=>go(-1)} className="btn" style={{background:"transparent",border:"1px solid #ffffff14",color:"#ffffffaa",borderRadius:7,width:30,height:30,fontSize:15,display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
+        <div style={{fontSize:10,color:neon,letterSpacing:2,textTransform:"uppercase",fontFamily:MONO,fontWeight:700}}>{mN[lang][vm]} {vy}</div>
+        <button onClick={()=>go(1)} className="btn" style={{background:"transparent",border:"1px solid #ffffff14",color:"#ffffffaa",borderRadius:7,width:30,height:30,fontSize:15,display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
       </div>
+      <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3,marginBottom:6}}>{dN[lang].map((d,i)=><div key={i} style={{fontSize:8,color:"#ffffff44",textAlign:"center"}}>{d}</div>)}</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
+          {cells.map((d,i)=>{
+            if(!d) return <div key={i}/>;
+            const data=byDay[d];const isToday=isCurMonth&&d===now.getDate();const isSel=d===selDay;
+            const bg=data?(data.pnl>0?`${neon}20`:data.pnl<0?"rgba(255,77,77,0.2)":"#ffffff10"):"transparent";
+            const tc=data?(data.pnl>0?neon:data.pnl<0?"#ff4d4d":"#ffffffcc"):"#ffffffaa";
+            return <button key={i} onClick={()=>data&&setSelDay(isSel?null:d)} className="btn" style={{background:bg,border:isSel?`1px solid ${neon}`:isToday?`1px solid ${neon}66`:"1px solid transparent",borderRadius:4,padding:"5px 2px",textAlign:"center",cursor:data?"pointer":"default"}}><div style={{fontSize:10,color:tc,fontFamily:MONO}}>{d}</div></button>;
+          })}
+        </div>
+      </div>
+      {sel&&(
+        <div style={{marginTop:12,background:"#0f0f14",border:`1px solid ${neon}22`,borderRadius:10,padding:"12px 14px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+            <div style={{fontSize:11,color:"#ffffff",fontWeight:700,fontFamily:MONO}}>{selDay} {mN[lang][vm]}</div>
+            <div style={{fontSize:14,fontWeight:800,color:sel.pnl>0?neon:sel.pnl<0?"#ff4d4d":"#ffffffaa",fontFamily:MONO}}>{sel.pnl>0?"+":""}{Math.round(sel.pnl*10)/10}%</div>
+          </div>
+          <div style={{display:"flex",gap:14,fontSize:10,color:"#ffffffaa",fontFamily:MONO}}>
+            <span>{sel.t} trade{sel.t>1?"s":""}</span>
+            <span style={{color:neon}}>{sel.w}W</span>
+            <span style={{color:"#ff4d4d"}}>{sel.l}L</span>
+            <span>{sel.c}/{sel.t} {fr?"conf.":"comp."}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2458,8 +2494,9 @@ function StratFLbl({children}){return <div style={{fontSize:8.5,color:"#ffffff66
 function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChange,neon,phases,onPhasesChange,onObjectifChange,onImport,onImportJson,onRate,accounts,activeAccountId,onSwitchAccount,onAccountsChange,onCreateAccount}) {
   const t=T[lang];const inSt=mkInput(neon);
   const [showLegal,setShowLegal]=useState(null);
-  const [items,setItems]=useState([...config.items]);const [threshold,setThreshold]=useState(config.threshold);
-  const [stratName,setStratName]=useState(config.strategyName||"");const [maxTrades,setMaxTrades]=useState(config.maxTrades||1);
+  const _sel0=getStrat(config,activeStratId(config));
+  const [items,setItems]=useState([..._sel0.items]);const [threshold,setThreshold]=useState(_sel0.threshold);
+  const [stratName,setStratName]=useState(_sel0.name||"");const [maxTrades,setMaxTrades]=useState(config.maxTrades||1);
   const [neonColor,setNeonColor]=useState(neon);const [calendarOn,setCalendarOn]=useState(config.calendarOn!==false);
   const [notifOn,setNotifOn]=useState(config.notifOn!==false);const [customAsset,setCustomAsset]=useState("");
   const [assets,setAssets]=useState(config.customAssets||PRESET_ASSETS);
@@ -2469,7 +2506,7 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
   const [phaseStartDate,setPhaseStartDate]=useState(config.phaseStartDate||"");
   const [objPnl,setObjPnl]=useState(config.objPnl||"");
   const [objWr,setObjWr]=useState(config.objWr||"");const [defaultTf,setDefaultTf]=useState(config.defaultTimeframe||config.defaultTimeframe||config.lastTimeframe||"M5");
-  const [objTrades,setObjTrades]=useState(config.objTrades||"");const [eliminatoires,setEliminatoires]=useState(config.eliminatoires||[]);
+  const [objTrades,setObjTrades]=useState(config.objTrades||"");const [eliminatoires,setEliminatoires]=useState([...(_sel0.eliminatoires||[])]);
   const [capital,setCapital]=useState(config.capital||"");
   const [devise,setDevise]=useState(config.devise||"€");
   const [accountType,setAccountType]=useState(config.accountType||"perso");
@@ -2483,9 +2520,17 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
   const [timeframes,setTimeframes]=useState(getTimeframes(config));
   const [killzones,setKillzones]=useState(Array.isArray(config.killzones)?config.killzones:DEFAULT_KILLZONES);
   const toggleTf=(tf)=>setTimeframes(prev=>{const has=prev.includes(tf);if(has&&prev.length<=1)return prev;const next=has?prev.filter(x=>x!==tf):[...prev,tf];return ALL_TIMEFRAMES.filter(x=>next.includes(x));});
+  const [strategies,setStrategies]=useState(()=>stratList(config).map(s=>({id:s.id,name:s.name,items:[...(s.items||[])],threshold:(s.threshold!=null?s.threshold:6),eliminatoires:[...(s.eliminatoires||[])]})));
+  const [selStrat,setSelStrat]=useState(()=>activeStratId(config));
+  const _commitStrats=()=>strategies.map(s=>s.id===selStrat?{...s,name:stratName,items,threshold,eliminatoires}:s);
+  const switchStrat=(id)=>{const committed=_commitStrats();setStrategies(committed);const tgt=committed.find(s=>s.id===id);if(tgt){setStratName(tgt.name);setItems([...tgt.items]);setThreshold(tgt.threshold);setEliminatoires([...(tgt.eliminatoires||[])]);}setSelStrat(id);};
+  const addStrat=()=>{const committed=_commitStrats();const id="st_"+Date.now();const ns={id,name:(lang==="fr"?"Stratégie ":"Strategy ")+(committed.length+1),items:[...DEFAULT_CRITERIA],threshold:6,eliminatoires:[]};setStrategies([...committed,ns]);setStratName(ns.name);setItems([...ns.items]);setThreshold(ns.threshold);setEliminatoires([]);setSelStrat(id);};
+  const delStrat=(id)=>{if(strategies.length<=1)return;const rest=strategies.filter(s=>s.id!==id);setStrategies(rest);if(selStrat===id){const n=rest[0];setSelStrat(n.id);setStratName(n.name);setItems([...n.items]);setThreshold(n.threshold);setEliminatoires([...(n.eliminatoires||[])]);}};
   const save=()=>{
     const dft=timeframes.includes(defaultTf)?defaultTf:timeframes[0];
-    onSave({items,threshold,strategyName:stratName,maxTrades,neonColor,calendarOn,notifOn,customAssets:assets,eliminatoires,defaultTimeframe:dft,modules,timeframes,killzones});
+    const committedStrats=_commitStrats();
+    const act=committedStrats.find(s=>s.id===selStrat)||committedStrats[0];
+    onSave({items:act.items,threshold:act.threshold,strategyName:act.name,eliminatoires:act.eliminatoires,strategies:committedStrats,activeStrategyId:selStrat,maxTrades,neonColor,calendarOn,notifOn,customAssets:assets,defaultTimeframe:dft,modules,timeframes,killzones});
     setSavedOk(true);setTimeout(()=>setSavedOk(false),2000);};
   const doSaveAcct=(idx)=>{
     const name=acctEditName.trim()||"Phase";
@@ -2617,6 +2662,22 @@ function SettingsView({config,onSave,onLogout,onReset,onNewPhase,lang,onLangChan
       {/* ══ ONGLET STRATÉGIE ══ */}
       {tab==="strategie"&&(()=>{
         return <div>
+          {/* ── Sélecteur de stratégies ── */}
+          <div style={{marginBottom:16}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <div style={{fontSize:9,color:"#ffffff44",letterSpacing:2,fontFamily:MONO}}>{fr?"MES STRATÉGIES":"MY STRATEGIES"} · {strategies.length}</div>
+              <button onClick={addStrat} className="btn" style={{background:`${neonColor}14`,border:`1px solid ${neonColor}30`,color:neonColor,borderRadius:8,padding:"6px 12px",fontSize:10,fontWeight:700,fontFamily:MONO}}>+ {fr?"Ajouter":"Add"}</button>
+            </div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {strategies.map(st=>{
+                const selS=st.id===selStrat;const nm=selS?stratName:st.name;
+                return <div key={st.id} style={{display:"flex",alignItems:"center",gap:6,background:selS?`${neonColor}18`:"#131318",border:`1px solid ${selS?neonColor:`${neonColor}22`}`,borderRadius:8,padding:"7px 10px"}}>
+                  <button onClick={()=>switchStrat(st.id)} className="btn" style={{background:"transparent",border:"none",color:selS?neonColor:"#ffffffaa",fontSize:11,fontWeight:selS?700:400,fontFamily:MONO,padding:0}}>{nm||(fr?"Sans nom":"Untitled")}</button>
+                  {strategies.length>1&&<button onClick={()=>delStrat(st.id)} className="btn" style={{background:"transparent",border:"none",color:"#ff4d4d88",fontSize:12,padding:0,lineHeight:1,cursor:"pointer"}}>✕</button>}
+                </div>;
+              })}
+            </div>
+          </div>
           {/* ── BLOC 1 : IDENTITÉ ── */}
           <StratBlock neon={neonColor} icon="◈" title={fr?"Identité":"Identity"} sub={fr?"Ce que tu trades":"What you trade"}>
             <StratFLbl>{t.strategyName}</StratFLbl>
@@ -3521,6 +3582,8 @@ export default function App() {
   const [notif,setNotif]=useState(null);
   const [showNoTrades,setShowNoTrades]=useState(true);
   const [statsMode,setStatsMode]=useState("phase");
+  const [stratFilter,setStratFilter]=useState("ALL");
+  const [stratMenuOpen,setStratMenuOpen]=useState(false);
   const [phases,setPhases]=useState([]);
   const [accounts,setAccounts]=useState([]);
   const [activeAccountId,setActiveAccountId]=useState(null);
@@ -3714,7 +3777,8 @@ export default function App() {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   })();
   const pfBase=statsMode==="all"?trades:accountTrades;
-  const pf=periodStart?pfBase.filter(x=>x.date>=periodStart):pfBase;
+  const pfPeriod=periodStart?pfBase.filter(x=>x.date>=periodStart):pfBase;
+  const pf=stratFilter==="ALL"?pfPeriod:pfPeriod.filter(x=>tradeStratId(x,config)===stratFilter);
   const total=pf.length,wins=pf.filter(x=>x.result==="WIN").length,losses=pf.filter(x=>x.result==="LOSS").length;
   const winRate=total?Math.round(wins/total*100):0;
   const totalPnl=pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
@@ -3722,6 +3786,8 @@ export default function App() {
   const scoreColor=discScore===null?"#ffffffbb":discScore>=8?neon:discScore>=5?"#f0b429":"#ff4d4d";
   const usedAssets=[...new Set(trades.map(x=>x.asset))];
 
+  const fStrats=stratList(config);
+  const fStrat=getStrat(config, form.strategyId||activeStratId(config));
   const checkRevenge=fd=>{if(!config.maxTrades||config.maxTrades===0)return false;const aid=form.accountId||activeAccountId;return trades.filter(x=>x.date===fd&&x.id!==editingId&&(x.accountId||"ph_0")===aid).length>=config.maxTrades;};
   // Helper : force le signe de la valeur P&L selon le résultat (BE laisse libre)
   const forceSign=(val,result)=>{
@@ -3739,17 +3805,18 @@ export default function App() {
   const saveTrade=()=>{
     const score=form.checklist.length,pnl=form.pnlManual!==""?form.pnlManual:form.pnlPreset;
     const isRevenge=form.isRevenge||checkRevenge(form.date);
-    const elim=config.eliminatoires||[];
+    const elim=fStrat.eliminatoires||[];
       const elimFail=elim.some(ei=>!form.checklist.includes(ei));
-      const conforming=isRevenge?false:elimFail?false:score>=config.threshold;
+      const conforming=isRevenge?false:elimFail?false:score>=fStrat.threshold;
     let updated,ut=null;
-    if(editingId!==null){updated=trades.map(x=>x.id===editingId?{...x,...form,pnlPct:pnl,setupScore:score,conforming,isRevenge,checklistMax:config.items.length}:x);}
-    else{const trade={...form,pnlPct:pnl,id:Date.now(),setupScore:score,conforming,isRevenge,checklistMax:config.items.length,accountId:form.accountId||activeAccountId};ut=trade;updated=[trade,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);}
+    if(editingId!==null){updated=trades.map(x=>x.id===editingId?{...x,...form,pnlPct:pnl,setupScore:score,conforming,isRevenge,checklistMax:fStrat.items.length}:x);}
+    else{const trade={...form,pnlPct:pnl,id:Date.now(),setupScore:score,conforming,isRevenge,checklistMax:fStrat.items.length,accountId:form.accountId||activeAccountId,strategyId:form.strategyId||activeStratId(config)};ut=trade;updated=[trade,...trades].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);}
     setTrades(updated);
     if(currentUserRef.current?.email) saveUserData(uidNow(),{trades:updated,accounts,activeAccountId});
     const newCfgAfterSave={...config,lastPnlMode:form.pnlMode||"eur"};setConfig(newCfgAfterSave);if(currentUserRef.current?.email)saveUserData(uidNow(),{config:newCfgAfterSave});
-    setForm(emptyForm(config.defaultAsset||"XAU/USD",config.defaultTimeframe||config.lastTimeframe||"M5",config.lastPnlMode||"eur",activeAccountId));setEditingId(null);setCheckinOpen(false);
-    // Conseil biais/direction incohérents
+    setForm(emptyForm(config.defaultAsset||"XAU/USD",config.defaultTimeframe||config.lastTimeframe||"M5",config.lastPnlMode||"eur",activeAccountId,form.strategyId||activeStratId(config)));setEditingId(null);setCheckinOpen(false);
+    // Conseils — ne s'affichent que si "Activer les conseils" est ON (Réglages)
+    if(config.notifOn!==false){
     const biaisCheck=form.checkin?.biais||"";
     const isBullish=biaisCheck.includes("Haussier")||biaisCheck.includes("Bullish");
     const isBearish=biaisCheck.includes("Baissier")||biaisCheck.includes("Bearish");
@@ -3758,14 +3825,18 @@ export default function App() {
       setNotif({txt:lang==="fr"?`Biais ${biaisCheck} avec un ${form.direction}.\nTu trades à contre-sens de ton analyse.`:`Bias ${biaisCheck} with a ${form.direction}.\nYou're trading against your own analysis.`,color:"#f0b429",icon:"warn",lang});
     } else {
       // Notifs intelligentes basées sur les données
-      const recentTrades=updated.slice(0,3);
-      const lastLosses=recentTrades.filter(x=>x.result==="LOSS").length;
-      const isDrawdownAlert=objectif.drawdown&&config.capital&&Math.abs(pf.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0))>=parseFloat(objectif.drawdown)*0.8;
-      if(lastLosses>=2&&ut&&ut.result==="LOSS"){
+      const accTr=updated.filter(x=>(x.accountId||"ph_0")===(activeAccountId||"ph_0"));
+      const last2=accTr.slice(0,2);
+      const twoLossStreak=last2.length===2&&last2.every(x=>x.result==="LOSS");
+      const accCum=accTr.reduce((s,x)=>s+(parseFloat(x.pnlPct)||0),0);
+      const ddMax=parseFloat(objectif.drawdown);
+      const isDrawdownAlert=!!objectif.drawdown&&!!config.capital&&!isNaN(ddMax)&&ddMax>0&&accCum<0&&Math.abs(accCum)>=ddMax*0.8;
+      if(twoLossStreak&&ut&&ut.result==="LOSS"){
         setNotif({txt:lang==="fr"?"2 LOSS de suite — pause recommandée avant le prochain trade.":"2 LOSS in a row — take a break before next trade.",color:"#ff4d4d",icon:"warn",lang});
       } else if(isDrawdownAlert){
         setNotif({txt:lang==="fr"?"⚠ Tu approches ton drawdown max. Reste prudent.":"⚠ Approaching max drawdown. Stay cautious.",color:"#f0b429",icon:"warn",lang});
       }
+    }
     }
     setSaved(true);setTimeout(()=>setSaved(false),2000);
     // Demande d'avis aux jalons 10 et 100 trades (une seule fois chacun, flag persisté dans config)
@@ -3784,7 +3855,7 @@ export default function App() {
     setView(editingId!==null?"history":"dashboard");scrollToTop();
   };
 
-  const startEdit=x=>{setForm({date:x.date,asset:x.asset,direction:x.direction,checklist:[...x.checklist],result:x.result,pnlPreset:PNL_PRESETS.includes(x.pnlPct)?x.pnlPct:"",pnlManual:PNL_PRESETS.includes(x.pnlPct)?"":x.pnlPct,pnlMode:"pct",pnlEurManual:"",notes:x.notes||"",rejetScore:x.rejetScore||0,time:x.time||"",screenshots:getShots(x),rr:x.rr||"",isRevenge:x.isRevenge||false,slDirection:x.slDirection||"",checkin:x.checkin||{humeur:"",biais:""},accountId:x.accountId||activeAccountId});setEditingId(x.id);setView("log");};
+  const startEdit=x=>{setForm({date:x.date,asset:x.asset,direction:x.direction,checklist:[...x.checklist],result:x.result,pnlPreset:PNL_PRESETS.includes(x.pnlPct)?x.pnlPct:"",pnlManual:PNL_PRESETS.includes(x.pnlPct)?"":x.pnlPct,pnlMode:"pct",pnlEurManual:"",notes:x.notes||"",rejetScore:x.rejetScore||0,time:x.time||"",screenshots:getShots(x),rr:x.rr||"",isRevenge:x.isRevenge||false,slDirection:x.slDirection||"",checkin:x.checkin||{humeur:"",biais:""},accountId:x.accountId||activeAccountId,strategyId:x.strategyId||activeStratId(config)});setEditingId(x.id);setView("log");};
   // Réaffecter un trade à un autre compte
   const reassignTrade=(tradeId,accId)=>{
     const updated=trades.map(x=>x.id===tradeId?{...x,accountId:accId}:x);
@@ -4061,7 +4132,7 @@ export default function App() {
           <div style={{fontSize:26,fontWeight:900,color:"#ffffff",letterSpacing:-0.5}}>{view==="dashboard"?(lang==="fr"?"Statistiques":"Statistics"):view==="log"?(editingId?lang==="fr"?"✏ Édition":"✏ Edit":lang==="fr"?"Nouveau trade":"New trade"):view==="history"?(lang==="fr"?"Historique":"History"):lang==="fr"?"Paramètres":"Settings"}</div>
           <div style={{fontSize:10,color:"#ffffff33",marginTop:4}}>{config.strategyName}{total>0?` · ${total} trades`:""}</div>
         </div>
-        {view==="dashboard"&&<button onClick={()=>setShowNewPhase(true)} style={{padding:"9px 18px",background:`${neon}10`,border:`1px solid ${neon}25`,borderRadius:10,fontSize:11,color:neon,fontFamily:MONO,cursor:"pointer",fontWeight:700}}>▶ {lang==="fr"?"Nouvelle phase":"New phase"}</button>}
+
       </div>}
 
       
@@ -4076,7 +4147,20 @@ export default function App() {
                   <button key={m} onClick={()=>setStatsMode(m)} className="btn" style={{flex:1,padding:"7px 0",borderRadius:6,fontSize:10,fontWeight:700,fontFamily:MONO,background:statsMode===m?neon:"transparent",color:statsMode===m?"#131318":"#ffffffaa",border:"none",transition:"all 0.2s"}}>{l}</button>
                 ))}
               </div>
-              <button onClick={()=>setShowNewPhase(true)} className="btn" style={{padding:"7px 10px",background:`${neon}10`,border:`1px solid ${neon}30`,borderRadius:8,fontSize:9,fontWeight:700,color:neon,whiteSpace:"nowrap",flexShrink:0}}>▶ Phase</button>
+              {stratList(config).length>1&&<div style={{position:"relative",flexShrink:0}}>
+                <button onClick={()=>setStratMenuOpen(o=>!o)} className="btn" style={{padding:"7px 11px",background:stratFilter==="ALL"?`${neon}10`:`${neon}22`,border:`1px solid ${neon}30`,borderRadius:8,fontSize:9,fontWeight:700,color:neon,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:5}}>
+                  <span>{stratFilter==="ALL"?"Strat":getStrat(config,stratFilter).name}</span>
+                  <span style={{fontSize:7}}>{stratMenuOpen?"▲":"▼"}</span>
+                </button>
+                {stratMenuOpen&&<>
+                  <div onClick={()=>setStratMenuOpen(false)} style={{position:"fixed",inset:0,zIndex:40}}/>
+                  <div style={{position:"absolute",top:"115%",right:0,zIndex:41,background:"#15151c",border:`1px solid ${neon}30`,borderRadius:8,padding:4,minWidth:160,boxShadow:"0 8px 24px rgba(0,0,0,0.6)"}}>
+                    {[{id:"ALL",name:lang==="fr"?"Toutes les stratégies":"All strategies"},...stratList(config)].map(st=>(
+                      <button key={st.id} onClick={()=>{setStratFilter(st.id);setStratMenuOpen(false);}} className="btn" style={{display:"block",width:"100%",textAlign:"left",padding:"8px 9px",background:stratFilter===st.id?`${neon}18`:"transparent",border:"none",borderRadius:6,color:stratFilter===st.id?neon:"#ffffffcc",fontSize:11,fontFamily:MONO,fontWeight:stratFilter===st.id?700:400,whiteSpace:"nowrap"}}>{st.name}</button>
+                    ))}
+                  </div>
+                </>}
+              </div>}
             </div>
           )}
           {/* === NIVEAU 1 : Win Rate + P&L (50/50, gros) === */}
@@ -4289,6 +4373,18 @@ export default function App() {
               })}
             </div>
           </div>}
+          {fStrats.length>1&&<div style={{marginBottom:12}}>
+            <div style={{fontSize:8,color:"#ffffff33",letterSpacing:2,marginBottom:6}}>{lang==="fr"?"STRATÉGIE":"STRATEGY"}</div>
+            <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+              {fStrats.map(s=>{
+                const sel=(form.strategyId||activeStratId(config))===s.id;
+                return <button key={s.id} onClick={()=>setForm({...form,strategyId:s.id,checklist:[]})} className="btn"
+                  style={{padding:"8px 12px",background:sel?`${neon}18`:"#131318",border:`1px solid ${sel?neon:`${neon}22`}`,borderRadius:8,fontSize:11,fontWeight:sel?700:400,color:sel?neon:"#ffffffaa",fontFamily:MONO}}>
+                  {s.name}
+                </button>;
+              })}
+            </div>
+          </div>}
           <div style={{marginBottom:14}}>
             <div style={{display:"flex",gap:8}}><input type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} style={{...inSt,marginBottom:0,flex:2,colorScheme:"dark",color:"#ffffffcc"}}/><input type="time" value={form.time} onChange={e=>setForm({...form,time:e.target.value})} style={{...inSt,marginBottom:0,flex:1,colorScheme:"dark",color:form.time?"#ffffffcc":"#ffffff66"}}/></div>
             <div style={{fontSize:9,color:"#ffffffaa",marginTop:5}}>{t.entryTime}</div>
@@ -4323,10 +4419,10 @@ export default function App() {
           </div>}
           <div style={{background:"#131318",border:`1px solid ${neon}26`,borderRadius:10,padding:14,marginBottom:10}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-              <div><div style={{fontSize:9,color:"#ffffff44",letterSpacing:2}}>{t.checklistSetup}</div><div style={{fontSize:10,marginTop:4,color:form.checklist.length>=config.threshold?neon:"#ff4d4d"}}>{form.checklist.length>=config.threshold?t.conform:`⚠ ${config.threshold-form.checklist.length} ${t.missing}`}</div></div>
-              <ScoreRing score={form.checklist.length} max={config.items.length} threshold={config.threshold} neon={neon}/>
+              <div><div style={{fontSize:9,color:"#ffffff44",letterSpacing:2}}>{t.checklistSetup}</div><div style={{fontSize:10,marginTop:4,color:form.checklist.length>=fStrat.threshold?neon:"#ff4d4d"}}>{form.checklist.length>=fStrat.threshold?t.conform:`⚠ ${fStrat.threshold-form.checklist.length} ${t.missing}`}</div></div>
+              <ScoreRing score={form.checklist.length} max={fStrat.items.length} threshold={fStrat.threshold} neon={neon}/>
             </div>
-            {config.items.map((item,i)=>(
+            {fStrat.items.map((item,i)=>(
               <label key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:`1px solid ${neon}08`,cursor:"pointer"}}>
                 <input type="checkbox" checked={form.checklist.includes(i)} onChange={e=>setForm({...form,checklist:e.target.checked?[...form.checklist,i]:form.checklist.filter(x=>x!==i)})}/>
                 <span style={{fontSize:12,color:form.checklist.includes(i)?"#ffffff":"#ffffffaa"}}>{item}</span>
@@ -4424,8 +4520,8 @@ export default function App() {
             <button onClick={()=>fileRef.current&&fileRef.current.click()} disabled={form.screenshots.length>=MAX_SHOTS} style={{width:"100%",display:"flex",alignItems:"center",gap:8,cursor:form.screenshots.length>=MAX_SHOTS?"default":"pointer",padding:"8px 12px",borderRadius:8,border:`1px dashed ${neon}26`,color:form.screenshots.length?neon:"#ffffffaa",fontSize:11,fontFamily:MONO,background:"transparent",opacity:form.screenshots.length>=MAX_SHOTS?0.5:1}}>{form.screenshots.length?`${form.screenshots.length}/${MAX_SHOTS} ✓`:t.addScreenshot}</button>
             {form.screenshots.length>0&&<div style={{display:"flex",gap:8,alignItems:"center",marginTop:8,flexWrap:"wrap"}}>{form.screenshots.map((src,i)=><div key={i} style={{position:"relative"}}><img src={src} alt="" style={{height:48,borderRadius:4,border:`1px solid ${neon}26`}}/><button onClick={()=>setForm(fm=>({...fm,screenshots:fm.screenshots.filter((_,j)=>j!==i)}))} style={{position:"absolute",top:-6,right:-6,background:"#1a0d0d",border:"1px solid #ff4d4d",color:"#ff4d4d",borderRadius:"50%",width:18,height:18,fontSize:10,lineHeight:1,cursor:"pointer",fontFamily:MONO,padding:0}}>✕</button></div>)}</div>}
           </div>
-          <button onClick={saveTrade} className="btn" style={{width:"100%",background:editingId!==null?"rgba(240,180,41,0.18)":(isRevengeNow||form.isRevenge?"rgba(255,77,77,0.15)":form.checklist.length>=config.threshold?`${neon}2a`:"rgba(255,77,77,0.1)"),border:`1px solid ${editingId!==null?"#f0b429":(isRevengeNow||form.isRevenge?"#ff4d4d":form.checklist.length>=config.threshold?neon:"#ff4d4d")}`,color:editingId!==null?"#f0b429":(isRevengeNow||form.isRevenge?"#ff4d4d":form.checklist.length>=config.threshold?neon:"#ff4d4d"),borderRadius:10,padding:14,fontSize:13,fontWeight:700,fontFamily:MONO,letterSpacing:1}}>
-            {editingId!==null?t.updateBtn:isRevengeNow||form.isRevenge?"⚠ REVENGE — Non-conforme":form.checklist.length>=config.threshold?t.saveConform:`${t.saveNonConform} — ${form.checklist.length}/${config.items.length}`}
+          <button onClick={saveTrade} className="btn" style={{width:"100%",background:editingId!==null?"rgba(240,180,41,0.18)":(isRevengeNow||form.isRevenge?"rgba(255,77,77,0.15)":form.checklist.length>=fStrat.threshold?`${neon}2a`:"rgba(255,77,77,0.1)"),border:`1px solid ${editingId!==null?"#f0b429":(isRevengeNow||form.isRevenge?"#ff4d4d":form.checklist.length>=fStrat.threshold?neon:"#ff4d4d")}`,color:editingId!==null?"#f0b429":(isRevengeNow||form.isRevenge?"#ff4d4d":form.checklist.length>=fStrat.threshold?neon:"#ff4d4d"),borderRadius:10,padding:14,fontSize:13,fontWeight:700,fontFamily:MONO,letterSpacing:1}}>
+            {editingId!==null?t.updateBtn:isRevengeNow||form.isRevenge?"⚠ REVENGE — Non-conforme":form.checklist.length>=fStrat.threshold?t.saveConform:`${t.saveNonConform} — ${form.checklist.length}/${fStrat.items.length}`}
           </button>
           {saved&&(
         <div className="slide-up" style={{marginTop:12,background:`${neon}12`,border:`1px solid ${neon}40`,borderRadius:10,padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}>
