@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell } from "recharts";
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from "firebase/auth";
 import emailjs from "@emailjs/browser";
 
@@ -54,16 +54,32 @@ const queuePending = (id, data) => {
   arr.push({ id: key, data: merged, ts: Date.now() });
   setPending(arr);
 };
+// Garde anti-perte : tant que les données distantes ne sont pas chargées (login pas terminé),
+// HYDRATED reste false et on refuse d'écrire les gros tableaux — sinon on écraserait le cloud
+// avec un état local vide ou périmé (cause n°1 de perte de données).
+let HYDRATED = false;
+const HEAVY_KEYS = ["trades","noTrades","phases","accounts","activeAccountId"];
+const setHydrated = v => { HYDRATED = !!v; };
 // Tente d'écrire ; renvoie true si succès, false sinon. En cas d'échec, met en file d'attente.
 const saveUserData = async (id, data) => {
   if(!db) return false;
   if(!id) { queuePending(null, data); return false; } // pas d'UID encore : on garde pour plus tard
+  let payload = data;
+  if(!HYDRATED) {
+    payload = { ...data };
+    let stripped = false;
+    for(const k of HEAVY_KEYS){ if(k in payload){ delete payload[k]; stripped = true; } }
+    if(stripped){
+      console.warn("saveUserData: écriture des tableaux bloquée (données pas encore chargées) — protection anti-écrasement.");
+      if(Object.keys(payload).length === 0) return false; // rien d'autre à écrire
+    }
+  }
   try {
-    await setDoc(doc(db,"users",id), data, {merge:true});
+    await setDoc(doc(db,"users",id), payload, {merge:true});
     return true;
   } catch(e) {
     console.error("Firestore save failed, queued:", e);
-    queuePending(id, data);
+    queuePending(id, payload);
     return false;
   }
 };
@@ -3540,9 +3556,30 @@ export default function App() {
   const [detailTrade,setDetailTrade]=useState(null);
   const [editingNoTrade,setEditingNoTrade]=useState(null);
   const [config,setConfig]=useState({items:DEFAULT_CRITERIA,threshold:6,strategyName:"Ma Stratégie",defaultAsset:"XAU/USD",maxTrades:1,neonColor:"#00ff9d",calendarOn:true,notifOn:true,customAssets:[...PRESET_ASSETS],capital:"",devise:"€",accountType:"perso",phaseStartDate:"",modules:{rejet:true,checkin:true,postSl:true,revenge:true,timeframe:true},timeframes:[...DEFAULT_TIMEFRAMES]});
-  const fileRef=useRef();const pageRef=useRef();const weeklyShownRef=useRef(false);const currentUserRef=useRef(null);
+  const fileRef=useRef();const pageRef=useRef();const weeklyShownRef=useRef(false);const currentUserRef=useRef(null);const unsubRef=useRef(null);
   // Source de vérité unique pour l'UID : Firebase Auth d'abord, puis le ref. JAMAIS l'email encodé (écritures).
   const uidNow=()=>{ try { if(auth&&auth.currentUser&&auth.currentUser.uid) return auth.currentUser.uid; } catch(e){} return currentUserRef.current?.uid||null; };
+  // ── Synchro temps réel : garde tous les onglets/appareils à jour en direct ──
+  // Empêche le bug "un onglet périmé réécrit un ancien tableau et écrase les trades récents".
+  const subscribeRealtime=(uid)=>{
+    if(!db||!uid) return;
+    if(unsubRef.current){ try{unsubRef.current();}catch(e){} unsubRef.current=null; }
+    const pSafe=(v)=>Array.isArray(v)?v:(typeof v==="string"?(()=>{try{return JSON.parse(v);}catch(e){return [];}})():[]);
+    try {
+      unsubRef.current=onSnapshot(doc(db,"users",uid), (snap)=>{
+        // On ignore l'écho de nos propres écritures locales pas encore confirmées par le serveur (évite tout flicker).
+        if(snap.metadata&&snap.metadata.hasPendingWrites) return;
+        if(!snap.exists()) return;
+        const ud=snap.data(); if(!ud) return;
+        setTrades(pSafe(ud.trades));
+        setNoTrades(pSafe(ud.noTrades));
+        setPhases(pSafe(ud.phases));
+        if(Array.isArray(ud.accounts)) setAccounts(ud.accounts);
+        if(ud.activeAccountId!==undefined) setActiveAccountId(ud.activeAccountId);
+      }, (err)=>{ console.error("onSnapshot error:", err); });
+    } catch(e){ console.error("subscribeRealtime failed:", e); }
+  };
+  useEffect(()=>()=>{ if(unsubRef.current){ try{unsubRef.current();}catch(e){} } },[]);
   const neon=config.neonColor||"#00ff9d";const t=T[lang];const inSt=mkInput(neon);
   // Couleurs dérivées du neon pour une cohérence visuelle complète
   const neonDim = neon+"66";   // texte secondaire
@@ -3593,7 +3630,7 @@ export default function App() {
     setAccounts(newAccs);
     if(newActiveId!==undefined)setActiveAccountId(newActiveId);
     const uid=uidNow();
-    if(currentUserRef.current?.email)saveUserData(uid,{accounts:newAccs,activeAccountId:newActiveId!==undefined?newActiveId:activeAccountId,trades});
+    if(currentUserRef.current?.email)saveUserData(uid,{accounts:newAccs,activeAccountId:newActiveId!==undefined?newActiveId:activeAccountId});
   };
   const switchAccount=(id)=>{
     const acc=accounts.find(a=>a.id===id);if(!acc)return;
@@ -3601,7 +3638,7 @@ export default function App() {
     setConfig(c=>({...c,capital:acc.capital,devise:acc.devise,accountType:acc.accountType}));
     setObjectif(o=>({...o,pnl:acc.objPnl,drawdown:acc.objDrawdown}));
     const uid=uidNow();
-    if(currentUserRef.current?.email)saveUserData(uid,{accounts,activeAccountId:id,trades});
+    if(currentUserRef.current?.email)saveUserData(uid,{accounts,activeAccountId:id});
   };
   // Phase uses trade.id (timestamp) not date — trades before phase creation excluded even if date is today
   const currentPhaseTs=phases.length>0?phases[phases.length-1].id:0;
@@ -3824,6 +3861,8 @@ export default function App() {
       const normalized={...userData,trades,phases,config};
       const {accounts:accs,activeAccountId:aid,trades:tgTrades,migrated}=ensureAccountsData(normalized);
       setAccounts(accs);setActiveAccountId(aid);setTrades(tgTrades);
+      setHydrated(true); // données distantes chargées → on autorise désormais l'écriture des tableaux
+      subscribeRealtime(uid); // tous les onglets restent synchro en direct
       const act=accs.find(a=>a.id===aid)||accs[0];
       if(act)setConfig(c=>({...c,capital:act.capital,devise:act.devise,accountType:act.accountType}));
       if(act)setObjectif(o=>({...o,pnl:act.objPnl,drawdown:act.objDrawdown}));
@@ -3881,7 +3920,9 @@ export default function App() {
     const firstAcc=mkAccount("ph_0",cfg.phaseName||cfg.strategyName||"Mon compte",cfg.neonColor||"#00ff9d",{capital:cfg.capital,devise:cfg.devise,accountType:cfg.accountType});
     setAccounts([firstAcc]);setActiveAccountId("ph_0");
     setConfig(newCfg);setForm(emptyForm(cfg.defaultAsset||"XAU/USD","M5","eur","ph_0"));setPhase("app");
+    setHydrated(true); // nouveau compte : rien à protéger côté cloud, on autorise l'écriture initiale
     if(currentUserRef.current?.email) await saveUserData(uidNow(),{config:newCfg,setupDone:true,lang,trades:[],noTrades:[],phases:[],accounts:[firstAcc],activeAccountId:"ph_0"});
+    subscribeRealtime(uidNow());
   }} lang={lang}/></>;
 
   return (
@@ -4516,6 +4557,8 @@ export default function App() {
         setConfig(newCfg);
         if(currentUserRef.current?.email) saveUserData(uidNow(),{config:newCfg});
       }} onLogout={async()=>{
+        setHydrated(false); // on re-protège jusqu'au prochain chargement complet
+        if(unsubRef.current){ try{unsubRef.current();}catch(e){} unsubRef.current=null; }
         currentUserRef.current=null;
         try{localStorage.removeItem("tmt_user");}catch(e){}
         if(auth) try{ await signOut(auth); }catch(e){}
