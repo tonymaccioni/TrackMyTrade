@@ -3619,7 +3619,7 @@ export default function App() {
   const [detailTrade,setDetailTrade]=useState(null);
   const [editingNoTrade,setEditingNoTrade]=useState(null);
   const [config,setConfig]=useState({items:DEFAULT_CRITERIA,threshold:6,strategyName:"Ma Stratégie",defaultAsset:"XAU/USD",maxTrades:1,neonColor:"#00ff9d",calendarOn:true,notifOn:true,customAssets:[...PRESET_ASSETS],capital:"",devise:"€",accountType:"perso",phaseStartDate:"",modules:{rejet:true,checkin:true,postSl:true,revenge:true,timeframe:true},timeframes:[...DEFAULT_TIMEFRAMES]});
-  const fileRef=useRef();const pageRef=useRef();const weeklyShownRef=useRef(false);const currentUserRef=useRef(null);const unsubRef=useRef(null);
+  const fileRef=useRef();const pageRef=useRef();const weeklyShownRef=useRef(false);const currentUserRef=useRef(null);const unsubRef=useRef(null);const importingRef=useRef(false);
   // Source de vérité unique pour l'UID : Firebase Auth d'abord, puis le ref. JAMAIS l'email encodé (écritures).
   const uidNow=()=>{ try { if(auth&&auth.currentUser&&auth.currentUser.uid) return auth.currentUser.uid; } catch(e){} return currentUserRef.current?.uid||null; };
   // ── Synchro temps réel : garde tous les onglets/appareils à jour en direct ──
@@ -3632,6 +3632,8 @@ export default function App() {
       unsubRef.current=onSnapshot(doc(db,"users",uid), (snap)=>{
         // On ignore l'écho de nos propres écritures locales pas encore confirmées par le serveur (évite tout flicker).
         if(snap.metadata&&snap.metadata.hasPendingWrites) return;
+        // On ignore aussi les snapshots qui arrivent pendant un import JSON (évite l'écrasement des trades importés)
+        if(importingRef.current) return;
         if(!snap.exists()) return;
         const ud=snap.data(); if(!ud) return;
         setTrades(pSafe(ud.trades));
@@ -4667,10 +4669,15 @@ export default function App() {
         const toAdd=imported.filter(x=>!ids.has(x.id));
         const merged=[...toAdd,...trades].sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.id||0)-(a.id||0));
         setTrades(merged);
-        // Écriture directe Firestore (bypass garde HYDRATED) — on connaît exactement l'état voulu ici
+        // Bloque onSnapshot pendant l'import pour éviter l'écrasement
+        importingRef.current=true;
         const uid=uidNow();
         if(currentUserRef.current?.email && uid && db){
-          setDoc(doc(db,"users",uid),{trades:merged},{merge:true}).catch(e=>console.error("Import JSON save failed:",e));
+          setDoc(doc(db,"users",uid),{trades:merged},{merge:true})
+            .catch(e=>console.error("Import JSON save failed:",e))
+            .finally(()=>{ setTimeout(()=>{ importingRef.current=false; },3000); });
+        } else {
+          setTimeout(()=>{ importingRef.current=false; },3000);
         }
         alert(toAdd.length?(lang==="fr"?`${toAdd.length} trade(s) restauré(s).`:`${toAdd.length} trade(s) restored.`):(lang==="fr"?"Tous ces trades étaient déjà présents.":"All these trades were already present."));
       }}
