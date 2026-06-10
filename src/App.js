@@ -4667,7 +4667,11 @@ export default function App() {
         const toAdd=imported.filter(x=>!ids.has(x.id));
         const merged=[...toAdd,...trades].sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.id||0)-(a.id||0));
         setTrades(merged);
-        if(currentUserRef.current?.email)saveUserData(uidNow(),{trades:merged});
+        // Écriture directe Firestore (bypass garde HYDRATED) — on connaît exactement l'état voulu ici
+        const uid=uidNow();
+        if(currentUserRef.current?.email && uid && db){
+          setDoc(doc(db,"users",uid),{trades:merged},{merge:true}).catch(e=>console.error("Import JSON save failed:",e));
+        }
         alert(toAdd.length?(lang==="fr"?`${toAdd.length} trade(s) restauré(s).`:`${toAdd.length} trade(s) restored.`):(lang==="fr"?"Tous ces trades étaient déjà présents.":"All these trades were already present."));
       }}
       onRate={()=>{setReviewMilestone(null);setShowReview(true);}}
